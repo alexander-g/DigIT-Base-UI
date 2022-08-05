@@ -24,8 +24,8 @@ BaseBoxes = class {
                                            "border":     "1px dotted #fff"});
         const _this = this;
         $container.one('mousedown', function(mousedown_event) {
-            const click_y = mousedown_event.pageY - $container.offset().top;
-            const click_x = mousedown_event.pageX - $container.offset().left;
+            const img                 = $container.find('img.input-image')[0]
+            const [click_x, click_y]  = page2img_coordinates([mousedown_event.pageX, mousedown_event.pageY], img, $container)
     
             $selection.css({
               'top':    click_y,  'left':   click_x,
@@ -44,10 +44,9 @@ BaseBoxes = class {
                     $selection.remove()
                     return;
                 }
-    
-                const move_y = mousemove_event.pageY - $container.offset().top,
-                      move_x = mousemove_event.pageX - $container.offset().left,
-                      width  = Math.abs(move_x - click_x),
+
+                const [move_x, move_y] = page2img_coordinates([mousemove_event.pageX, mousemove_event.pageY], img, $container)
+                const width  = Math.abs(move_x - click_x),
                       height = Math.abs(move_y - click_y);
     
                 const new_x  = (move_x < click_x) ? (click_x - width)  : click_x;
@@ -64,13 +63,16 @@ BaseBoxes = class {
     static finalize_box( $box_overlay, label, remove=false ){
         const filename      = $box_overlay.closest('[filename]').attr('filename')
         
-        const $container    = $(`[filename="${filename}"] .boxes.overlay`)
-        const H   = $container.height(), W = $container.width();
+        const $image = $(`[filename="${filename}"] img.input-image`)
+        const rect   = $image[0].getBoundingClientRect()
+        const [H,W]  = [rect['height'], rect['width']]
         //normalized coordinates 0..1
-        const y0  = Math.max(0, $box_overlay.position()['top']/H)
-        const x0  = Math.max(0, $box_overlay.position()['left']/W)
-        const y1  = Math.min(1, ($box_overlay.position()['top']  + $box_overlay.outerHeight())/H );
-        const x1  = Math.min(1, ($box_overlay.position()['left'] + $box_overlay.outerWidth())/W );
+        const box_position = $box_overlay.position()
+        const box_rect     = $box_overlay[0].getBoundingClientRect()
+        const y0  = Math.max(0, box_position['top']/H)
+        const x0  = Math.max(0, box_position['left']/W)
+        const y1  = Math.min(1, (box_position['top']  + box_rect['height'])/H );
+        const x1  = Math.min(1, (box_position['left'] + box_rect['width']) /W );
 
         const [imgW,imgH] = GLOBAL.App.ImageLoading.get_imagesize(filename)
         //real image coordinates
@@ -123,11 +125,12 @@ BaseBoxes = class {
             return;
         }
 
+        const $xformbox = $(`[filename="${filename}"] .transform-box`)
+        const img       = $xformbox.find('img.input-image')[0]
         $overlay.find('.move-anchor').on('mousedown', function(mousedown_event){
-            const click_y   = mousedown_event.pageY;
-            const click_x   = mousedown_event.pageX;
-            const overlay_y = $overlay.position()['top'];
-            const overlay_x = $overlay.position()['left'];
+            const [click_x, click_y]  = page2img_coordinates([mousedown_event.pageX, mousedown_event.pageY], img, $xformbox)
+            const overlay_y = $overlay[0].offsetTop;
+            const overlay_x = $overlay[0].offsetLeft;
             //make sure height/width are fixed
             $overlay.css('height', $overlay.css('height'));
             $overlay.css('width',  $overlay.css('width'));
@@ -137,17 +140,18 @@ BaseBoxes = class {
                     stop_drag();
                     return;
                 }
+
+                const [move_x, move_y] = page2img_coordinates([mousemove_event.pageX, mousemove_event.pageY], img, $xformbox)
                 $overlay.css({
-                    'top':  overlay_y + (mousemove_event.pageY - click_y), 
-                    'left': overlay_x + (mousemove_event.pageX - click_x), 
+                    'top':  overlay_y + (move_y - click_y), 
+                    'left': overlay_x + (move_x - click_x), 
                   });
             });
             return false; //stop event propagation
         })
     
         $overlay.find('.resize-anchor').on('mousedown', function(mousedown_event){
-            const click_y   = mousedown_event.pageY;
-            const click_x   = mousedown_event.pageX;
+            const [click_x, click_y]  = page2img_coordinates([mousedown_event.pageX, mousedown_event.pageY], img, $xformbox)
             const overlay_h = $overlay.outerHeight();
             const overlay_w = $overlay.outerWidth();
     
@@ -156,9 +160,11 @@ BaseBoxes = class {
                     stop_drag();
                     return;
                 }
+
+                const [move_x, move_y] = page2img_coordinates([mousemove_event.pageX, mousemove_event.pageY], img, $xformbox)
                 $overlay.css({
-                    'height': overlay_h + (mousemove_event.pageY - click_y), 
-                    'width':  overlay_w + (mousemove_event.pageX - click_x), 
+                    'height': overlay_h + (move_y - click_y), 
+                    'width':  overlay_w + (move_x - click_x), 
                   });
             });
             return false; //stop event propagation
@@ -261,3 +267,30 @@ BaseBoxes = class {
 
 
 
+//translate page coordinates xy to img coordinates
+//(viewport element provides topleft corner and transform)
+function page2img_coordinates(page_xy, img, $viewport){
+    let H,W;
+    if(navigator.userAgent.indexOf('Chrom') != -1){
+        //some layout issues with chrome
+        H = img.clientHeight;  //integer
+        W = img.clientWidth;
+    } else {
+        H = $(img).height()      //float
+        W = $(img).width()
+    }
+    const xform        = parse_css_matrix($viewport.css('transform'));
+    //absolute coordinates on the html element in pixels
+    const html_x_abs   = page_xy[0] - $viewport.offset().left
+    const html_y_abs   = page_xy[1] - $viewport.offset().top
+    //relative coordinates on the html element, range 0.0..1.0
+    const html_x_rel   = html_x_abs / W / xform.scale
+    const html_y_rel   = html_y_abs / H / xform.scale
+    //absolute coordinates on the image element
+    //const img_x_abs    = html_x_rel * img.naturalWidth
+    //const img_y_abs    = html_y_rel * img.naturalHeight
+    const img_x_abs    = html_x_rel * img.width
+    const img_y_abs    = html_y_rel * img.height
+    
+    return [img_x_abs, img_y_abs];
+}

@@ -104,7 +104,7 @@ ViewControls = class {
         const $root    = $(`[filename="${filename}"]`)
         const active   = $root.find('.show-results-checkbox').checkbox('is checked')
     
-        $root.find('.input.overlay').toggle(active)
+        $root.find('.overlay').toggle(active)
     }
 }
 

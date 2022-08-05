@@ -73,3 +73,30 @@ class TestBoxes(BaseCase):
             self.sleep(1)
         return
 
+    @BaseCase.maybe_skip
+    def test_add_boxes_zoomed(self):
+        self.open_main(static=True)
+
+        self.send_input_files_from_assets([ "test_image0.jpg", "test_image1.jpg" ])
+        self.click('label:contains("test_image1.jpg")')
+
+        root_css = '[filename="test_image1.jpg"]'
+        img      = self.find_element(root_css+' .input-image')
+        self.click(root_css+' a.new-box')
+        self.sleep(0.1)
+
+        #zoom in
+        script_zoom   = f''' $('{root_css} .transform-box')[0].dispatchEvent( new WheelEvent("wheel", {{deltaY:-10, shiftKey:true}}) ) '''
+        for i in range(20):
+            self.execute_script(script_zoom)
+
+        from selenium import webdriver
+        #click and drag to create a new box
+        webdriver.ActionChains(self.driver).click_and_hold(img).move_by_offset(100,100).release().perform()
+        self.sleep(0.1)
+
+        get_boxes_js = 'return GLOBAL.files["test_image1.jpg"].results.boxes'
+        box0         = self.execute_script(get_boxes_js)[0]
+        #should be strictly within image bounds
+        assert 0 < box0[0] < 512 and 0 < box0[1] < 512, box0
+

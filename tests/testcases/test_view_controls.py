@@ -94,6 +94,16 @@ class TestViewControls(BaseCase):
         xform_matrix2 = self.execute_script(script)
         assert xform_matrix1 == xform_matrix2
 
+        #zoom
+        script_zoom   = f''' $('{root_css} .transform-box')[0].dispatchEvent( new WheelEvent("wheel", {{deltaY:-10, shiftKey:true}}) ) '''
+        self.execute_script(script_zoom)
+        script = f''' return new DOMMatrix( $('{root_css} .transform-box').css('transform') ) '''
+        xform_matrix3 = self.execute_script(script)
+        #only the zoom coefficient should have changed
+        assert xform_matrix3['a'] == xform_matrix3['d']
+        assert xform_matrix1['a']  < xform_matrix3['a']
+        assert all( [xform_matrix1[k]==xform_matrix3[k] for k in 'bcf'] )  #e also changes because panned
+
         #double-click with shift key
         webdriver.ActionChains(self.driver).key_down(Keys.SHIFT).double_click(img).perform()
         self.sleep(0.1)
