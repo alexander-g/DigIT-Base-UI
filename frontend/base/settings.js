@@ -40,13 +40,14 @@ BaseSettings = class{
         $dropdown.dropdown({
             values:      dropdown_items, 
             showOnFocus: false, 
-            onChange:    (i) => {
+            onChange:    (dropdown_value) => {
+                const i = modelnames.indexOf(dropdown_value)
                 const properties = models[i]?.properties;
                 this.display_model_properties(properties, $dropdown)
             }
         })
         
-        const i = $dropdown.dropdown('get value')
+        const i = modelnames.indexOf($dropdown.dropdown('get value'))
         this.display_model_properties(models[i]?.properties, $dropdown)
     }
 
