@@ -197,8 +197,7 @@
             </div>
             <div class="ui divider"></div>
     
-            {% if others -%}
-            <div class="field">
+            <div class="field" style="display:{{ none if others==False else  inherit}}">
                 <label>Other classes</label>
                 <div class="ui multiple selection fluid dropdown" id="other-classes-dropdown">
                     <input type="hidden" name="language">
@@ -208,12 +207,10 @@
                         <!-- <div class="item"> Banana </div> -->
                     </div>
                 </div>
+                <div class="ui divider"></div>
             </div>
-            <div class="ui divider"></div>
-            {%- endif %}
     
-            {% if unknowns -%}
-            <div class="field">
+            <div class="field" style="display:{{ none if unknowns==False else  inherit}}">
                 <label>Unknown classes</label>
                 <div class="ui multiple selection fluid dropdown" id="unknown-classes-dropdown">
                     <input type="hidden" name="language">
@@ -223,9 +220,8 @@
                         <!-- <div class="item"> Banana </div> -->
                     </div>
                 </div>
+                <div class="ui divider"></div>
             </div>
-            <div class="ui divider"></div>
-            {%- endif %}
     
             <div class="field">
                 <label>Rejected classes</label>
