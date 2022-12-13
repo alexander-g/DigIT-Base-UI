@@ -3,7 +3,7 @@ Base User Interface for the DigIT Projects
 - [Root-Detector](https://github.com/alexander-g/Root-Detector)
 - Wood Anatomy
 - Pollen Detector
-- Bat Detector
+- [BatNet](https://github.com/GabiK-bat/BatNet)
 
 ***
 
