@@ -65,11 +65,10 @@ ObjectDetectionDownload = class extends BaseDownload{
 
         for(const [i,box] of Object.entries(results.boxes ?? {})){
             const label      = results.labels[i].trim() || GLOBAL.App.NEGATIVE_CLASS;
-            //if(label.trim()=="")
-            //    continue;
             let jsonshape    = deepcopy(LABELME_SHAPE_TEMPLATE);
             jsonshape.label  = label;
             jsonshape.points = [ [box[0], box[1]], [box[2], box[3]] ];
+            jsonshape.confidence = Number((results.predictions[i][label]*100).toFixed(0));
             jsondata.shapes.push(jsonshape);
         }
 
