@@ -31,15 +31,22 @@ class CLI:
             print('Could not find any files')
             return
         
-        if args.model:
-            raise NotImplementedError('TODO')
-        
-        print(f'Processing {len(inputfiles)} files')
+        import backend.settings
         settings = backend.settings.Settings()
 
-        results = []
+        if args.model:
+            #TODO: code duplication
+            modelpath = args.model.as_posix()
+            if not os.path.exists(modelpath):
+                print(f'[ERROR] File "{modelpath}" does not exist')
+                return 1
+            model = settings.load_modelfile(modelpath)
+            settings.models['detection'] = model
+        
 
         import backend.processing  #FIXME
+        print(f'Processing {len(inputfiles)} files')
+        results = []
         for i,f in enumerate(inputfiles):
             print(f'[{i:4d} / {len(inputfiles)}] {f}')
             try:
