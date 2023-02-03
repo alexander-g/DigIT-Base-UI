@@ -43,7 +43,7 @@
 
 
 
-{% macro progress_dimmer() %}
+{% macro progress_dimmer(fail_extras='') %}
 <!--------- MACRO progress_dimmer() START---------->
 <div class="ui dimmer">
   <div class="content processing">
@@ -56,6 +56,7 @@
     <h2 class="ui inverted icon header">
       <p>Processing failed</p>
     </h2>
+    {{ fail_extras }}
     <p>Click to continue</p>
   </div>
 </div>
