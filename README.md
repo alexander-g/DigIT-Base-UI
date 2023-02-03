@@ -2,8 +2,8 @@
 Base User Interface for the DigIT Projects
 - [Root-Detector](https://github.com/alexander-g/Root-Detector)
 - Wood Anatomy
-- Pollen Detector
-- Bat Detector
+- [Tofsi-POST](https://github.com/alexander-g/Tofsi-POST) (Pollen)
+- [BatNet](https://github.com/GabiK-bat/BatNet)
 
 ***
 

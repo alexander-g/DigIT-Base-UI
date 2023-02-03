@@ -59,14 +59,14 @@ class Settings:
         modeltypes = [os.path.basename(x) for x in contents if os.path.isdir(x)]
         models     = dict()
         for modeltype in modeltypes:
-            modelfiles = glob.glob(os.path.join(modelsdir, modeltype, '*.pt.zip'))
-            modelnames = [os.path.basename(m)[:-len('.pt.zip')] for m in modelfiles]
-            modelprops = [cls.get_model_properties(m) for m in modelfiles]
+            modelfiles, modelnames = [], []
+            for ending in ['.pt.zip', '.pt', '.pkl']:       #TODO: remove pkl files
+                _modelfiles = glob.glob(os.path.join(modelsdir, modeltype, '*'+ending))
+                modelfiles += _modelfiles
+                modelnames += [os.path.basename(m)[:-len(ending)] for m in _modelfiles]
 
-            modelfiles = glob.glob(os.path.join(modelsdir, modeltype, '*.pkl'))       #TODO: remove pkl files
-            modelnames += [os.path.basename(m)[:-len('.pkl')] for m in modelfiles]
-            modelprops += [cls.get_model_properties(m) for m in modelfiles]
             if with_properties:
+                modelprops        = [cls.get_model_properties(m) for m in modelfiles]
                 models[modeltype] = [{'name':n, 'properties':p} for n,p in zip(modelnames, modelprops)]
             else:
                 models[modeltype] = modelnames
@@ -77,17 +77,18 @@ class Settings:
         import pickle
         print(f'Loading model {modeltype}/{modelname}')
         models_dir = app.get_models_path()
-        path  = os.path.join(models_dir, modeltype, f'{modelname}.pt.zip')
-        if not os.path.exists(path):
-            path  = os.path.join(models_dir, modeltype, f'{modelname}.pkl')
-            if not os.path.exists(path):
-                print(f'[ERROR] model file "{path}" does not exist.')
-                return
-        return cls.load_modelfile(path)
-        
+        endings    = ['.pt.zip', '.pt', '.pkl']
+        for ending in endings:
+            path  = os.path.join(models_dir, modeltype, f'{modelname}{ending}')
+            if os.path.exists(path):
+                return cls.load_modelfile(path)
+        #no file with either of the endings exists
+        print(f'[ERROR] model "{modeltype}/{modelname}" not found.')
+        return
+    
     @staticmethod
     def load_modelfile(file_path:str) -> "torch.nn.Module":
-        if file_path.endswith('.pt.zip'):
+        if file_path.endswith('.pt.zip') or file_path.endswith('.pt'):
             return torch.package.PackageImporter(file_path).load_pickle('model', 'model.pkl', map_location='cpu')
         elif file_path.endswith('.pkl'):
             import pickle
@@ -95,7 +96,7 @@ class Settings:
 
     @staticmethod
     def get_model_properties(modelfile:str) -> dict:
-        if modelfile.endswith('.pt.zip'):
+        if modelfile.endswith('.pt.zip') or modelfile.endswith('.pt'):
             try:
                 import torch
                 classes = torch.package.PackageImporter(modelfile).load_text('model', 'class_list.txt').split('\n')
@@ -105,4 +106,29 @@ class Settings:
                 return None
         else:
             return None
+
+
+
+import urllib.request
+
+DEFAULT_PRETRAINED_FILE = os.path.join(app.get_models_path(), 'pretrained_models.txt')
+
+def parse_pretrained_models_file(path=DEFAULT_PRETRAINED_FILE) -> dict:
+    lines         = open(path).read().strip().split('\n')
+    name2urls     = dict([ map(str.strip, line.split(' : ')) for line in lines])
+    return name2urls
+
+def ensure_pretrained_models() -> None:
+    models_path = app.get_models_path()
+    for destination, url in parse_pretrained_models_file().items():
+        destination = os.path.join(models_path, destination)
+        if os.path.exists(destination):
+            continue
+
+        print(f'Downloading {url} ...')
+        with urllib.request.urlopen(url) as f:
+            os.makedirs( os.path.dirname(destination), exist_ok=True )
+            open(destination, 'wb').write(f.read())
+
+
 
