@@ -6,3 +6,5 @@ static
 settings.json
 cache
 models
+venv
+.deno

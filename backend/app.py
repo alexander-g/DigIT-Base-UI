@@ -1,4 +1,4 @@
-import os, sys, shutil, glob, tempfile, json, webbrowser
+import os, sys, shutil, glob, tempfile, json, webbrowser, subprocess
 import warnings
 warnings.simplefilter('ignore')
 
@@ -64,6 +64,13 @@ class App(flask.Flask):
         def index():
             self.recompile_static()
             return self.send_static_file('index.html')
+        
+        @self.route('/ts/<path:path>')
+        def static_with_mimetype_corrections(path):
+            response = self.send_static_file(path)
+            if path.endswith('.ts') or path.endswith('.tsx'):
+                response.mimetype = 'application/javascript'
+            return response
         
         @self.route('/images/<path:path>')
         def images(path):
@@ -197,6 +204,8 @@ class App(flask.Flask):
         outf  = os.path.join(self.static_folder, 'index.html')
         os.makedirs(os.path.dirname(outf), exist_ok=True)
         open(outf,'w', encoding="utf-8").write(tmpl.render(warning='GENERATED FILE. DO NOT EDIT MANUALLY'))
+
+        subprocess.check_call('./deno.sh task compile_index', shell=True)
     
     def run(self, parse_args=True, **args):
         if parse_args:
