@@ -1,17 +1,17 @@
 import { preact, signals } from "./dep.ts"
 import { TopMenu } from "./components/TopMenu.tsx"
 import { Modals }  from "./components/Modals.tsx"
+import { MainContainer } from "./components/MainContainer.tsx"
 
+import * as file_input from "./file_input.ts"
 
 export function Body(): preact.JSX.Element {
-    return <>
-        <TopMenu />
+    return <body onDragOver={file_input.on_drag} onDrop={file_input.on_drop}>
+        <TopMenu/>
+        <MainContainer />
         <Modals />
-    </>
+    </body>
 }
-
-export const body: preact.JSX.Element = <Body />
-
 
 
 export function Index(): preact.JSX.Element {
@@ -23,12 +23,10 @@ export function Index(): preact.JSX.Element {
             <script src="thirdparty/semantic.min.js"></script>
             <script type="module" src="/ts/index.tsx"></script>
         </head>
-        <body>
-            { body }
-        </body>
+        <Body />
     </html>
 }
 
 if(!globalThis.Deno){
-    preact.hydrate(body, document.body)
+    preact.hydrate(<Body />, document.body.parentElement!)
 }
