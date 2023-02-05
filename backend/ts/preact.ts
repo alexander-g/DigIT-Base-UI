@@ -1,4 +1,4 @@
-#!./deno.sh run --allow-read=./frontend/ts --allow-write=./static --allow-net=esm.sh
+#!./deno.sh run --allow-read=./frontend/ts,./static --allow-write=./static --allow-net=esm.sh --no-prompt
 
 import { preact_ssr, esbuild, sucrase } from "./dep.ts";
 import { path, fs }                     from "./dep.ts"
@@ -7,7 +7,7 @@ import * as paths                       from "./paths.ts"
 
 
 export async function compile_default(destination?:string): Promise<void> {
-    //TODO: clear destination
+    //TODO: (need to coordinate with flask) clear_static(destination)
     
     const frontend_path:string  = paths.frontend()
     const glob_pattern:string   = path.join(frontend_path, '**/*.ts{x,}')
@@ -48,7 +48,15 @@ function transpile(path:string): string {
 function write_to_static(sourcepath:string, content:string, destination?:string): void {
     destination = destination ?? paths.static_folder()
     destination = path.join(destination, path.relative(paths.frontend(), sourcepath) )
+    //ensure sub-directories exist
+    fs.ensureFileSync(destination)
     Deno.writeTextFileSync(destination, content)
+}
+
+function clear_static(destination?:string): void {
+    destination = destination ?? paths.static_folder()
+    Deno.removeSync(destination, {recursive:true})
+    fs.ensureDirSync(destination)
 }
 
 

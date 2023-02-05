@@ -17,7 +17,12 @@ Deno.test('preact.compile_index', async () => {
 
 Deno.test('preact.compile_default', async () => {
     const tempdir:string = Deno.makeTempDirSync({ prefix: 'tests' });
+    //TODO: create file in temporary directory. must be deleted afterwards
+    //const tempfile:string = Deno.makeTempFileSync({dir:tempdir})
+    //fs.ensureFileSync(tempfile)
+
     await preact.compile_default(tempdir)
+    //asserts.assertFalse( fs.existsSync(tempfile) )
     
     const dir_contents: Deno.DirEntry[] = [...Deno.readDirSync(tempdir)]
     const files:string[] = dir_contents.map(e => e.name)
