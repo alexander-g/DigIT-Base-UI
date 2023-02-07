@@ -2,6 +2,7 @@ __pycache__
 *.pyc
 builds
 tests/logs
+tests/coverage
 static
 settings.json
 cache

@@ -5,7 +5,7 @@ export DENO_DIR=$BASE_DIR/.deno
 export DENO_PATH=$DENO_DIR/deno
 export PATH=$DENO_DIR:$PATH
 export DENO_NO_UPDATE_CHECK=1
-
+export HTTPS_PROXY=$DENO_HTTPS_PROXY
 
 if ! [ -e $DENO_PATH ];
 then
