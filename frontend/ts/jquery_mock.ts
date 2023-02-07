@@ -1,12 +1,16 @@
 
+type jQueryMock = (x:string|HTMLElement) => any;
 
 declare global {
-    // deno-lint-ignore no-explicit-any no-var
-    var jQuery: (x:string|HTMLElement) => any;
-    // deno-lint-ignore no-explicit-any no-var
-    var $:      (x:string|HTMLElement) => any;
+    var jQuery: jQueryMock;
+    var $:      jQueryMock;
+}
+
+export function set_jQ(x:jQueryMock) {
+    globalThis.$      = x;
+    globalThis.jQuery = x
 }
 
 if(globalThis.Deno) {
-    globalThis.$ = () => {}
+    set_jQ( () => {} )
 }

@@ -13,7 +13,7 @@ export class Tabs extends preact.Component {
     }
 
     componentDidMount(): void {
-        $('.tabs.menu .item').tab()
+        $('.tabs.menu .item').tab()   //TODO: use ref/unique id
     }
 }
 

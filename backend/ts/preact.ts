@@ -12,7 +12,6 @@ export async function compile_default(destination?:string): Promise<void> {
     const frontend_path:string  = paths.frontend()
     const glob_pattern:string   = path.join(frontend_path, '**/*.ts{x,}')
     for(const entry of fs.expandGlobSync(glob_pattern, {root:'/'})){
-      console.log("Transpiling ", entry.name, entry.path)
       write_to_static(entry.path, transpile(entry.path), destination)
     }
     
