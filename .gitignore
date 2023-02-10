@@ -4,7 +4,7 @@ builds
 tests/logs
 tests/coverage
 static
-settings.json
+./settings.json
 cache
 models
 venv

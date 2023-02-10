@@ -1,7 +1,7 @@
 import { preact }       from "../dep.ts"
 import { FileTable }    from "./FileTable.tsx"
 
-import * as STATE       from "../state.ts"         //FIXME: hard-coded
+import { STATE }      from "../state.ts"         //FIXME: hard-coded
 
 
 

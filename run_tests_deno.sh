@@ -6,10 +6,8 @@ rm -r $COVERAGE_DIR 2> /dev/null;
 ./deno.sh test                  \
     --allow-read=.,/tmp         \
     --allow-write=/tmp          \
-    --allow-net=esm.sh \
     --no-prompt                 \
     --cached-only               \
-    --no-lock                   \
     --coverage=$COVERAGE_DIR/raw    \
     $@
 

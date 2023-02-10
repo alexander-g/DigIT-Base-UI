@@ -8,7 +8,7 @@ Deno.test('paths.root', ():void => {
 
     const dir_contents:Deno.DirEntry[] = [...Deno.readDirSync(root_path)]
     const files:string[] = dir_contents.map((entry:Deno.DirEntry):string => entry.name)
-    asserts.assert(files.includes('deno.json'))
+    asserts.assert(files.includes('deno.jsonc'))
 })
 
 Deno.test('paths.index_tsx', ():void => {

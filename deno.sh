@@ -10,7 +10,7 @@ export HTTPS_PROXY=$DENO_HTTPS_PROXY
 if ! [ -e $DENO_PATH ];
 then
     echo "Downloading deno..."
-    wget  https://github.com/denoland/deno/releases/download/v1.30.0/deno-x86_64-unknown-linux-gnu.zip  -O ./deno.zip -nv
+    wget  https://github.com/denoland/deno/releases/download/v1.30.3/deno-x86_64-unknown-linux-gnu.zip  -O ./deno.zip -nv
     unzip ./deno.zip -d $DENO_DIR  && rm ./deno.zip
 fi
 

@@ -1,4 +1,4 @@
-#!./deno.sh run --allow-read=./frontend/ts,./static --allow-write=./static --allow-net=esm.sh --no-prompt
+#!./deno.sh run --allow-read=./frontend/ts,./static --allow-write=./static --no-prompt
 
 import { preact_ssr, esbuild, sucrase } from "./dep.ts";
 import { path, fs }                     from "./dep.ts"
@@ -81,7 +81,7 @@ export async function _compile_esbuild(): Promise<string> {
   })
 
   const decoder = new TextDecoder("utf-8");
-  const result_str:string = decoder.decode(result.outputFiles?.[0].contents)
+  const result_str:string = decoder.decode(result.outputFiles?.[0]?.contents)
   console.log('result:', result_str)
   
   return result_str;
