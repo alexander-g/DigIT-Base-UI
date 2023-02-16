@@ -1,4 +1,5 @@
 import { preact } from "../dep.ts"
+import "../jquery_mock.ts"
 
 
 export function SettingsModal(): preact.JSX.Element {

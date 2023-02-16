@@ -5,19 +5,21 @@ export class AppFile extends File {
     // deno-lint-ignore no-inferrable-types
     loaded:boolean = false;
 
+    result:Result|null = null;
 
     constructor(f:File) {
         super([f], f.name, {type:f.type, lastModified:f.lastModified})
     }
 }
 
-
+export class Result {}
 
 
 
 /** Reactive version of AppFile */
 export class AppFileState extends AppFile {
-    $loaded: signals.Signal<boolean> = new signals.Signal(this.loaded)
+    $loaded: signals.Signal<boolean>     = new signals.Signal(this.loaded)
+    $result: signals.Signal<Result|null> = new signals.Signal(this.result)
 }
 
 /** Reactive list of AppFiles */

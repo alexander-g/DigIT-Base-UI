@@ -24,7 +24,6 @@ export function set_image_src(img:HTMLImageElement, input:Blob|string|null): voi
         img.src = url;
         console.log('Setting image src of', img, 'to blob', input)
     } else if (util.is_string(input)){
-        //const url = url_for_image(input)
         const url  = input as string;
         img.style.visibility = '';
         img.src   = url;

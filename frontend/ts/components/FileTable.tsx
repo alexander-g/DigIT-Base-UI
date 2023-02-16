@@ -1,7 +1,8 @@
 import { preact, signals }  from "../dep.ts"
-import { type AppFileState, type AppFile, type AppFileList }     from "../state.ts"
+import type { AppFileState, AppFile, AppFileList }     from "../state.ts"
 import "../jquery_mock.ts"
 import { set_image_src } from "../file_input.ts"
+import { ContentMenu } from "./ContentMenu.tsx"
 
 
 export function FileTableHead(): preact.JSX.Element {
@@ -13,7 +14,7 @@ export function FileTableHead(): preact.JSX.Element {
 
 
 
-export function InputImage(props:{file:AppFile}): preact.JSX.Element {
+export function InputImage(props:{file:AppFileState}): preact.JSX.Element {
     return <img class={"input-image"} onLoad={console.warn}/>
 }
 
@@ -53,6 +54,8 @@ export function FileTableRow( props:{file:AppFileState} ): preact.JSX.Element {
         <tr style="display:none" {...{filename:props.file.name} }>
             <td>
                 <SpinnerSwitch loading={loading.value}> 
+                    {/* TODO: refactor */}
+                    <ContentMenu file={props.file} />
                     <InputImage file={props.file} /> 
                 </SpinnerSwitch>
             </td>
