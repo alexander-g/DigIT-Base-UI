@@ -1,6 +1,5 @@
 import * as file_input   from "../../frontend/ts/file_input.ts"
 import { asserts, path } from "./dep.ts"
-import * as util         from "./util.ts"
 
 const IMAGE_ASSET1_PATH: string 
     = path.fromFileUrl(import.meta.resolve('../testcases/assets/test_image2.tiff'))

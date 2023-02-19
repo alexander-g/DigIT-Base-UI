@@ -1,7 +1,7 @@
 import { preact, signals }          from "../dep.ts";
 import type { AppFileState }        from "../state.ts";
 import * as detection               from "../logic/detection.ts";
-
+import "../jquery_mock.ts"
 
 
 type ContentMenuProps = {
@@ -18,6 +18,7 @@ export function ContentMenu(props: ContentMenuProps): preact.JSX.Element {
       <PlayButton file={props.file} />
       <ViewMenu />
       <DownloadButton file={props.file} />
+      <HelpButton />
     </div>
   );
 }
@@ -80,4 +81,33 @@ function DownloadButton(props: { file: AppFileState }): preact.JSX.Element {
       <i class="download icon"></i>
     </a>
   );
+}
+
+
+
+type HelpButtonProps = {
+  children?:   preact.ComponentChildren
+}
+
+//function HelpButton(props:HelpButtonProps): preact.JSX.Element {
+export class HelpButton extends preact.Component<HelpButtonProps> {
+  render(): preact.JSX.Element {  
+      return  <>
+        <a class="item help-menu-button">
+          <i class="help icon"></i>
+        </a>
+        <div class="ui segment flowing popup">
+          <ul class="ui list">
+            <li><b>SHIFT + Drag</b> to move the image</li>
+            <li><b>SHIFT + Mouse wheel</b> to zoom</li>
+            <li><b>SHIFT + Double-click</b> to reset</li>
+            { this.props.children }
+          </ul>
+        </div>
+    </>
+  }
+
+  componentDidMount(): void {
+    $(`.help-menu-button`).popup({hoverable:false}); //TODO! only one single component
+  }
 }

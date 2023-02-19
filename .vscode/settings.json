@@ -1,0 +1,10 @@
+{
+    "deno.path": "./deno.sh",
+    "deno.enable": true,
+    "deno.config": "deno.jsonc",
+    "deno.testing.enable": false,
+    "deno.inlayHints.variableTypes.enabled": true,
+    "deno.inlayHints.parameterTypes.enabled": true,
+    "deno.inlayHints.functionLikeReturnTypes.enabled": false,
+    "deno.inlayHints.propertyDeclarationTypes.enabled": true,
+}

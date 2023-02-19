@@ -19,7 +19,8 @@ export class Tabs extends preact.Component {
 
 
 export function MainContainer(): preact.JSX.Element {
-    return <div class="ui container page-wide" id="main-container">
+    const page_wide_css = {width: 'calc(100% - 40px)!important'}  //TODO: factor out into own file
+    return <div class="ui container page-wide" id="main-container" style={page_wide_css}>
         <Tabs/>
 
         <div class="ui active tab segment unselectable" data-tab="detection" style="padding:0">

@@ -24,7 +24,7 @@ export async function compile_index(destination?:string): Promise<void> {
     const index_tsx:any    = await import(path)
     // deno-lint-ignore no-explicit-any
     const main_element:any = index_tsx.Index()
-    const result: string   = preact_ssr.render(main_element, {pretty:true})
+    const result: string   = preact_ssr.render(main_element, {}, {pretty:true})
     write_to_static(path.replace('.tsx', '.html'), result, destination)
 }
 

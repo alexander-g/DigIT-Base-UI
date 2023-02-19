@@ -18,9 +18,27 @@ export class Result {}
 
 /** Reactive version of AppFile */
 export class AppFileState extends AppFile {
-    $loaded: signals.Signal<boolean>     = new signals.Signal(this.loaded)
-    $result: signals.Signal<Result|null> = new signals.Signal(this.result)
+    #$loaded:   signals.Signal<boolean>     = new signals.Signal(this.loaded)
+    $result:    signals.Signal<Result|null> = new signals.Signal(this.result)
+    #$size:     signals.Signal<{width:number, height:number}|undefined> = new signals.Signal() //TODO: make type
+
+    set_loaded(image:HTMLImageElement): void {
+        this.#$loaded.value = true;
+        this.#$size.value   = {
+            width:  image.naturalWidth,
+            height: image.naturalHeight,
+        }
+    }
+
+    get $loaded(): signals.ReadonlySignal<boolean> { 
+        return this.#$loaded;
+    }
+
+    get $size(): signals.ReadonlySignal<{width:number, height:number}|undefined> {
+        return this.#$size;
+    }
 }
+
 
 /** Reactive list of AppFiles */
 export class AppFileList extends signals.Signal<AppFileState[]> {
