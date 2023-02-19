@@ -1,5 +1,5 @@
 import { preact, signals }  from "../dep.ts"
-import type { AppFileState, AppFile, AppFileList }     from "../state.ts"
+import type { AppFileState, AppFileList, ImageSize }     from "../state.ts"
 import "../jquery_mock.ts"
 import { set_image_src } from "../file_input.ts"
 import { ContentMenu } from "./ContentMenu.tsx"
@@ -13,26 +13,47 @@ export function FileTableHead(): preact.JSX.Element {
 
 
 
+type InputImageProps = {
+    /** Which file to display */
+    file:           AppFileState;
+    /** Which file(name) is currently displayed in this file table */
+    active_file:    signals.ReadonlySignal<string|null>;
+}
 
-export function InputImage(props:{file:AppFileState}): preact.JSX.Element {
-    //TODO: this should be probably a class component
-    const ref:preact.RefObject<HTMLImageElement> = preact.createRef()
-    function on_load() {
-        if(ref.current){
+
+class InputImage extends preact.Component<InputImageProps> {
+    ref: preact.RefObject<HTMLImageElement> = preact.createRef()
+
+    /** Load image as soon as it is beeing displayed in the file table, once */
+    #init: () => void = signals.effect( () => {
+        if(this.props.active_file.value == this.props.file.name 
+            && !this.props.file.$loaded.value
+            && this.ref.current) {
+                set_image_src(this.ref.current, this.props.file)
+        }
+    })
+
+    render(): preact.JSX.Element {
+        const css = {width: '100%'}
+        return <img class={"input-image"} onLoad={this.on_load.bind(this)} style={css} ref={this.ref} />
+    }
+
+    /** Image loading callback. Update the state. */
+    on_load(): void {
+        if(this.ref.current) {
             //TODO: resize if too large
-            props.file.set_loaded(ref.current)
+            this.props.file.set_loaded(this.ref.current)
         }
     }
-    const css = {width: '100%'}
-    return <img class={"input-image"} onLoad={on_load} style={css} ref={ref} />
 }
 
 
 type ImageControlsProps = {
-    children:       preact.ComponentChildren,
-    imagesize:      {width:number, height:number}|undefined, //TODO: make type
+    children:       preact.ComponentChildren;
+    imagesize:      signals.ReadonlySignal<ImageSize|undefined>;
 }
 
+/** Responsible for panning and zooming of images and important for layout */
 export function ImageControls(props:ImageControlsProps): preact.JSX.Element {
     const stripes_css = {
         backgroundColor:    'rgb(240,240,240)',
@@ -57,8 +78,8 @@ export function ImageControls(props:ImageControlsProps): preact.JSX.Element {
         /* keep aspect ratio; --imagewidth & --imageheight are set on image load */
         maxWidth:       'calc( (100vh - 120px) * var(--imagewidth) / var(--imageheight) )',
         width:          '100%',
-        '--imagewidth':  props.imagesize?.width,
-        '--imageheight': props.imagesize?.height,
+        '--imagewidth':  props.imagesize.value?.width,
+        '--imageheight': props.imagesize.value?.height,
     }
     const unselectable_css = {/* TODO */}
     const transform_css = {
@@ -96,6 +117,7 @@ export function ImageContainer(props:{children:preact.ComponentChildren}): preac
 }
 
 
+/** Static rotating spinner to indicate image loading */
 export function LoadingSpinner(): preact.JSX.Element {
     return <div class="loading-message" style="display:flex;justify-content: center;">
         <i class="spinner loading icon"></i>
@@ -108,6 +130,7 @@ type SpinnerSwitchProps = {
     children:   preact.ComponentChildren,
 }
 
+/** Display either a spinner or the children components */
 export function SpinnerSwitch(props:SpinnerSwitchProps): preact.JSX.Element {
     const maybe_spinner: preact.JSX.Element | []
         = props.loading ? <LoadingSpinner /> : [];
@@ -120,7 +143,7 @@ export function SpinnerSwitch(props:SpinnerSwitchProps): preact.JSX.Element {
     </>
 }
 
-export function FileTableRow( props:{file:AppFileState} ): preact.JSX.Element {
+export function FileTableRow( props:InputImageProps ): preact.JSX.Element {
     const loading: signals.ReadonlySignal<boolean> 
         = signals.computed( () => !props.file.$loaded.value )
 
@@ -136,12 +159,8 @@ export function FileTableRow( props:{file:AppFileState} ): preact.JSX.Element {
                     {/* TODO: refactor */}
                     <ContentMenu file={props.file} />
                     <ImageContainer>
-                        <ImageControls imagesize={props.file.$size.value}>  {/* //TODO: this should be probably not a  .value */}
-                            <InputImage file={props.file} /> 
-                        </ImageControls>
-
-                        <ImageControls imagesize={props.file.$size.value}>  {/* //TODO: this should be probably not a  .value */}
-                            <InputImage file={props.file} /> 
+                        <ImageControls imagesize={props.file.$size}>
+                            <InputImage {...props} /> 
                         </ImageControls>
                     </ImageContainer>
                 </SpinnerSwitch>
@@ -155,12 +174,13 @@ export function FileTableRow( props:{file:AppFileState} ): preact.JSX.Element {
 
 
 type FileTableBodyProps = {
-    files:      AppFileList,
+    files:          AppFileList;
+    active_file:    signals.ReadonlySignal<string|null>;
 }
 
 export function FileTableBody(props:FileTableBodyProps): preact.JSX.Element {
     const rows: preact.JSX.Element[] 
-        = props.files.value.map( (f:AppFileState) => <FileTableRow key={f.name} file={f}/>)
+        = props.files.value.map( (f:AppFileState) => <FileTableRow key={f.name} file={f} active_file={props.active_file}/>)
     
     return <tbody>
         { rows }
@@ -171,16 +191,20 @@ export function FileTableBody(props:FileTableBodyProps): preact.JSX.Element {
 
 
 
-type FileTableProps = FileTableBodyProps & {
-    sortable:   boolean,
+type FileTableProps = {
+    files:      AppFileList;
+    sortable:   boolean;
 }
 
 export class FileTable extends preact.Component<FileTableProps> {
+    /** The currently displayed filename. null if all closed. */
+    #$active_file:signals.Signal<string|null> = new signals.Signal(null);
+
     render(): preact.JSX.Element {
         const sort_class: string = this.props.sortable ? 'sortable' : '';         //TODO fix classes
         return <table class="ui fixed celled { sort_class } unstackable table accordion filetable" style="border:0px; margin-top:0px;" >
             <FileTableHead />
-            <FileTableBody files={this.props.files}/>
+            <FileTableBody files={this.props.files} active_file={this.#$active_file}/>
         </table>
     }
 
@@ -190,13 +214,15 @@ export class FileTable extends preact.Component<FileTableProps> {
 
         $('.filetable.accordion').accordion({
             duration:  0, 
-            onOpening: function(){ _this.on_accordion_open(this[0]) }
+            onOpening: function(){ _this.on_accordion_open(this[0]) },
+            onClose:   function(){ _this.#$active_file.value = null },
         })
     }
 
     /**
      * Callback from Fomantic after user clicks on a table row to open it.
-     * Initiates loading the corresponding input image.
+     * Updates the currently open #$active_file which in turn initiates 
+     * file loading in InputImage
      * 
      * @param opened_row - the second "tr" element from FileTableRow
      */
@@ -204,21 +230,7 @@ export class FileTable extends preact.Component<FileTableProps> {
         if(!opened_row)
             return
         
-        const filename: string|null = opened_row?.getAttribute('filename')
-        //TODO: a direct mapping would be more elegant
-        const files:AppFileState[]       = this.props.files.peek().filter(
-            (f:AppFile) => (f.name == filename)
-        )
-        if(files.length != 1) {
-            console.warn(`[WARNING] Unexpected number of files for ${filename}:`, files)
-            return;
-        }
-
-        const file:AppFileState = files[0]!
-        //TODO: refactor
-        const input_image: HTMLImageElement|null = opened_row.querySelector('img.input-image')
-        if(input_image){
-            set_image_src(input_image, file)
-        }
+        const filename: string|null = opened_row.getAttribute('filename')
+        this.#$active_file.value     = filename;
     }
 }

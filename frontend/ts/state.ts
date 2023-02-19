@@ -15,12 +15,16 @@ export class AppFile extends File {
 export class Result {}
 
 
+export type ImageSize = {
+    width:  number;
+    height: number;
+}
 
 /** Reactive version of AppFile */
 export class AppFileState extends AppFile {
     #$loaded:   signals.Signal<boolean>     = new signals.Signal(this.loaded)
     $result:    signals.Signal<Result|null> = new signals.Signal(this.result)
-    #$size:     signals.Signal<{width:number, height:number}|undefined> = new signals.Signal() //TODO: make type
+    #$size:     signals.Signal<ImageSize|undefined> = new signals.Signal()
 
     set_loaded(image:HTMLImageElement): void {
         this.#$loaded.value = true;
@@ -34,7 +38,7 @@ export class AppFileState extends AppFile {
         return this.#$loaded;
     }
 
-    get $size(): signals.ReadonlySignal<{width:number, height:number}|undefined> {
+    get $size(): signals.ReadonlySignal<ImageSize|undefined> {
         return this.#$size;
     }
 }
