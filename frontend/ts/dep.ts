@@ -6,3 +6,5 @@ export * as signals     from "https://esm.sh/@preact/signals@1.1.3";
 
 //NOTE: utif2 better at jpeg decompression, esm.sh versions hang in deno
 export { default as UTIF } from 'https://cdn.skypack.dev/utif2@4.0.1?dts'
+
+import "./jquery_mock.ts"
