@@ -1,8 +1,8 @@
-import { preact } from "../dep.ts"
+import { JSX } from "../dep.ts"
 import { SettingsModal } from "./Settings.tsx"
 
 
-export function Modals(): preact.JSX.Element {
+export function Modals(): JSX.Element {
     return <>
         <SettingsModal />
     </>

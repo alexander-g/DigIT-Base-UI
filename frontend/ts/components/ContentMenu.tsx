@@ -1,4 +1,4 @@
-import { preact, signals }          from "../dep.ts";
+import { preact, JSX, signals }     from "../dep.ts";
 import type { AppFileState }        from "../state.ts";
 import * as detection               from "../logic/detection.ts";
 import "../jquery_mock.ts"
@@ -9,7 +9,7 @@ type ContentMenuProps = {
 };
 
 /** A menu bar for every image, containing control buttons */
-export function ContentMenu(props: ContentMenuProps): preact.JSX.Element {
+export function ContentMenu(props: ContentMenuProps): JSX.Element {
   return (
     <div
       class = "ui bottom attached secondary icon menu"
@@ -32,7 +32,7 @@ type PlayButtonProps = {
 };
 
 /** Button to trigger the processing of a single input file */
-function PlayButton(props: PlayButtonProps): preact.JSX.Element {
+function PlayButton(props: PlayButtonProps): JSX.Element {
   const callback: () => void = (props.callback ?? detection.process_image).bind(
     null,
     props.file,
@@ -53,7 +53,7 @@ function PlayButton(props: PlayButtonProps): preact.JSX.Element {
 
 
 
-function ViewMenu(): preact.JSX.Element {
+function ViewMenu(): JSX.Element {
   return (
     <div class="ui simple dropdown icon item view-menu-button">
       <i class="eye icon"></i>
@@ -69,7 +69,7 @@ function ViewMenu(): preact.JSX.Element {
  *  Disabled if the corresponding input file has not been processed yet.
  *  //TODO: also disable when processing a batch of files.
  */
-function DownloadButton(props: { file: AppFileState }): preact.JSX.Element {
+function DownloadButton(props: { file: AppFileState }): JSX.Element {
   const disabled: string = props.file.$result.value ? "" : "disabled";
   return (
     <a
@@ -89,9 +89,9 @@ type HelpButtonProps = {
   children?:   preact.ComponentChildren
 }
 
-//function HelpButton(props:HelpButtonProps): preact.JSX.Element {
+//function HelpButton(props:HelpButtonProps): JSX.Element {
 export class HelpButton extends preact.Component<HelpButtonProps> {
-  render(): preact.JSX.Element {  
+  render(): JSX.Element {  
       return  <>
         <a class="item help-menu-button">
           <i class="help icon"></i>

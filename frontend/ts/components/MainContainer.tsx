@@ -1,11 +1,11 @@
-import { preact } from "../dep.ts"
+import {preact, JSX } from "../dep.ts"
 import { DetectionTab } from "./DetectionTab.tsx";
 import "../jquery_mock.ts"
 
 
 
 export class Tabs extends preact.Component {
-    render(): preact.JSX.Element {
+    render(): JSX.Element {
         return <div class="ui pointing secondary tabs menu">
             <a class="active item" data-tab="detection">Detection</a>
             <a class="item"        data-tab="training"> Training </a>
@@ -18,7 +18,7 @@ export class Tabs extends preact.Component {
 }
 
 
-export function MainContainer(): preact.JSX.Element {
+export function MainContainer(): JSX.Element {
     const page_wide_css = {width: 'calc(100% - 40px)!important'}  //TODO: factor out into own file
     return <div class="ui container page-wide" id="main-container" style={page_wide_css}>
         <Tabs/>

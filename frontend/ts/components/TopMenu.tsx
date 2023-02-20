@@ -1,9 +1,9 @@
-import { preact } from "../dep.ts"
+import { JSX } from "../dep.ts"
 import { SettingsButton } from "./Settings.tsx"
 import "../jquery_mock.ts"
 
 
-function Logo(): preact.JSX.Element {
+function Logo(): JSX.Element {
     return <div class="header item" style="padding-top:0; padding-bottom:0">
     <img class="logo" src="logo.svg" />
   </div>
@@ -11,7 +11,7 @@ function Logo(): preact.JSX.Element {
 
 
 
-export function TopMenu(): preact.JSX.Element {
+export function TopMenu(): JSX.Element {
     return <div class="ui container menu page-wide">
         <Logo />
         <SettingsButton />

@@ -1,11 +1,11 @@
-import { preact, signals }                      from "../dep.ts"
+import { preact, JSX, signals }                 from "../dep.ts"
 import type { AppFileState, AppFileList }       from "../state.ts"
 import { ContentMenu }                          from "./ContentMenu.tsx"
 import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.tsx"
 import type { InputImageProps }                         from "./ImageComponents.tsx"
 
 
-export function FileTableHead(): preact.JSX.Element {
+export function FileTableHead(): JSX.Element {
     return <thead>
 
     </thead>
@@ -14,7 +14,7 @@ export function FileTableHead(): preact.JSX.Element {
 
 
 /** Static rotating spinner to indicate image loading */
-export function LoadingSpinner(): preact.JSX.Element {
+export function LoadingSpinner(): JSX.Element {
     return <div class="loading-message" style="display:flex;justify-content: center;">
         <i class="spinner loading icon"></i>
         Loading...
@@ -27,8 +27,8 @@ type SpinnerSwitchProps = {
 }
 
 /** Display either a spinner or the children components */
-export function SpinnerSwitch(props:SpinnerSwitchProps): preact.JSX.Element {
-    const maybe_spinner: preact.JSX.Element | []
+export function SpinnerSwitch(props:SpinnerSwitchProps): JSX.Element {
+    const maybe_spinner: JSX.Element | []
         = props.loading ? <LoadingSpinner /> : [];
 
     return <>
@@ -39,7 +39,7 @@ export function SpinnerSwitch(props:SpinnerSwitchProps): preact.JSX.Element {
     </>
 }
 
-export function FileTableRow( props:InputImageProps ): preact.JSX.Element {
+export function FileTableRow( props:InputImageProps ): JSX.Element {
     const loading: signals.ReadonlySignal<boolean> 
         = signals.computed( () => !props.file.$loaded.value )
 
@@ -74,8 +74,8 @@ type FileTableBodyProps = {
     active_file:    signals.ReadonlySignal<string|null>;
 }
 
-export function FileTableBody(props:FileTableBodyProps): preact.JSX.Element {
-    const rows: preact.JSX.Element[] 
+export function FileTableBody(props:FileTableBodyProps): JSX.Element {
+    const rows: JSX.Element[] 
         = props.files.value.map( (f:AppFileState) => <FileTableRow key={f.name} file={f} active_file={props.active_file}/>)
     
     return <tbody>
@@ -96,7 +96,7 @@ export class FileTable extends preact.Component<FileTableProps> {
     /** The currently displayed filename. null if all closed. */
     #$active_file:signals.Signal<string|null> = new signals.Signal(null);
 
-    render(): preact.JSX.Element {
+    render(): JSX.Element {
         const sort_class: string = this.props.sortable ? 'sortable' : '';         //TODO fix classes
         return <table class="ui fixed celled { sort_class } unstackable table accordion filetable" style="border:0px; margin-top:0px;" >
             <FileTableHead />

@@ -1,4 +1,4 @@
-import { preact, signals }                  from "../dep.ts"
+import { preact, JSX, signals }                  from "../dep.ts"
 import type { AppFileState, ImageSize }     from "../state.ts"
 import { set_image_src }                    from "../file_input.ts"
 
@@ -23,7 +23,7 @@ export class InputImage extends preact.Component<InputImageProps> {
         }
     })
 
-    render(): preact.JSX.Element {
+    render(): JSX.Element {
         const css = {width: '100%'}
         return <img class={"input-image"} onLoad={this.on_load.bind(this)} style={css} ref={this.ref} />
     }
@@ -176,7 +176,7 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
 
 
 /** Main image container. May contain multiple images side-by-side. */
-export function ImageContainer(props:{children:preact.ComponentChildren}): preact.JSX.Element {
+export function ImageContainer(props:{children:preact.ComponentChildren}): JSX.Element {
     const css = {
         display:            'flex',
         width:              '100%',
