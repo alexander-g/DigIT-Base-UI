@@ -1,6 +1,6 @@
 import {preact, JSX } from "../dep.ts"
 import { DetectionTab } from "./DetectionTab.tsx";
-import "../jquery_mock.ts"
+import { page_wide_css } from "./styles.ts";
 
 
 
@@ -19,7 +19,6 @@ export class Tabs extends preact.Component {
 
 
 export function MainContainer(): JSX.Element {
-    const page_wide_css = {width: 'calc(100% - 40px)!important'}  //TODO: factor out into own file
     return <div class="ui container page-wide" id="main-container" style={page_wide_css}>
         <Tabs/>
 

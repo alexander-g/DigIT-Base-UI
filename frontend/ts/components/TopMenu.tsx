@@ -1,6 +1,6 @@
 import { JSX } from "../dep.ts"
 import { SettingsButton } from "./Settings.tsx"
-import "../jquery_mock.ts"
+import { page_wide_css } from "./styles.ts";
 
 
 function Logo(): JSX.Element {
@@ -12,7 +12,7 @@ function Logo(): JSX.Element {
 
 
 export function TopMenu(): JSX.Element {
-    return <div class="ui container menu page-wide">
+    return <div class="ui container menu page-wide" style={page_wide_css}>
         <Logo />
         <SettingsButton />
     </div>
