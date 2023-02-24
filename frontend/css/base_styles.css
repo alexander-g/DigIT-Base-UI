@@ -102,3 +102,9 @@ img.overlay {
     grid-column-gap: 5px; 
     align-items: start;
 }
+
+.known-classes {
+    /* scroll bar for long list of known classes */
+    overflow: auto;
+    max-height: 50vh;
+}
