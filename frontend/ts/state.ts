@@ -1,4 +1,5 @@
 import { signals } from "./dep.ts"
+import { Settings, AvailableModels } from "./logic/settings.ts";
 
 /** Main input file structure with results */
 export class AppFile extends File {
@@ -44,13 +45,18 @@ export class AppFileState extends AppFile {
 }
 
 
-/** Reactive list of AppFiles */
-export class AppFileList extends signals.Signal<AppFileState[]> {
-    /** Constructor making sure that undefined is not an option */
-    constructor(files:AppFileState[]) {
-        super(files)
-    }
 
+
+/** Helper class to prevent undefined inital values */
+class Reactive<T> extends signals.Signal<T> {
+    /** Constructor making sure that undefined is not an option */
+    constructor(x:T) {
+        super(x)
+    }
+}
+
+/** Reactive list of AppFiles */
+export class AppFileList extends Reactive<AppFileState[]> {
     /**
      * Update the state to set new input files.
      * @param files A list of files that will be converted to AppFiles
@@ -63,19 +69,33 @@ export class AppFileList extends signals.Signal<AppFileState[]> {
     }
 }
 
+/** Reactive Settings */
+class SettingsState extends Reactive<Settings> {}
+
+/** Reactive AvailableModels */
+class AvailableModelsState extends Reactive<AvailableModels> {}
+
+
 /** Main application state structure */
 export class AppState {
     /** Currently loaded files */
     files: AppFileList = new AppFileList([]);
+
+    /** Currently loaded settings */
+    settings: SettingsState = new SettingsState({})
+
+    /** Which models can be selected in the settings */
+    available_models: AvailableModelsState = new AvailableModelsState({})
 }
 
 /** Global application state */
 export const STATE = new AppState()
 
 
+
+//make global for debugging
 declare global {
     // deno-lint-ignore no-var
     var STATE: AppState;
 }
-
 globalThis.STATE = STATE;
