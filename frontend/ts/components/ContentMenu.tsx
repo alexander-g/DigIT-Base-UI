@@ -66,7 +66,7 @@ function ViewMenu(): JSX.Element {
  *  Disabled if the corresponding input file has not been processed yet.
  *  //TODO: also disable when processing a batch of files.
  */
-function DownloadButton(props: { file: AppFileState }): JSX.Element {
+export function DownloadButton(props: { file: AppFileState }): JSX.Element {
     const disabled: string = props.file.$result.value ? "" : "disabled";
     return (
         <a

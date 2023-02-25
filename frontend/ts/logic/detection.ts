@@ -1,4 +1,4 @@
-import type { AppFile }         from "../state.ts"
+import type { AppFile, Result } from "../state.ts"
 import * as errors              from "../components/errors.ts";
 import * as util                from "../util.ts"
 
@@ -20,7 +20,9 @@ export async function process_image(
         = await util.fetch_with_error([`/process_image/${file.name}`], on_error_cb)
     
     
-    //TODO: verify results + convert to typescript
+    //TODO: might fail -> handle error
+    set_result_from_response(response, file)
+
     //TODO: file.set_results(reply)
     //catch
     //handle errors
@@ -54,5 +56,12 @@ export function cancel_processing_all_files(): void {
 
 
 
+async function set_result_from_response(response:Response, file:AppFile): Promise<Result> {
+    //TODO: JSON.parse might fail if invalid json
+    const result: Result = JSON.parse(await response.text())
+
+    file.set_result(result);
+    return result
+}
 
 

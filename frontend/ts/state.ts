@@ -3,17 +3,31 @@ import { Settings, AvailableModels } from "./logic/settings.ts";
 
 /** Main input file structure with results */
 export class AppFile extends File {
-    // deno-lint-ignore no-inferrable-types
-    loaded:boolean = false;
 
-    result:Result|null = null;
+    #result:MaybeResult = null;
 
     constructor(f:File) {
         super([f], f.name, {type:f.type, lastModified:f.lastModified})
     }
+
+    /** Set the result, overwritten in the reactive version */
+    set_result(result: MaybeResult): void {
+        this.#result = result;
+    }
+
+    get result(): Readonly<Result>|null {
+        return this.#result;
+    }
 }
 
-export class Result {}
+/** Processing result, all fields optional to force error checking */
+export type Result = {
+    /** URL to a classmap (segmentation result) */
+    classmap?:      string
+}
+
+/** A result that maybe empty (e.g. not yet processed) */
+export type MaybeResult = Result | null;
 
 
 export type ImageSize = {
@@ -23,8 +37,8 @@ export type ImageSize = {
 
 /** Reactive version of AppFile */
 export class AppFileState extends AppFile {
-    #$loaded:   signals.Signal<boolean>     = new signals.Signal(this.loaded)
-    $result:    signals.Signal<Result|null> = new signals.Signal(this.result)
+    #$loaded:   signals.Signal<boolean>     = new signals.Signal(false)
+    #$result:   signals.Signal<MaybeResult> = new signals.Signal(super.result)
     #$size:     signals.Signal<ImageSize|undefined> = new signals.Signal()
 
     set_loaded(image:HTMLImageElement): void {
@@ -41,6 +55,20 @@ export class AppFileState extends AppFile {
 
     get $size(): signals.ReadonlySignal<ImageSize|undefined> {
         return this.#$size;
+    }
+
+    /** @override */
+    set_result(result: Result | null): void {
+        this.#$result.value = result;
+    }
+
+    get $result(): signals.ReadonlySignal<MaybeResult> {
+        return this.#$result;
+    }
+
+    /** @override */
+    get result(): Readonly<Result> | null {
+        return this.#$result.peek()
     }
 }
 
