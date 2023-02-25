@@ -1,5 +1,6 @@
-import { show_error_toast } from "../components/errors.ts";
-import { STATE }            from "../state.ts";
+import * as errors                      from "../components/errors.ts";
+import * as util                        from "../util.ts"
+import { STATE }                        from "../state.ts"; //TODO: hard-coded
 
 
 /** Recursive Partial<T>. Makes all members of T optional including children */
@@ -42,25 +43,13 @@ type SettingsResponseData = {
 
 
 
-type error_fn = (msg:string) => void;
 
-export async function load_settings(on_error:error_fn = show_error_toast): Promise<void> {
-    let response:Response;
-    try {
-        response = await fetch('/settings')
-    } catch (error) {
-        //no connection to server
-        on_error('Loading settings failed. No connection to backend.')
-        throw(error)
-    }
-
-    if(!response.ok){
-        //server responded with error
-        on_error('Loading settings failed.')
-        //console.error('Loading settings failed.', response)
-        throw( new Error(`Loading settings response code: ${response.status}`) )
-    }
-
+export async function load_settings(
+    on_error:errors.error_fn = errors.show_error_toast
+): Promise<void> {
+    const response: Response = await util.fetch_with_error(
+        ['/settings'], () => on_error('Loading settings failed.')
+    )
     validate_settings_response(await response.text())
 }
 
@@ -68,8 +57,8 @@ export async function load_settings(on_error:error_fn = show_error_toast): Promi
 function validate_settings_response(raw_data: string): void {
     const data: SettingsResponseData = JSON.parse(raw_data)
     if(data.settings)
-        STATE.settings.value = data.settings;
+        STATE.settings.value = data.settings; //TODO: hard-coded
 
     if(data.available_models)
-        STATE.available_models.value = data.available_models
+        STATE.available_models.value = data.available_models //TODO: hard-coded
 }

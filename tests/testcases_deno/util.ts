@@ -23,8 +23,22 @@ export function mock_jQ(returnvalue: any): void {
     )
 }
 
+/** Replace the fetch function with a stub for tests */
 export function mock_fetch( fn: () => Promise<Response> ): mock.Spy {
     const spy: mock.Spy = mock.spy( fn )
     globalThis.fetch = mock.stub(globalThis, 'fetch', spy)
     return spy;
 }
+
+/** Replace fetch with one that throws an error to simulate connection failures */
+export function mock_fetch_connection_error(msg?:string): mock.Spy {
+    return mock_fetch( () => { throw new Error(msg) } )
+}
+
+/** Replace fetch with a function that returns a HTTP 404 response */
+export function mock_fetch_404(): mock.Spy {
+    return mock_fetch(
+        async () => await new Response('', {status:404})
+    )
+}
+

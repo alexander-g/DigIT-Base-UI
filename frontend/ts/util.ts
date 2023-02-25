@@ -4,14 +4,34 @@ export function is_string(x:any): boolean {
 }
 
 /** Send a file to the flask backend */
-// deno-lint-ignore no-inferrable-types
-export function upload_file(file:File, url:string = '/file_upload'): Promise<Response> {
+export function upload_file(
+    file        :   File, 
+    error_fn    :   () => void,
+    // deno-lint-ignore no-inferrable-types
+    url         :   string  = '/file_upload',
+): Promise<Response> {
     const data = new FormData()
     data.append('files', file);
 
-    return fetch(url, {
-        method: 'POST',
-        body:   data,
-    })
+    return fetch_with_error([url, {method: 'POST', body: data}], error_fn)
 }
 
+/** fetch() that calls an error callback */
+export async function fetch_with_error(
+    x:          Parameters<typeof fetch>, 
+    error_fn:   () => void,
+): Promise<Response> {
+    let response:Response;
+    try {
+        response = await fetch(...x)
+    } catch (error) {
+        error_fn()
+        throw(error)
+    }
+
+    if(!response.ok) {
+        error_fn()
+        throw( new Error() )
+    }
+    return response;
+}

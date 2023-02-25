@@ -1,17 +1,25 @@
-import type { AppFileState } from "../state.ts"
-import * as util from "../util.ts"
+import type { AppFile }         from "../state.ts"
+import * as errors              from "../components/errors.ts";
+import * as util                from "../util.ts"
 
 /**
  * Process a single input file including UI updates
  * @param file - The input file to process
  */
-export async function process_image(file:AppFileState): Promise<void> {
-    console.error('[ERROR] Processing files not implemented.', file.name)
+export async function process_image(
+    file:       AppFile, 
+    on_error:   errors.error_fn = errors.show_error_toast
+): Promise<void> {
     //TODO: file.clear results
     //try
     //TODO: set file as currently processing
-    await util.upload_file(file)
-    const response:Response =  await fetch('/process_image')   //OR: onnx!
+
+    const on_error_cb: () => void = function(){ on_error('Processing failed.') }
+    await util.upload_file(file, on_error_cb)
+    const response: Response 
+        = await util.fetch_with_error([`/process_image/${file.name}`], on_error_cb)
+    
+    
     //TODO: verify results + convert to typescript
     //TODO: file.set_results(reply)
     //catch
@@ -38,6 +46,7 @@ export function process_all_files(): void {
 }
 
 
+/** Stop processing loop triggered by process_all_files() */
 export function cancel_processing_all_files(): void {
     //TODO set cancel_requested = true
 }
