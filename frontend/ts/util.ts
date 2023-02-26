@@ -35,3 +35,9 @@ export async function fetch_with_error(
     }
     return response;
 }
+
+/** Construct the url to download an image from the backend, 
+ *  optionally with a cachebuster to prevent caching */
+export function url_for_image(imagename:string, cachebuster = true): string {
+    return `/images/${imagename}` + (cachebuster? `?_=${Date.now()}` : '')
+}

@@ -16,4 +16,5 @@ def process_image(imagepath, settings):
     PIL.Image.fromarray( result ).save(output_path)
     return {
         'segmentation' : output_filename,
+        'classmap'     : output_filename,
     }

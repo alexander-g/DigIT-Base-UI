@@ -3,6 +3,7 @@ import type { AppFileState, AppFileList }       from "../state.ts"
 import { ContentMenu }                          from "./ContentMenu.tsx"
 import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.tsx"
 import type { InputImageProps }                         from "./ImageComponents.tsx"
+import { ResultOverlays }                               from "./ResultOverlay.tsx";
 
 
 export function FileTableHead(): JSX.Element {
@@ -57,6 +58,7 @@ export function FileTableRow( props:InputImageProps ): JSX.Element {
                     <ImageContainer>
                         <ImageControls imagesize={props.file.$size}>
                             <InputImage {...props} /> 
+                            <ResultOverlays result={ props.file.$result }/>
                         </ImageControls>
                     </ImageContainer>
                 </SpinnerSwitch>

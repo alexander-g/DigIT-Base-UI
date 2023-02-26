@@ -1,7 +1,7 @@
 import { preact, JSX, signals }                  from "../dep.ts"
 import type { AppFileState, ImageSize }     from "../state.ts"
 import { set_image_src }                    from "../file_input.ts"
-
+import * as styles                          from "./styles.ts"
 
 export type InputImageProps = {
     /** Which file to display */
@@ -15,17 +15,27 @@ export class InputImage extends preact.Component<InputImageProps> {
     ref: preact.RefObject<HTMLImageElement> = preact.createRef()
 
     /** Load image as soon as it is beeing displayed in the file table, once */
-    #init: () => void = signals.effect( () => {
-        if(this.props.active_file.value == this.props.file.name 
-            && !this.props.file.$loaded.value
-            && this.ref.current) {
-                set_image_src(this.ref.current, this.props.file)
-        }
-    })
+    #init?: () => void;
+
+    componentDidMount(): void {
+        this.#init = signals.effect( () => {
+            if(this.props.active_file.value == this.props.file.name 
+                && !this.props.file.$loaded.value
+                && this.ref.current) {
+                    set_image_src(this.ref.current, this.props.file)
+            }
+        })
+    }
 
     render(): JSX.Element {
         const css = {width: '100%'}
-        return <img class={"input-image"} onLoad={this.on_load.bind(this)} style={css} ref={this.ref} />
+        return <img 
+            class   =   {"input-image"} 
+            onLoad  =   {this.on_load.bind(this)} 
+            style   =   {{...css, ...styles.unselectable_css}}
+            ref     =   {this.ref}
+            draggable = {false}
+        />
     }
 
     /** Image loading callback. Update the state. */
