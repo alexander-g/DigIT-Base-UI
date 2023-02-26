@@ -40,18 +40,55 @@ export function SpinnerSwitch(props:SpinnerSwitchProps): JSX.Element {
     </>
 }
 
-export function FileTableRow( props:InputImageProps ): JSX.Element {
+/** The row of the file table, conains image name and optionally more */
+class FileTableRow extends preact.Component<InputImageProps> {
+    tr_ref: preact.RefObject<HTMLTableRowElement> = preact.createRef()
+
+    render(props: InputImageProps): JSX.Element {
+        return <tr class="ui title table-row" ref={this.tr_ref}>
+            <td> {props.file.name} </td>
+        </tr>
+    }
+
+    componentDidMount(): void {
+        if(this.tr_ref.current) {
+            /** The position of the row from top of the document */
+            const top:number = this.tr_ref.current.getBoundingClientRect().top 
+                             + document.documentElement.scrollTop
+            
+            /** Called when an accordion opens, scrolls to this row */
+            const scroll_to_row: () => void
+                = () => setTimeout(() => {
+                    window.scrollTo( {top:top, behavior:'smooth'} )
+                }, 10)
+
+            //works on the first time, wont work later
+            signals.effect(() => {
+                if(this.props.file.$loaded.value)
+                    scroll_to_row()
+            })
+            //doesnt work on the first time, will work later
+            signals.effect(() => {
+                if(this.props.active_file.value == this.props.file.name)
+                    scroll_to_row()
+            })
+        }
+    }
+}
+
+
+/** A table row and the corresponding content, which is initially hidden */
+export function FileTableItem( props:InputImageProps ): JSX.Element {
     const loading: signals.ReadonlySignal<boolean> 
         = signals.computed( () => !props.file.$loaded.value )
 
+    const no_padding_css = { padding: 0 }
+
     return <>
-        {/* The row of the file table, conains image name and optionally more */}
-        <tr class="ui title table-row">
-            <td> {props.file.name} </td>
-        </tr>
+        <FileTableRow {...props} />
         {/* The content, shown when clicked on a row. */}
         <tr style="display:none" {...{filename:props.file.name} }>
-            <td>
+            <td style={no_padding_css}>
                 <SpinnerSwitch loading={loading.value}> 
                     {/* TODO: refactor */}
                     <ContentMenu file={props.file} />
@@ -69,16 +106,19 @@ export function FileTableRow( props:InputImageProps ): JSX.Element {
 
 
 
-
-
 type FileTableBodyProps = {
     files:          AppFileList;
     active_file:    signals.ReadonlySignal<string|null>;
 }
 
 export function FileTableBody(props:FileTableBodyProps): JSX.Element {
-    const rows: JSX.Element[] 
-        = props.files.value.map( (f:AppFileState) => <FileTableRow key={f.name} file={f} active_file={props.active_file}/>)
+    const rows: JSX.Element[] = props.files.value.map( 
+        (f:AppFileState) => <FileTableItem 
+                                key         =   {f.name} 
+                                file        =   {f} 
+                                active_file =   {props.active_file}
+                            />
+    )
     
     return <tbody>
         { rows }

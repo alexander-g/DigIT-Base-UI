@@ -32,6 +32,10 @@ function ExtraStyles(): JSX.Element {
             -webkit-user-select: none;
             -ms-user-select: none;
         }
+
+        .ui.table td.active, .ui.table tr.active { 
+            background: #fff!important;
+        }
         `}
     </style>
 }

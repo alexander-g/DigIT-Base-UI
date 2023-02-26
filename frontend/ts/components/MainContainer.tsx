@@ -19,7 +19,12 @@ export class Tabs extends preact.Component {
 
 
 export function MainContainer(): JSX.Element {
-    return <div class="ui container page-wide" id="main-container" style={page_wide_css}>
+    const pad_bottom_css = {paddingBottom: '50vh'}
+    return <div 
+                class   =   "ui container page-wide" 
+                id      =   "main-container" 
+                style   =   {{...page_wide_css, ...pad_bottom_css}}
+            >
         <Tabs/>
 
         <div class="ui active tab segment unselectable" data-tab="detection" style="padding:0">
