@@ -50,7 +50,13 @@ export async function load_settings(
     const response: Response = await util.fetch_with_error(
         ['/settings'], () => on_error('Loading settings failed.')
     )
-    validate_settings_response(await response.text())
+    try {
+        validate_settings_response(await response.text())
+    } catch (error) {
+        on_error('Loading settings failed. Invalid response data.')
+        throw(error)
+    }
+    
 }
 
 
