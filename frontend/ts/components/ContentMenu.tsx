@@ -14,8 +14,8 @@ export function ContentMenu(props: ContentMenuProps): JSX.Element {
             class = "ui bottom attached secondary icon menu"
             style = "border-top-width:0px; margin-bottom:0px;"
         >
-            <PlayButton file={props.file} />
-            <ViewMenu />
+            <PlayButton     file={props.file} />
+            <ViewMenu       file={props.file} />
             <DownloadButton file={props.file} />
             <HelpButton />
         </div>
@@ -49,14 +49,56 @@ function PlayButton(props: PlayButtonProps): JSX.Element {
 
 
 
-
-function ViewMenu(): JSX.Element {
+/** Button with dropdown that contains control elements regarding the presentation */
+export function ViewMenu(props:{file:AppFileState}): JSX.Element {
     return (
         <div class="ui simple dropdown icon item view-menu-button">
             <i class="eye icon"></i>
-            {/* {{ view_menu(**view_menu_kwargs) | indent(8)}} */}
+            <ViewMenuDropdown file={props.file}/>
         </div>
     );
+}
+
+function ViewMenuDropdown(props:{file:AppFileState}): JSX.Element {
+    return (
+        <div class="menu view-menu">
+            <ShowResultsCheckbox file={props.file}/>
+        </div>
+    )
+}
+
+/** A checkbox to toggle results */
+//function ShowResultsCheckbox(props:{file:AppFileState}): JSX.Element {
+class ShowResultsCheckbox extends preact.Component<{file:AppFileState}> {
+    ref: preact.RefObject<HTMLDivElement> = preact.createRef()
+
+    render(props:{file:AppFileState}): JSX.Element {
+        const disabled:string = (props.file.$result.value)?  '' : 'disabled'
+        return (
+            <div class={"ui item checkbox show-results-checkbox " + disabled} ref={this.ref}>
+                <input 
+                    type        = "checkbox" 
+                    checked     = {props.file.$result.value?.$visible} 
+                    onChange    = {this.on_click.bind(this)}
+                />
+                <label style="padding-top:2px;">Show results</label>
+            </div>
+        )
+    }
+
+    on_click() {
+        const $visible: signals.Signal<boolean> | undefined 
+            = this.props.file.$result.peek()?.$visible
+        
+        if($visible)
+            $visible.value = !$visible.value
+    }
+
+    componentDidMount(): void {
+        //need to initialize although docs say works without javascript
+        if(this.ref.current)
+            $(this.ref.current).checkbox()
+    }
 }
 
 

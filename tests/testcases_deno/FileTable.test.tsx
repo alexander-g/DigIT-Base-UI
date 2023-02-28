@@ -6,7 +6,7 @@ import { preact, signals }  from "../../frontend/ts/dep.ts"
 
 Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
     const document:Document = await util.setup_jsdom()
-    util.mock_jQ( {accordion:mock.spy(), popup:mock.spy()} )
+    util.mock_jQ( {accordion:mock.spy(), popup:mock.spy(), checkbox:mock.spy()} )
 
     const files: AppFileList = new AppFileList([])
 

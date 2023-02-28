@@ -21,13 +21,38 @@ export class AppFile extends File {
 }
 
 /** Processing result, all fields optional to force error checking */
-export type Result = {
+export class Result {
     /** URL to a classmap (segmentation result) */
     classmap?:      string
 }
 
 /** A result that maybe empty (e.g. not yet processed) */
 export type MaybeResult = Result | null;
+
+
+
+/** Helper class to prevent undefined inital values */
+class Reactive<T> extends signals.Signal<T> {
+    /** Constructor making sure that undefined is not an option */
+    constructor(x:T) {
+        super(x)
+    }
+}
+
+
+/** Result with additional attributes specifically for UI */
+export class ResultState extends Result {
+    $visible:   signals.Signal<boolean>     =   new signals.Signal(true)
+
+    /** Convert a basic non-state result to this class */
+    static from_result(result:Result): ResultState {
+        const resultstate = new ResultState()
+        return Object.assign(resultstate, result)
+    }
+}
+
+export type MaybeResultState = ResultState | null;
+
 
 
 export type ImageSize = {
@@ -38,8 +63,11 @@ export type ImageSize = {
 /** Reactive version of AppFile */
 export class AppFileState extends AppFile {
     #$loaded:   signals.Signal<boolean>     = new signals.Signal(false)
-    #$result:   signals.Signal<MaybeResult> = new signals.Signal(super.result)
     #$size:     signals.Signal<ImageSize|undefined> = new signals.Signal()
+    
+    #$result:   signals.Signal<MaybeResultState> = new signals.Signal(
+        (super.result == null)? null : new ResultState()
+    )
 
     set_loaded(image:HTMLImageElement): void {
         this.#$loaded.value = true;
@@ -59,10 +87,10 @@ export class AppFileState extends AppFile {
 
     /** @override */
     set_result(result: Result | null): void {
-        this.#$result.value = result;
+        this.#$result.value = (result==null)? null : ResultState.from_result(result);
     }
 
-    get $result(): signals.ReadonlySignal<MaybeResult> {
+    get $result(): signals.ReadonlySignal<MaybeResultState> {
         return this.#$result;
     }
 
@@ -75,13 +103,7 @@ export class AppFileState extends AppFile {
 
 
 
-/** Helper class to prevent undefined inital values */
-class Reactive<T> extends signals.Signal<T> {
-    /** Constructor making sure that undefined is not an option */
-    constructor(x:T) {
-        super(x)
-    }
-}
+
 
 /** Reactive list of AppFiles */
 export class AppFileList extends Reactive<AppFileState[]> {
