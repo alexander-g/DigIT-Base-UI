@@ -1,6 +1,6 @@
 #!./deno.sh run --allow-read=./frontend/ts,./static --allow-write=./static --no-prompt
 
-import { preact_ssr, esbuild, sucrase } from "./dep.ts";
+import { preact_ssr, sucrase }          from "./dep.ts";
 import { path, fs }                     from "./dep.ts"
 
 import * as paths                       from "./paths.ts"
@@ -58,34 +58,6 @@ function clear_static(destination?:string): void {
     fs.ensureDirSync(destination)
 }
 
-
-export async function _compile_esbuild(): Promise<string> {
-    const esbuild_wasm_module = new WebAssembly.Module(Deno.readFileSync("./assets/esbuild.wasm"))
-    await esbuild.initialize({wasmModule:esbuild_wasm_module, worker:false})
-
-    const test_tsx: string = Deno.readTextFileSync("./src/frontend/index.tsx")
-
-    const result: esbuild.BuildResult = await esbuild.build({
-        stdin: {
-            contents: test_tsx,
-              // These are all optional:
-            resolveDir: './src',
-            sourcefile: 'imaginary-file.js',
-            loader: 'tsx',
-    },
-    jsx: 'transform',
-    jsxFactory: 'h',
-    jsxFragment: 'Fragment',
-    format: 'esm',
-    write: false,
-  })
-
-  const decoder = new TextDecoder("utf-8");
-  const result_str:string = decoder.decode(result.outputFiles?.[0]?.contents)
-  console.log('result:', result_str)
-  
-  return result_str;
-}
 
 
 

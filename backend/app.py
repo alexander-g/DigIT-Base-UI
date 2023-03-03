@@ -206,6 +206,7 @@ class App(flask.Flask):
         open(outf,'w', encoding="utf-8").write(tmpl.render(warning='GENERATED FILE. DO NOT EDIT MANUALLY'))
 
         subprocess.check_call('./deno.sh task compile_index', shell=True)
+        #subprocess.check_call('./deno.sh task bundle_deps',  shell=True)
     
     def run(self, parse_args=True, **args):
         if parse_args:
