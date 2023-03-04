@@ -28,4 +28,15 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
         const P: HTMLTableRowElement[] = Array.from(document.querySelectorAll('table tr.table-row') ?? [])
         asserts.assertEquals( P.length, files0.length )
     })
+
+    await t.step('bold-with-result', async () => {
+        const P: HTMLTableRowElement[] = Array.from(document.querySelectorAll('table tr.table-row') ?? [])
+        const p2: HTMLTableRowElement  = P[1]!
+        asserts.assertEquals(p2.style.fontWeight, 'normal')
+
+        files.peek()[1]?.set_result({})
+        await util.wait(1)
+
+        asserts.assertEquals(p2.style.fontWeight, 'bold')
+    })
 })

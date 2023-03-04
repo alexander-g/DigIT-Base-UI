@@ -45,7 +45,10 @@ class FileTableRow extends preact.Component<InputImageProps> {
     tr_ref: preact.RefObject<HTMLTableRowElement> = preact.createRef()
 
     render(props: InputImageProps): JSX.Element {
-        return <tr class="ui title table-row" ref={this.tr_ref}>
+        const css = {
+            fontWeight:     props.file.$result.value? 'bold' : 'normal'
+        }
+        return <tr class="ui title table-row" ref={this.tr_ref} style={css}>
             <td> {props.file.name} </td>
         </tr>
     }
