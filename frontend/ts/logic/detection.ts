@@ -31,6 +31,7 @@ export async function process_files(
 
         // do actual processing //TODO: refactor into own file
         try {
+            reset_result(file)
             await util.upload_file(file, function(){})
             const response: Response 
                 = await util.fetch_with_error([`/process_image/${file.name}`], function(){})
@@ -80,3 +81,7 @@ async function set_result_from_response(response:Response, file:AppFile): Promis
 }
 
 
+/** Remove the result from a file to indicate that it hasn't been processed yet */
+function reset_result(file:AppFile): void {
+    file.set_result(null)
+}
