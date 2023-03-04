@@ -25,6 +25,7 @@ export function MainContainer(): JSX.Element {
                 id      =   "main-container" 
                 style   =   {{...page_wide_css, ...pad_bottom_css}}
             >
+        <div class="ui hidden section divider whitespace"></div>
         <Tabs/>
 
         <div class="ui active tab segment unselectable" data-tab="detection" style="padding:0">

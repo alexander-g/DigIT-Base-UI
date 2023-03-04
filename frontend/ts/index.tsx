@@ -8,10 +8,10 @@ import * as file_input from "./file_input.ts"
 
 export function Body(): JSX.Element {
     return <body onDragOver={file_input.on_drag} onDrop={file_input.on_drop}>
+        <SVGFilters />  {/* Must go first for cosmetic reasons */}
         <TopMenu/>
         <MainContainer />
         <Modals />
-        <SVGFilters />
     </body>
 }
 
