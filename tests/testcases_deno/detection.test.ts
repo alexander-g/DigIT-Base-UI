@@ -16,10 +16,17 @@ Deno.test('process_image.fail', async (t:Deno.TestContext) => {
         await process_image(mockfile, error_spy)
         mock.assertSpyCalls(error_spy, 1)
 
-        mock.assertSpyCalls(set_result_spy, 1)
-        asserts.assert(
-            set_result_spy.calls[0]?.args[0].status == 'unprocessed',
-            'Should reset result before processing'
+        mock.assertSpyCalls(set_result_spy, 2) //processing+failed = 2x
+        asserts.assertEquals(
+            set_result_spy.calls[0]?.args[0].status,
+            'processing',
+            //'Should mark result as processing'
+        )
+
+        asserts.assertEquals(
+            set_result_spy.calls[1]?.args[0].status,
+            'failed',
+            //'Should mark result as processing'
         )
     })
     mock.restore();
@@ -29,7 +36,7 @@ Deno.test('process_image.fail', async (t:Deno.TestContext) => {
         util.mock_fetch_404()
         const error_spy: mock.Spy<any, [string], void> = mock.spy()
         await process_image(mockfile, error_spy)
-        mock.assertSpyCalls(error_spy, 1)
+        mock.assertSpyCalls(set_result_spy, 2) //processing+failed = 2x
     })
     mock.restore()
 
@@ -39,7 +46,7 @@ Deno.test('process_image.fail', async (t:Deno.TestContext) => {
         util.mock_fetch( async () => await new Response('@!#%§&') );
         const error_spy: mock.Spy<any, [string], void> = mock.spy()
         await process_image(mockfile, error_spy)
-        mock.assertSpyCalls(error_spy, 1)
+        mock.assertSpyCalls(set_result_spy, 2) //processing+failed = 2x
     })
     mock.restore()
 })

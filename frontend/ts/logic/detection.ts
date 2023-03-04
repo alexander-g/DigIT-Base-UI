@@ -31,13 +31,14 @@ export async function process_files(
 
         // do actual processing //TODO: refactor into own file
         try {
-            reset_result(file)
+            mark_result_as_processing(file)
             await util.upload_file(file, function(){})
             const response: Response 
                 = await util.fetch_with_error([`/process_image/${file.name}`], function(){})
             await set_result_from_response(response, file)
         } catch (_error) {
             on_error_cb()
+            mark_result_as_failed(file)
             continue;
         }
     }
@@ -83,7 +84,12 @@ async function set_result_from_response(response:Response, file:AppFile): Promis
 }
 
 
-/** Remove the result from a file to indicate that it hasn't been processed yet */
-function reset_result(file:AppFile): void {
-    file.set_result({status:'unprocessed'})
+/** Remove the result from a file and indicate that processing is in progress */
+function mark_result_as_processing(file:AppFile): void {
+    file.set_result({status:'processing'})
+}
+
+/** Remove the result from a file and indicate that processing has failed */
+function mark_result_as_failed(file:AppFile): void {
+    file.set_result({status:'failed'})
 }

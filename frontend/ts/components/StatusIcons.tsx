@@ -17,12 +17,18 @@ export function FileTableStatusIcons(props:StatusIconProps): JSX.Element {
     const css_processed = {
         display: boolean_to_display(status == 'processed')
     }
+    const css_processing = {
+        display: boolean_to_display(status == 'processing')
+    }
+    const css_failed = {
+        display: boolean_to_display(status == 'failed')
+    }
 
     return <>
         <i class="image outline   unprocessed status icon" style={css_unprocessed}></i>
         <i class="image             processed status icon" style={css_processed}>  </i>
-        <i class="yellow exclamation triangle status icon" style="display:none"></i>
-        <i class="loading spinner             status icon" style="display:none"></i>
+        <i class="yellow exclamation triangle status icon" style={css_failed}>     </i>
+        <i class="loading spinner             status icon" style={css_processing}> </i>
     </>
 }
 
