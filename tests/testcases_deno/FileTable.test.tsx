@@ -38,7 +38,7 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
         const p2: HTMLTableRowElement  = P[1]!
         asserts.assertEquals(p2.style.fontWeight, 'normal')
 
-        files.peek()[1]?.set_result({})
+        files.peek()[1]?.set_result({status:'processed'})
         await util.wait(1)
 
         asserts.assertEquals(p2.style.fontWeight, 'bold')

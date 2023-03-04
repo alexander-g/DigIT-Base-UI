@@ -73,12 +73,13 @@ class ShowResultsCheckbox extends preact.Component<{file:AppFileState}> {
     ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 
     render(props:{file:AppFileState}): JSX.Element {
-        const disabled:string = (props.file.$result.value)?  '' : 'disabled'
+        const processed:boolean = ( props.file.$result.value.status == 'processed')
+        const disabled:string   = processed?  '' : 'disabled'
         return (
             <div class={"ui item checkbox show-results-checkbox " + disabled} ref={this.ref}>
                 <input 
                     type        = "checkbox" 
-                    checked     = {props.file.$result.value?.$visible} 
+                    checked     = {props.file.$result.value.$visible} 
                     onChange    = {this.on_click.bind(this)}
                 />
                 <label style="padding-top:2px;">Show results</label>
@@ -88,7 +89,7 @@ class ShowResultsCheckbox extends preact.Component<{file:AppFileState}> {
 
     on_click() {
         const $visible: signals.Signal<boolean> | undefined 
-            = this.props.file.$result.peek()?.$visible
+            = this.props.file.$result.peek().$visible
         
         if($visible)
             $visible.value = !$visible.value
@@ -109,7 +110,8 @@ class ShowResultsCheckbox extends preact.Component<{file:AppFileState}> {
  *  //TODO: also disable when processing a batch of files.
  */
 export function DownloadButton(props: { file: AppFileState }): JSX.Element {
-    const disabled: string = props.file.$result.value ? "" : "disabled";
+    const enabled:boolean  = (props.file.$result.value.status == 'processed')
+    const disabled: string = enabled ? "" : "disabled";
     return (
         <a
             class           =   {"download item " + disabled}

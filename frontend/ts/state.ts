@@ -4,31 +4,34 @@ import { Settings, AvailableModels } from "./logic/settings.ts";
 /** Main input file structure with results */
 export class AppFile extends File {
 
-    #result:MaybeResult = null;
+    /** This file's processing results */
+    #result:Result = {status: 'unprocessed'}
 
     constructor(f:File) {
         super([f], f.name, {type:f.type, lastModified:f.lastModified})
     }
 
     /** Set the result, overwritten in the reactive version */
-    set_result(result: MaybeResult): void {
+    set_result(result: Result): void {
         this.#result = result;
     }
 
-    get result(): Readonly<Result>|null {
+    get result(): Readonly<Result> {
         return this.#result;
     }
 }
 
-/** Processing result, all fields optional to force error checking */
+
+export type ResultStatus = 'unprocessed' | 'processing' | 'processed' | 'failed';
+
+/** Processing result, most fields optional to force error checking */
 export class Result {
+    /** Indicates if the result is valid or not */
+    readonly status:    ResultStatus = 'unprocessed';
+
     /** URL to a classmap (segmentation result) */
-    classmap?:      string
+    classmap?:          string
 }
-
-/** A result that maybe empty (e.g. not yet processed) */
-export type MaybeResult = Result | null;
-
 
 
 /** Helper class to prevent undefined inital values */
@@ -42,6 +45,7 @@ class Reactive<T> extends signals.Signal<T> {
 
 /** Result with additional attributes specifically for UI */
 export class ResultState extends Result {
+    /** Indicates whether the result should be displayed in the UI */
     $visible:   signals.Signal<boolean>     =   new signals.Signal(true)
 
     /** Convert a basic non-state result to this class */
@@ -50,8 +54,6 @@ export class ResultState extends Result {
         return Object.assign(resultstate, result)
     }
 }
-
-export type MaybeResultState = ResultState | null;
 
 
 
@@ -65,8 +67,8 @@ export class AppFileState extends AppFile {
     #$loaded:   signals.Signal<boolean>     = new signals.Signal(false)
     #$size:     signals.Signal<ImageSize|undefined> = new signals.Signal()
     
-    #$result:   signals.Signal<MaybeResultState> = new signals.Signal(
-        (super.result == null)? null : new ResultState()
+    #$result:   Reactive<ResultState> = new Reactive(
+        ResultState.from_result(super.result)
     )
 
     set_loaded(image:HTMLImageElement): void {
@@ -86,16 +88,16 @@ export class AppFileState extends AppFile {
     }
 
     /** @override */
-    set_result(result: Result | null): void {
-        this.#$result.value = (result==null)? null : ResultState.from_result(result);
+    set_result(result: Result): void {
+        this.#$result.value = ResultState.from_result(result)
     }
 
-    get $result(): signals.ReadonlySignal<MaybeResultState> {
+    get $result(): signals.ReadonlySignal<ResultState> {
         return this.#$result;
     }
 
     /** @override */
-    get result(): Readonly<Result> | null {
+    get result(): Readonly<Result> {
         return this.#$result.peek()
     }
 }

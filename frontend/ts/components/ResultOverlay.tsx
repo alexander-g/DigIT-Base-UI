@@ -1,11 +1,11 @@
 import { preact, JSX, signals } from "../dep.ts";
-import { MaybeResultState }     from "../state.ts";
+import { ResultState }          from "../state.ts";
 import * as util                from "../util.ts";
 import * as styles              from "./styles.ts"
 import { black_to_transparent_css }     from "./SVGFilters.tsx";
 
 type ResultOverlaysProps = {
-    result:     signals.ReadonlySignal<MaybeResultState>;
+    result:     signals.ReadonlySignal<ResultState>;
 }
 
 /** A list of elements that display processing results */
@@ -13,11 +13,12 @@ export class ResultOverlays extends preact.Component<ResultOverlaysProps> {
     render(props:ResultOverlaysProps): JSX.Element {
         const children: JSX.Element[] = []
 
-        if(props.result.value?.classmap)
+        const result: ResultState = props.result.value;
+        if(result.classmap)
             children.push(
                 <ImageOverlay 
-                    imagename = {props.result.value.classmap}
-                    visible   = {props.result.value.$visible}
+                    imagename = {result.classmap}
+                    visible   = {result.$visible}
                 />
             )
 

@@ -5,6 +5,7 @@ import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.
 import type { InputImageProps }                         from "./ImageComponents.tsx"
 import { ResultOverlays }                               from "./ResultOverlay.tsx";
 import { FileTableMenu }                                from "./FileTableMenu.tsx";
+import { FileTableStatusIcons }                         from "./StatusIcons.tsx";
 
 export function FileTableHead(): JSX.Element {
     return <thead>
@@ -45,11 +46,18 @@ class FileTableRow extends preact.Component<InputImageProps> {
     tr_ref: preact.RefObject<HTMLTableRowElement> = preact.createRef()
 
     render(props: InputImageProps): JSX.Element {
+        const processed: boolean = (props.file.$result.value.status == 'processed')
         const css = {
-            fontWeight:     props.file.$result.value? 'bold' : 'normal'
+            fontWeight:     processed? 'bold' : 'normal'
         }
         return <tr class="ui title table-row" ref={this.tr_ref} style={css}>
-            <td> {props.file.name} </td>
+            <td>
+                <i class="dropdown icon"></i>
+                <FileTableStatusIcons file={props.file}/>
+                <label>
+                    {props.file.name}
+                </label>
+            </td>
         </tr>
     }
 

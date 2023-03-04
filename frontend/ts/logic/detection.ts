@@ -71,10 +71,12 @@ export function cancel_processing_all_files(): void {
 
 
 
+type RawResult = Omit<Result, 'status'>
 
 async function set_result_from_response(response:Response, file:AppFile): Promise<Result> {
     //TODO: JSON.parse might fail if invalid json
-    const result: Result = JSON.parse(await response.text())
+    const rawresult: RawResult = JSON.parse(await response.text())
+    const result:Result        = {status:'processed', ...rawresult}
 
     file.set_result(result);
     return result
@@ -83,5 +85,5 @@ async function set_result_from_response(response:Response, file:AppFile): Promis
 
 /** Remove the result from a file to indicate that it hasn't been processed yet */
 function reset_result(file:AppFile): void {
-    file.set_result(null)
+    file.set_result({status:'unprocessed'})
 }

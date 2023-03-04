@@ -2,14 +2,14 @@ import { ResultOverlays }   from "../../frontend/ts/components/ResultOverlay.tsx
 import { ImageOverlay }     from "../../frontend/ts/components/ResultOverlay.tsx";
 import { preact, signals }  from "../../frontend/ts/dep.ts"
 import * as util            from "./util.ts"
-import { MaybeResultState, ResultState } from "../../frontend/ts/state.ts";
+import { ResultState }      from "../../frontend/ts/state.ts";
 import { asserts, mock }    from "./dep.ts";
 
 
 Deno.test('ResultOverlays.decide-which-to-display', async () => {
     const document:Document = await util.setup_jsdom()
 
-    const result: signals.Signal<MaybeResultState> = new signals.Signal(null)
+    const result: signals.Signal<ResultState> = new signals.Signal(new ResultState())
     preact.render(<ResultOverlays result={result} />, document.body)
     await util.wait(1);
 
@@ -22,7 +22,9 @@ Deno.test('ResultOverlays.decide-which-to-display', async () => {
     asserts.assertEquals( document.body.children.length, 0 )
 
     const fetch_spy: mock.Spy = util.mock_fetch(async () => await new Response())
-    result.value = ResultState.from_result({ classmap: "url-to-classmap.png" })
+    result.value = ResultState.from_result(
+        { status:'processed', classmap: "url-to-classmap.png" }
+    )
     await util.wait(1)
     //now there should be an image overlay
     asserts.assertEquals( document.body.children.length, 1 )

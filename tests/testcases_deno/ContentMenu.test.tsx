@@ -18,13 +18,13 @@ Deno.test('DownloadButton.enable', async () => {
     asserts.assertEquals(document.querySelectorAll('a.download.disabled').length, 1)
 
     //set a dummy result
-    file.set_result({})
+    file.set_result({status:'processed'})
     await util.wait(1)
     //the disabled class should be gone
     asserts.assertEquals(document.querySelectorAll('a.download.disabled').length, 0)
 
     //remove result again
-    file.set_result(null)
+    file.set_result({status:'unprocessed'})
     await util.wait(1)
     //the disabled class should be gone
     asserts.assertEquals(document.querySelectorAll('a.download.disabled').length, 1)
@@ -44,7 +44,7 @@ Deno.test('ViewMenu.show_results', async () => {
     asserts.assertStringIncludes(checkbox.className, 'disabled')
 
     //set a dummy result
-    const result:ResultState = new ResultState()
+    const result:ResultState = ResultState.from_result({status:'processed'})
     file.set_result(result)
     await util.wait(1)
     //the disabled class should be gone
