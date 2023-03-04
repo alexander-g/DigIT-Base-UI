@@ -42,3 +42,7 @@ export function mock_fetch_404(): mock.Spy {
     )
 }
 
+/** Check if a HTML element is visible  */
+export function is_hidden(element: HTMLElement): boolean {
+    return (element.style.display == 'none')
+}

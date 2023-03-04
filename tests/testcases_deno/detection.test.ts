@@ -9,11 +9,9 @@ Deno.test('process_image.fail', async (t:Deno.TestContext) => {
 
     await t.step('upload-fail', async () => {
         // fetch that throws an error
-        util.mock_fetch_connection_error('Should not be caught')
+        util.mock_fetch_connection_error('Should be caught')
         const error_spy: mock.Spy<any, [string], void> = mock.spy()
-        await asserts.assertRejects(
-            async () => { await process_image(mockfile, error_spy) }
-        )
+        await process_image(mockfile, error_spy)
         mock.assertSpyCalls(error_spy, 1)
     })
     mock.restore()
@@ -22,9 +20,7 @@ Deno.test('process_image.fail', async (t:Deno.TestContext) => {
         // fetch that throws an error
         util.mock_fetch_404()
         const error_spy: mock.Spy<any, [string], void> = mock.spy()
-        await asserts.assertRejects(
-            async () => { await process_image(mockfile, error_spy) }
-        )
+        await process_image(mockfile, error_spy)
         mock.assertSpyCalls(error_spy, 1)
     })
     mock.restore()

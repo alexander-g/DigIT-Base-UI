@@ -25,7 +25,6 @@ const CustomResolvePlugin: esbuild.Plugin = {
         /** Resolve local to absolute paths */
         build.onResolve({ filter: /^\./ }, (args:esbuild.OnResolveArgs) => {
             const abspath:string = path.join( path.dirname(args.importer), args.path )
-            console.log(args, abspath)
             return { 
                 path:       abspath, 
                 external:   false,

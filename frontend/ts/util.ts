@@ -31,7 +31,7 @@ export async function fetch_with_error(
 
     if(!response.ok) {
         error_fn()
-        throw( new Error() )
+        throw( new Error(response.statusText) )
     }
     return response;
 }

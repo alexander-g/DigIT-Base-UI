@@ -131,6 +131,9 @@ export class AppState {
     /** Currently loaded files */
     files: AppFileList = new AppFileList([]);
 
+    /** Indicates whether there is a processing operation running somewhere */
+    processing: Reactive<boolean> = new Reactive<boolean>(false)
+
     /** Currently loaded settings */
     settings: SettingsState = new SettingsState({})
 

@@ -10,29 +10,43 @@ export async function process_image(
     file:       AppFile, 
     on_error:   errors.error_fn = errors.show_error_toast
 ): Promise<void> {
-    //TODO: file.clear results
-    //try
-    //TODO: set file as currently processing
-
-    const on_error_cb: () => void = function(){ on_error('Processing failed.') }
-    await util.upload_file(file, on_error_cb)
-    const response: Response 
-        = await util.fetch_with_error([`/process_image/${file.name}`], on_error_cb)
-    
-    
-    //TODO: might fail -> handle error
-    set_result_from_response(response, file)
-
-    //TODO: file.set_results(reply)
-    //catch
-    //handle errors
-    //finally
-    //delete file
-
+    return await process_files([file], on_error)
 }
 
 
+export async function process_files(
+    files:      AppFile[],
+    on_error:   errors.error_fn = errors.show_error_toast
+): Promise<void> {
+    //check if not already processing (CLI ne?)
+    //
+
+
+    for(const file of files) {
+        //TODO: clear results
+        //TODO: set file as currently processing
+
+        //TODO: add filename to error message
+        const on_error_cb: () => void = function(){ on_error('Processing failed.') }
+
+        // do actual processing //TODO: refactor into own file
+        try {
+            await util.upload_file(file, function(){})
+            const response: Response 
+                = await util.fetch_with_error([`/process_image/${file.name}`], function(){})
+            await set_result_from_response(response, file)
+        } catch (_error) {
+            on_error_cb()
+            continue;
+        }
+    }
+}
+
+
+
 export function process_all_files(): void {
+    console.trace('Not Implemented')
+    //check if not already processing -> wait or throw error?
     //TODO: get current processing order (as displayed + maybe filtered?)
     //lock the displayed order?
     //clone/lock settings
@@ -51,6 +65,7 @@ export function process_all_files(): void {
 /** Stop processing loop triggered by process_all_files() */
 export function cancel_processing_all_files(): void {
     //TODO set cancel_requested = true
+    console.trace('Not Implemented')
 }
 
 

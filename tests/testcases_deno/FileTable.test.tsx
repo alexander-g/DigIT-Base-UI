@@ -9,9 +9,13 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
     util.mock_jQ( {accordion:mock.spy(), popup:mock.spy(), checkbox:mock.spy()} )
 
     const files: AppFileList = new AppFileList([])
+    const processing         = new signals.Signal(false)
 
     await t.step('empty', async () => {
-        preact.render(<FileTable files={files} sortable={false}/>, document.body)
+        preact.render(
+            <FileTable files={files} sortable={false} processing={processing}/>,
+            document.body
+        )
         
         await util.wait(1)
         asserts.assertEquals(document.querySelectorAll('table tr').length, 0)

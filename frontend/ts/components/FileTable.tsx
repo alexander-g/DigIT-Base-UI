@@ -4,7 +4,7 @@ import { ContentMenu }                          from "./ContentMenu.tsx"
 import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.tsx"
 import type { InputImageProps }                         from "./ImageComponents.tsx"
 import { ResultOverlays }                               from "./ResultOverlay.tsx";
-
+import { FileTableMenu }                                from "./FileTableMenu.tsx";
 
 export function FileTableHead(): JSX.Element {
     return <thead>
@@ -133,7 +133,13 @@ export function FileTableBody(props:FileTableBodyProps): JSX.Element {
 
 
 type FileTableProps = {
+    /** The list of files that this file table should display */
     files:      AppFileList;
+    /** Whether or not a processing is operation is running somewehere in the app.
+     *  Some UI elements might be disabled.
+     */
+    processing: signals.Signal<boolean>;
+    /** Whether or not the table should be sortable (TODO: not implemented) */
     sortable:   boolean;
 }
 
@@ -141,11 +147,12 @@ export class FileTable extends preact.Component<FileTableProps> {
     /** The currently displayed filename. null if all closed. */
     #$active_file:signals.Signal<string|null> = new signals.Signal(null);
 
-    render(): JSX.Element {
-        const sort_class: string = this.props.sortable ? 'sortable' : '';         //TODO fix classes
+    render(props: FileTableProps): JSX.Element {
+        const sort_class: string = props.sortable ? 'sortable' : '';         //TODO fix classes
         return <table class="ui fixed celled { sort_class } unstackable table accordion filetable" style="border:0px; margin-top:0px;" >
+            <FileTableMenu displayed_files={props.files.value} processing={props.processing}/>
             <FileTableHead />
-            <FileTableBody files={this.props.files} active_file={this.#$active_file}/>
+            <FileTableBody files={props.files} active_file={this.#$active_file}/>
         </table>
     }
 
