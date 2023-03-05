@@ -19,8 +19,22 @@ export async function setup_jsdom(): Promise<Document> {
 
 export function mock_jQ(returnvalue: any): void {
     set_jQ(
-        (query: string | HTMLElement) => returnvalue
+        (_query: string | HTMLElement) => returnvalue
     )
+}
+
+class FomanticSpy {
+    accordion   : mock.Spy      = mock.spy();
+    popup       : mock.Spy      = mock.spy();
+    checkbox    : mock.Spy      = mock.spy();
+    dimmer      : mock.Spy      = mock.spy();
+}
+
+/** Mock the most common Fomantic UI functions */
+export function mock_fomantic(): FomanticSpy {
+    const spy = new FomanticSpy()
+    mock_jQ(spy)
+    return spy;
 }
 
 /** Replace the fetch function with a stub for tests */
