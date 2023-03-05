@@ -13,8 +13,11 @@ def process_image(imagepath, settings):
     output_path     = os.path.join(
         get_cache_path(), output_filename
     )
-    PIL.Image.fromarray( result ).save(output_path)
+    classmap = result['classmap']
+    PIL.Image.fromarray( classmap ).save(output_path)
     return {
         'segmentation' : output_filename,
         'classmap'     : output_filename,
+        'boxes'        : result['boxes'].tolist(),
+        'labels'       : result['labels'].tolist(),
     }

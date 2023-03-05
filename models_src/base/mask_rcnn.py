@@ -34,9 +34,16 @@ class MaskRCNN(torch.nn.Module):
         with torch.no_grad():
             y = self(x[None])
         
-        y = y[0]['masks'][:,0].cpu().numpy().max(0)
-        y = ( (y>0.5) *255).astype('uint8')
-        return y
+        classmap = y[0]['masks'][:,0].cpu().numpy()
+        classmap = np.pad(classmap, [(1,0), (0,0), (0,0)]).max(0)
+        classmap = ( (classmap>0.5) *255).astype('uint8')
+        boxes    = y[0]['boxes'].cpu().numpy()
+        labels   = y[0]['labels'].cpu().numpy()
+        return {
+            'classmap'  :   classmap,
+            'boxes'     :   boxes,
+            'labels'    :   labels,
+        }
     
     def save(self, destination:str) -> str:
         if not destination.endswith('.pt.zip'):
