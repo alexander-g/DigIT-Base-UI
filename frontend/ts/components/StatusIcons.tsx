@@ -1,5 +1,6 @@
 import { JSX, signals }                 from "../dep.ts";
 import { AppFileState, ResultStatus }   from "../state.ts";
+import { boolean_to_display_css }       from "../util.ts";
 
 
 
@@ -12,16 +13,16 @@ type StatusIconProps = {
 export function FileTableStatusIcons(props:StatusIconProps): JSX.Element {
     const status: ResultStatus = props.file.$result.value.status;
     const css_unprocessed = {
-        display: boolean_to_display(status == 'unprocessed')
+        display: boolean_to_display_css(status == 'unprocessed')
     }
     const css_processed = {
-        display: boolean_to_display(status == 'processed')
+        display: boolean_to_display_css(status == 'processed')
     }
     const css_processing = {
-        display: boolean_to_display(status == 'processing')
+        display: boolean_to_display_css(status == 'processing')
     }
     const css_failed = {
-        display: boolean_to_display(status == 'failed')
+        display: boolean_to_display_css(status == 'failed')
     }
 
     return <>
@@ -33,6 +34,3 @@ export function FileTableStatusIcons(props:StatusIconProps): JSX.Element {
 }
 
 
-function boolean_to_display(x:boolean): 'none'|undefined {
-    return x ? undefined : 'none';
-}

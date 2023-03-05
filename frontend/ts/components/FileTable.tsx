@@ -6,6 +6,7 @@ import type { InputImageProps }                         from "./ImageComponents.
 import { ResultOverlays }                               from "./ResultOverlay.tsx";
 import { FileTableMenu }                                from "./FileTableMenu.tsx";
 import { FileTableStatusIcons }                         from "./StatusIcons.tsx";
+import { ProgressDimmer }                               from "./ProgressDimmer.tsx";
 
 export function FileTableHead(): JSX.Element {
     return <thead>
@@ -108,6 +109,7 @@ export function FileTableItem( props:InputImageProps ): JSX.Element {
                             <InputImage {...props} /> 
                             <ResultOverlays result={ props.file.$result }/>
                         </ImageControls>
+                        <ProgressDimmer result={ props.file.$result }/>
                     </ImageContainer>
                 </SpinnerSwitch>
             </td>
