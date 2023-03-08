@@ -1,5 +1,7 @@
 import { signals } from "./dep.ts"
-import { Settings, AvailableModels } from "./logic/settings.ts";
+import { Settings, AvailableModels }    from "./logic/settings.ts";
+import { Instance }                     from "./logic/boxes.ts";
+
 
 /** Main input file structure with results */
 export class AppFile extends File {
@@ -27,14 +29,22 @@ export type ResultStatus = 'unprocessed' | 'processing' | 'processed' | 'failed'
 /** Processing result, most fields optional to force error checking */
 export class Result {
     /** Indicates if the result is valid or not */
-    readonly status:    ResultStatus = 'unprocessed';
+    readonly status:    ResultStatus    = 'unprocessed';
+
+    /** Raw processing outputs, as received from backend or onnnx.
+     *  For debugging. */
+    // deno-lint-ignore no-explicit-any
+    readonly raw?:      any;
 
     /** URL to a classmap (segmentation result) */
-    classmap?:          string
+    classmap?:          string;
+
+    /** Boxes and labels of objects */
+    instances?:         Instance[];
 }
 
 
-/** Helper class to prevent undefined inital values */
+/** Helper class to prevent undefined initial values */
 class Reactive<T> extends signals.Signal<T> {
     /** Constructor making sure that undefined is not an option */
     constructor(x:T) {

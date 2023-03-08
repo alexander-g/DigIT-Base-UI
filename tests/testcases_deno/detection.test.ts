@@ -56,9 +56,18 @@ Deno.test('process_image.fail', async (t:Deno.TestContext) => {
 Deno.test('process_image.basic-succcess', async () => {
     const mockfile:AppFile = new AppFile(new File([], ''))
 
-    util.mock_fetch( async () => await new Response(JSON.stringify({classmap: "banana.jpg"})) );
+    util.mock_fetch( async () => await new Response(JSON.stringify({
+        classmap: "banana.jpg",
+        boxes:    [
+            [10, 10, 100, 100],
+            [50, 50, 300, 300],
+        ],
+        labels: [ "banana", "potato" ],
+    })) );
     await process_image(mockfile, ()=>{})
 
     asserts.assertEquals(mockfile.result.status, 'processed')
     asserts.assertExists(mockfile.result.classmap)
+    asserts.assertExists(mockfile.result.instances)
+    asserts.assertEquals(mockfile.result.instances.length, 2)
 })

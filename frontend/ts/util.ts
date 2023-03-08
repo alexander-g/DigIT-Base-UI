@@ -1,5 +1,4 @@
-// deno-lint-ignore no-explicit-any
-export function is_string(x:any): boolean {
+export function is_string(x:unknown): x is string {
     return (x instanceof String || typeof x === "string")
 }
 
