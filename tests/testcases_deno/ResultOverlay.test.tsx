@@ -2,11 +2,11 @@ import { ResultOverlays }   from "../../frontend/ts/components/ResultOverlay.tsx
 import { ImageOverlay }     from "../../frontend/ts/components/ResultOverlay.tsx";
 import { preact, signals }  from "../../frontend/ts/dep.ts"
 import * as util            from "./util.ts"
-import { ResultState }      from "../../frontend/ts/state.ts";
+import { ResultState, Result }      from "../../frontend/ts/state.ts";
 import { asserts, mock }    from "./dep.ts";
 
 
-Deno.test('ResultOverlays.decide-which-to-display', async () => {
+Deno.test('ResultOverlays.decide-which-to-display', async (t:Deno.TestContext) => {
     const document:Document = await util.setup_jsdom()
 
     const result: signals.Signal<ResultState> = new signals.Signal(new ResultState())
@@ -16,20 +16,36 @@ Deno.test('ResultOverlays.decide-which-to-display', async () => {
     //no results => no overlays
     asserts.assertEquals( document.body.children.length, 0 )
 
-    result.value = new ResultState()
-    await util.wait(1)
-    //still nothing because result value is empty
-    asserts.assertEquals( document.body.children.length, 0 )
+    await t.step( 'emptyresult', async () => {
+        result.value = new ResultState()
+        await util.wait(1)
+        //still nothing because result value is empty
+        asserts.assertEquals( document.body.children.length, 0 )
+    } )
 
-    const fetch_spy: mock.Spy = util.mock_fetch(async () => await new Response())
-    result.value = ResultState.from_result(
-        { status:'processed', classmap: "url-to-classmap.png" }
-    )
-    await util.wait(1)
-    //now there should be an image overlay
-    asserts.assertEquals( document.body.children.length, 1 )
-    asserts.assertEquals( document.body.querySelectorAll('img').length, 1)
-    asserts.assertEquals(fetch_spy.calls.length, 1)
+
+    await t.step('classmap.overlay', async () => {
+        const fetch_spy: mock.Spy = util.mock_fetch(async () => await new Response())
+        result.value = ResultState.from_result(
+            new Result('processed', { classmap: "url-to-classmap.png" })
+        )
+        await util.wait(1)
+        //now there should be an image overlay
+        asserts.assertEquals( document.body.children.length, 1 )
+        asserts.assertEquals( document.body.querySelectorAll('img').length, 1)
+        asserts.assertEquals(fetch_spy.calls.length, 1)
+    })
+
+    await t.step('boxes.overlay', async () => {
+        /*result.value = ResultState.from_result(
+            new Result('processed', { "instances":[] } )
+        )*/
+        result.value.set_instances([])
+        await util.wait(1)
+        //now there should be a boxes overlay and the image overlay still there
+        asserts.assertEquals( document.body.querySelectorAll('.boxes.overlay').length, 1)
+        asserts.assertEquals( document.body.querySelectorAll('img').length, 1)
+    })
 
     mock.restore()
 })
@@ -41,7 +57,7 @@ Deno.test('ImageOverlay.hide', async () => {
     const $visible: signals.Signal<boolean> = new signals.Signal(true)
 
     util.mock_fetch(async () => await new Response())
-    preact.render(<ImageOverlay imagename="" visible={$visible}/>, document.body)
+    preact.render(<ImageOverlay imagename="" $visible={$visible}/>, document.body)
     await util.wait(1)
 
     const img:HTMLImageElement|null = document.querySelector('img')

@@ -7,7 +7,7 @@ import { Instance }                     from "./logic/boxes.ts";
 export class AppFile extends File {
 
     /** This file's processing results */
-    #result:Result = {status: 'unprocessed'}
+    #result:Result = new Result()
 
     constructor(f:File) {
         super([f], f.name, {type:f.type, lastModified:f.lastModified})
@@ -40,7 +40,22 @@ export class Result {
     classmap?:          string;
 
     /** Boxes and labels of objects */
-    instances?:         Instance[];
+    #instances?:        Instance[];
+
+    constructor(status: ResultStatus = 'unprocessed', other:Partial<Result> = {}){
+        this.status = status;
+        Object.assign(this, {...other})
+    }
+
+    /** Boxes and labels of objects */
+    get instances(): Readonly<Instance[]>|undefined {
+        return this.#instances;
+    }
+
+    /** Set the instances, overwritten in the reactive subclass */
+    set_instances(instances: Instance[] | undefined) {
+        this.#instances = instances
+    }
 }
 
 
@@ -57,6 +72,22 @@ class Reactive<T> extends signals.Signal<T> {
 export class ResultState extends Result {
     /** Indicates whether the result should be displayed in the UI */
     $visible:   signals.Signal<boolean>     =   new signals.Signal(true)
+
+    #$instances: signals.Signal<Instance[]|undefined>  = new signals.Signal(undefined)
+
+    get $instances(): signals.ReadonlySignal<Instance[]|undefined> {
+        return this.#$instances
+    }
+
+    /** @override */
+    get instances(): readonly Instance[] | undefined {
+        return this.#$instances.peek()
+    }
+
+    set_instances(instances: Instance[] | undefined): void {
+        this.#$instances.value = instances;
+    }
+
 
     /** Convert a basic non-state result to this class */
     static from_result(result:Result): ResultState {

@@ -1,4 +1,4 @@
-import type { AppFile, Result } from "../state.ts"
+import { AppFile, Result }      from "../state.ts"
 import * as errors              from "../components/errors.ts";
 import * as util                from "../util.ts"
 import * as boxes               from "./boxes.ts";
@@ -77,15 +77,15 @@ async function set_result_from_response(response:Response, file:AppFile): Promis
     //TODO: JSON.parse might fail if invalid json
     // deno-lint-ignore no-explicit-any
     const rawresult: any = JSON.parse(await response.text())
-    const result:Result  = {status:'processed', raw:rawresult}
+    const result:Result  = new Result('processed', {raw:rawresult})
 
     if('classmap' in rawresult && util.is_string(rawresult.classmap)) {
         result.classmap = rawresult.classmap;
     }
 
-    result.instances = boxes.validate_boxes(rawresult.boxes)?.map( 
+    result.set_instances(boxes.validate_boxes(rawresult.boxes)?.map( 
         (box:boxes.Box) => ({box, label:"banana"}) 
-    )
+    ))
 
     file.set_result(result);
     return result
@@ -94,12 +94,12 @@ async function set_result_from_response(response:Response, file:AppFile): Promis
 
 /** Remove the result from a file and indicate that processing is in progress */
 function mark_result_as_processing(file:AppFile): void {
-    file.set_result({status:'processing'})
+    file.set_result(new Result('processing'))
 }
 
 /** Remove the result from a file and indicate that processing has failed */
 function mark_result_as_failed(file:AppFile): void {
-    file.set_result({status:'failed'})
+    file.set_result(new Result('failed'))
 }
 
 
