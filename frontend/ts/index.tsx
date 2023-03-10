@@ -49,6 +49,7 @@ export function Index(): JSX.Element {
             <script src="thirdparty/jquery-3.4.1.min.js"></script>
             <script src="thirdparty/semantic.min.js"></script>
             <script type="module" src="/ts/index.tsx"></script>
+            <link rel="stylesheet" href="css/box_styles.css" />
             <ExtraStyles />
         </head>
         <Body />

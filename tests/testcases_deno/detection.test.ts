@@ -2,7 +2,7 @@
 import * as util            from "./util.ts";
 import { mock, asserts }    from "./dep.ts";
 import { process_image }    from "../../frontend/ts/logic/detection.ts";
-import { AppFile }          from "../../frontend/ts/state.ts";
+import { AppFile, AppFileState }          from "../../frontend/ts/state.ts";
 
 
 Deno.test('process_image.fail', async (t:Deno.TestContext) => {
@@ -54,7 +54,7 @@ Deno.test('process_image.fail', async (t:Deno.TestContext) => {
 
 
 Deno.test('process_image.basic-succcess', async () => {
-    const mockfile:AppFile = new AppFile(new File([], ''))
+    const mockfile:AppFile = new AppFileState(new File([], ''))
 
     util.mock_fetch( async () => await new Response(JSON.stringify({
         classmap: "banana.jpg",

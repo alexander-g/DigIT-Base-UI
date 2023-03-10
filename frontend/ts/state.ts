@@ -26,6 +26,11 @@ export class AppFile extends File {
 
 export type ResultStatus = 'unprocessed' | 'processing' | 'processed' | 'failed';
 
+/** Immutable array of Instance to avoid unintentional modification.
+ *  Can be also undefined to indicate that no boxes are available.
+ */
+export type MaybeInstances = readonly Instance[] | undefined;
+
 /** Processing result, most fields optional to force error checking */
 export class Result {
     /** Indicates if the result is valid or not */
@@ -40,7 +45,7 @@ export class Result {
     classmap?:          string;
 
     /** Boxes and labels of objects */
-    #instances?:        Instance[];
+    #instances?:        MaybeInstances;
 
     constructor(status: ResultStatus = 'unprocessed', other:Partial<Result> = {}){
         this.status = status;
@@ -48,12 +53,12 @@ export class Result {
     }
 
     /** Boxes and labels of objects */
-    get instances(): Readonly<Instance[]>|undefined {
+    get instances(): MaybeInstances {
         return this.#instances;
     }
 
     /** Set the instances, overwritten in the reactive subclass */
-    set_instances(instances: Instance[] | undefined) {
+    set_instances(instances: MaybeInstances) {
         this.#instances = instances
     }
 }
@@ -71,27 +76,27 @@ class Reactive<T> extends signals.Signal<T> {
 /** Result with additional attributes specifically for UI */
 export class ResultState extends Result {
     /** Indicates whether the result should be displayed in the UI */
-    $visible:   signals.Signal<boolean>     =   new signals.Signal(true)
+    $visible:   signals.Signal<boolean>          = new signals.Signal(true)
 
-    #$instances: signals.Signal<Instance[]|undefined>  = new signals.Signal(undefined)
+    #$instances: signals.Signal<MaybeInstances>  = new signals.Signal(undefined)
 
-    get $instances(): signals.ReadonlySignal<Instance[]|undefined> {
+    get $instances(): signals.ReadonlySignal<MaybeInstances> {
         return this.#$instances
     }
 
     /** @override */
-    get instances(): readonly Instance[] | undefined {
+    get instances(): MaybeInstances {
         return this.#$instances.peek()
     }
 
-    set_instances(instances: Instance[] | undefined): void {
+    set_instances(instances: MaybeInstances): void {
         this.#$instances.value = instances;
     }
-
 
     /** Convert a basic non-state result to this class */
     static from_result(result:Result): ResultState {
         const resultstate = new ResultState()
+        resultstate.set_instances(result.instances)
         return Object.assign(resultstate, result)
     }
 }
