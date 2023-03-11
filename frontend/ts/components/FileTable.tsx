@@ -107,7 +107,10 @@ export function FileTableItem( props:InputImageProps ): JSX.Element {
                     <ImageContainer>
                         <ImageControls imagesize={props.file.$size}>
                             <InputImage {...props} /> 
-                            <ResultOverlays result={ props.file.$result }/>
+                            <ResultOverlays 
+                                result      =   { props.file.$result } 
+                                imagesize   =   { props.file.$size.value }
+                            />
                         </ImageControls>
                         <ProgressDimmer result={ props.file.$result }/>
                     </ImageContainer>

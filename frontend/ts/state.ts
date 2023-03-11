@@ -1,7 +1,7 @@
 import { signals } from "./dep.ts"
 import { Settings, AvailableModels }    from "./logic/settings.ts";
 import { Instance }                     from "./logic/boxes.ts";
-
+import { ImageSize }                    from "./util.ts";
 
 /** Main input file structure with results */
 export class AppFile extends File {
@@ -103,10 +103,7 @@ export class ResultState extends Result {
 
 
 
-export type ImageSize = {
-    width:  number;
-    height: number;
-}
+
 
 /** Reactive version of AppFile */
 export class AppFileState extends AppFile {

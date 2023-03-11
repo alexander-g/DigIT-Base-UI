@@ -7,8 +7,8 @@ globalThis.preact = preact;
 
 //export * as hooks       from "https://esm.sh/preact@10.11.3/hooks";
 import * as signals     from "https://esm.sh/@preact/signals@1.1.3?deps=preact@10.11.3";
-import Signal       = signals.Signal;
-type ReadonlySignal = signals.ReadonlySignal;
+import Signal           = signals.Signal;
+type ReadonlySignal<T>  = signals.ReadonlySignal<T>;
 export { signals, Signal, type ReadonlySignal }
 
 

@@ -10,7 +10,8 @@ Deno.test('ResultOverlays.decide-which-to-display', async (t:Deno.TestContext) =
     const document:Document = await util.setup_jsdom()
 
     const result: signals.Signal<ResultState> = new signals.Signal(new ResultState())
-    preact.render(<ResultOverlays result={result} />, document.body)
+    const imagesize = {width:1000, height:1000}
+    preact.render(<ResultOverlays result={result} imagesize={imagesize} />, document.body)
     await util.wait(1);
 
     //no results => no overlays

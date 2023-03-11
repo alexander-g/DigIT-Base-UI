@@ -1,16 +1,22 @@
-import { preact, JSX, signals } from "../dep.ts";
-import { ResultState }          from "../state.ts";
-import * as util                from "../util.ts";
-import * as styles              from "./styles.ts"
-import { black_to_transparent_css }     from "./SVGFilters.tsx";
-import { BoxesOverlay }                 from "./BoxesOverlay.tsx";
+import { preact, JSX, Signal, ReadonlySignal }  from "../dep.ts";
+import { ResultState }                          from "../state.ts";
+import * as util                                from "../util.ts";
+import * as styles                              from "./styles.ts"
+import { black_to_transparent_css }             from "./SVGFilters.tsx";
+import { BoxesOverlay }                         from "./BoxesOverlay.tsx";
+import { Instance }                             from "../logic/boxes.ts";
 
 type ResultOverlaysProps = {
-    result:     signals.ReadonlySignal<ResultState>;
+    /** Result that should be displayed in this overlay */
+    result:     ReadonlySignal<ResultState>;
+
+    /** Dimensions of the corresponding image  */
+    imagesize?: util.ImageSize;
 }
 
-function is_signalvalue_defined<T>(x:signals.ReadonlySignal<T|undefined>): x is signals.ReadonlySignal<T>;
-function is_signalvalue_defined<T>(x:signals.Signal<T|undefined>): x is signals.Signal<T> {
+/** Type guard to remove undefined from a signal value type */
+function is_signalvalue_defined<T>(x:ReadonlySignal<T|undefined>): x is ReadonlySignal<T>;
+function is_signalvalue_defined<T>(x:Signal<T|undefined>): x is Signal<T> {
     return (x.value != undefined)
 }
 
@@ -28,14 +34,22 @@ export class ResultOverlays extends preact.Component<ResultOverlaysProps> {
                     $visible  = {result.$visible}
                 />
             )
-        if(is_signalvalue_defined(result.$instances))
+        if(is_signalvalue_defined(result.$instances) && props.imagesize)
             children.push(
-                <BoxesOverlay $instances = {result.$instances}/>
+                <BoxesOverlay 
+                    $instances          = {result.$instances}
+                    imagesize           = {props.imagesize}
+                    on_new_instances    = {this.on_new_instances.bind(this)}
+                />
             )
 
         return <>
             { children }
         </>
+    }
+
+    on_new_instances(new_instances: Instance[]) {
+        this.props.result.peek().set_instances(new_instances)
     }
 }
 
@@ -45,12 +59,12 @@ export class ResultOverlays extends preact.Component<ResultOverlaysProps> {
 
 type ImageOverlayProps = {
     imagename:        string;
-    $visible:         signals.ReadonlySignal<boolean>;
+    $visible:         ReadonlySignal<boolean>;
 }
 
 /** A result overlay that displays an image (e.g. a segmentation result) */
 export class ImageOverlay extends preact.Component<ImageOverlayProps> {
-    img_src: signals.Signal<string|undefined> = new signals.Signal()
+    img_src: Signal<string|undefined> = new Signal()
 
     render(props:ImageOverlayProps): JSX.Element {
         const display_css = {

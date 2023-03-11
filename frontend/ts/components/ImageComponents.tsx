@@ -1,5 +1,6 @@
-import { preact, JSX, signals }                  from "../dep.ts"
-import type { AppFileState, ImageSize }     from "../state.ts"
+import { preact, JSX, signals }             from "../dep.ts"
+import type { AppFileState }                from "../state.ts"
+import type { ImageSize }                   from "../util.ts"
 import { set_image_src }                    from "../file_input.ts"
 import * as styles                          from "./styles.ts"
 
