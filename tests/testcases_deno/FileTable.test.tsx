@@ -13,12 +13,17 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
 
     await t.step('empty', async () => {
         preact.render(
-            <FileTable files={files} sortable={false} processing={processing}/>,
+            <FileTable 
+                files           =   {files} 
+                sortable        =   {false} 
+                processing      =   {processing}
+                labels_column   =   {false}
+            />,
             document.body
         )
         
         await util.wait(1)
-        asserts.assertEquals(document.querySelectorAll('table tr').length, 0)
+        asserts.assertEquals(document.querySelectorAll('table tbody tr').length, 0)
     })
 
     await t.step('non-empty', async () => {

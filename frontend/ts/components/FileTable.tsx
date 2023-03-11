@@ -2,15 +2,23 @@ import { preact, JSX, signals }                 from "../dep.ts"
 import type { AppFileState, AppFileList }       from "../state.ts"
 import { ContentMenu }                          from "./ContentMenu.tsx"
 import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.tsx"
-import type { InputImageProps }                         from "./ImageComponents.tsx"
 import { ResultOverlays }                               from "./ResultOverlay.tsx";
 import { FileTableMenu }                                from "./FileTableMenu.tsx";
-import { FileTableStatusIcons }                         from "./StatusIcons.tsx";
+import { FileTableRow, FileTableRowProps }              from "./FileTableRow.tsx";
 import { ProgressDimmer }                               from "./ProgressDimmer.tsx";
 
-export function FileTableHead(): JSX.Element {
-    return <thead>
 
+
+
+
+export function FileTableHead(props:{labels_column:boolean}): JSX.Element {
+    const first_cell_width:string  = props.labels_column? 'six' : 'sixteen'
+    const second_cell_wdith:string = props.labels_column? 'ten' : ''
+    return <thead>
+        <tr>
+            <th class={first_cell_width+" wide"}></th>
+            {props.labels_column? <th class={second_cell_wdith+" wide"}></th> : []}
+        </tr>
     </thead>
 }
 
@@ -42,55 +50,11 @@ export function SpinnerSwitch(props:SpinnerSwitchProps): JSX.Element {
     </>
 }
 
-/** The row of the file table, conains image name and optionally more */
-class FileTableRow extends preact.Component<InputImageProps> {
-    tr_ref: preact.RefObject<HTMLTableRowElement> = preact.createRef()
 
-    render(props: InputImageProps): JSX.Element {
-        const processed: boolean = (props.file.$result.value.status == 'processed')
-        const css = {
-            fontWeight:     processed? 'bold' : 'normal'
-        }
-        return <tr class="ui title table-row" ref={this.tr_ref} style={css}>
-            <td>
-                <i class="dropdown icon"></i>
-                <FileTableStatusIcons file={props.file}/>
-                <label>
-                    {props.file.name}
-                </label>
-            </td>
-        </tr>
-    }
-
-    componentDidMount(): void {
-        if(this.tr_ref.current) {
-            /** The position of the row from top of the document */
-            const top:number = this.tr_ref.current.getBoundingClientRect().top 
-                             + document.documentElement.scrollTop
-            
-            /** Called when an accordion opens, scrolls to this row */
-            const scroll_to_row: () => void
-                = () => setTimeout(() => {
-                    window.scrollTo( {top:top, behavior:'smooth'} )
-                }, 10)
-
-            //works on the first time, wont work later
-            signals.effect(() => {
-                if(this.props.file.$loaded.value)
-                    scroll_to_row()
-            })
-            //doesnt work on the first time, will work later
-            signals.effect(() => {
-                if(this.props.active_file.value == this.props.file.name)
-                    scroll_to_row()
-            })
-        }
-    }
-}
-
+type FileTableItem = FileTableRowProps;
 
 /** A table row and the corresponding content, which is initially hidden */
-export function FileTableItem( props:InputImageProps ): JSX.Element {
+export function FileTableItem( props:FileTableItem ): JSX.Element {
     const loading: signals.ReadonlySignal<boolean> 
         = signals.computed( () => !props.file.$loaded.value )
 
@@ -98,9 +62,10 @@ export function FileTableItem( props:InputImageProps ): JSX.Element {
 
     return <>
         <FileTableRow {...props} />
+
         {/* The content, shown when clicked on a row. */}
         <tr style="display:none" {...{filename:props.file.name} }>
-            <td style={no_padding_css}>
+            <td class="ui content" style={no_padding_css} colSpan={10000}>
                 <SpinnerSwitch loading={loading.value}> 
                     {/* TODO: refactor */}
                     <ContentMenu file={props.file} />
@@ -125,15 +90,20 @@ export function FileTableItem( props:InputImageProps ): JSX.Element {
 type FileTableBodyProps = {
     files:          AppFileList;
     active_file:    signals.ReadonlySignal<string|null>;
+    
+    /** Add a second column that contains labels */
+    labels_column:  boolean;
 }
 
 export function FileTableBody(props:FileTableBodyProps): JSX.Element {
     const rows: JSX.Element[] = props.files.value.map( 
-        (f:AppFileState) => <FileTableItem 
-                                key         =   {f.name} 
-                                file        =   {f} 
-                                active_file =   {props.active_file}
-                            />
+        (f:AppFileState) => 
+            <FileTableItem 
+                key         =   {f.name} 
+                file        =   {f} 
+                active_file =   {props.active_file}
+                labels_column = {props.labels_column}
+            />
     )
     
     return <tbody>
@@ -148,12 +118,17 @@ export function FileTableBody(props:FileTableBodyProps): JSX.Element {
 type FileTableProps = {
     /** The list of files that this file table should display */
     files:      AppFileList;
+    
     /** Whether or not a processing is operation is running somewehere in the app.
      *  Some UI elements might be disabled.
      */
     processing: signals.Signal<boolean>;
-    /** Whether or not the table should be sortable (TODO: not implemented) */
+    
+    /** Whether or not the table should be sortable **(TODO: not implemented)** */
     sortable:   boolean;
+
+    /** Add a second column that contains labels */
+    labels_column:  boolean;
 }
 
 export class FileTable extends preact.Component<FileTableProps> {
@@ -162,11 +137,19 @@ export class FileTable extends preact.Component<FileTableProps> {
 
     render(props: FileTableProps): JSX.Element {
         const sort_class: string = props.sortable ? 'sortable' : '';         //TODO fix classes
-        return <table class="ui fixed celled { sort_class } unstackable table accordion filetable" style="border:0px; margin-top:0px;" >
-            <FileTableMenu displayed_files={props.files.value} processing={props.processing}/>
-            <FileTableHead />
-            <FileTableBody files={props.files} active_file={this.#$active_file}/>
+        return  <>
+        <FileTableMenu displayed_files={props.files.value} processing={props.processing}/>
+        <table class="ui fixed celled unstackable table accordion filetable" style="border:0px; margin-top:0px;" >
+            <FileTableHead 
+                labels_column   =   {props.labels_column}
+            />
+            <FileTableBody 
+                files           =   {props.files} 
+                active_file     =   {this.#$active_file}
+                labels_column   =   {props.labels_column}
+            />
         </table>
+        </>
     }
 
     componentDidMount(): void {

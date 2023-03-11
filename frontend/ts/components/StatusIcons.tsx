@@ -1,17 +1,17 @@
-import { JSX, signals }                 from "../dep.ts";
-import { AppFileState, ResultStatus }   from "../state.ts";
+import { JSX, ReadonlySignal }          from "../dep.ts";
+import { ResultState, ResultStatus }    from "../state.ts";
 import { boolean_to_display_css }       from "../util.ts";
 
 
 
 type StatusIconProps = {
-    file:       Readonly<AppFileState>;
+    $result: ReadonlySignal<ResultState>;
 }
 
 
 /** Icons representing the processing status of a file in each file table row */
 export function FileTableStatusIcons(props:StatusIconProps): JSX.Element {
-    const status: ResultStatus = props.file.$result.value.status;
+    const status: ResultStatus = props.$result.value.status;
     const css_unprocessed = {
         display: boolean_to_display_css(status == 'unprocessed')
     }

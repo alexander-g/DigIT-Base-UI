@@ -11,6 +11,7 @@ export function DetectionTab(): JSX.Element {
             sortable    =   {false} 
             files       =   {STATE.files} 
             processing  =   {STATE.processing}
+            labels_column   =   {true}             //FIXME: hard-coded
         />    {/* FIXME: hard-coded */}
     </>
 }
