@@ -83,8 +83,10 @@ async function set_result_from_response(response:Response, file:AppFile): Promis
         result.classmap = rawresult.classmap;
     }
 
-    result.set_instances(boxes.validate_boxes(rawresult.boxes)?.map( 
-        (box:boxes.Box) => ({box, label:"banana"}) 
+    //set instances if any
+    const maybeboxes: boxes.Box[]|undefined = boxes.validate_boxes(rawresult.boxes)
+    result.set_instances(maybeboxes?.map( 
+        (box:boxes.Box, i:number) => ({box, label:rawresult.labels[i]}) 
     ))
 
     file.set_result(result);

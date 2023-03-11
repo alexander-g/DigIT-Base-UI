@@ -70,4 +70,5 @@ Deno.test('process_image.basic-succcess', async () => {
     asserts.assertExists(mockfile.result.classmap)
     asserts.assertExists(mockfile.result.instances)
     asserts.assertEquals(mockfile.result.instances.length, 2)
+    asserts.assertEquals(mockfile.result.instances[1]?.label, 'potato')
 })
