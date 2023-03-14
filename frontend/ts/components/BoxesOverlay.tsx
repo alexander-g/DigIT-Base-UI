@@ -1,10 +1,14 @@
 import { preact, JSX, ReadonlySignal }      from "../dep.ts";
 import { Instance }                         from "../logic/boxes.ts";
 import { ImageSize }                        from "../util.ts";
+import * as styles                          from "./styles.ts";
 
 type BoxesOverlayProps = {
     $instances:      ReadonlySignal<readonly Instance[]>;
     imagesize:       ImageSize;
+
+    /** When on, user can add new boxes */
+    drawing_mode_active: ReadonlySignal<boolean>;
 
     /** Called when the user requested some changes to the boxes */
     on_new_instances: (x:Instance[]) => void;
@@ -33,8 +37,13 @@ export function BoxesOverlay(props:BoxesOverlayProps): JSX.Element {
             />
     )
 
+    /** Display a crosshair to indicate that drawing new boxes is possible */
+    const cursor_css = {
+        cursor: props.drawing_mode_active.value? 'crosshair' : ''
+    }
+
     return (
-        <div class="boxes overlay">
+        <div class="boxes overlay" style={{ ...cursor_css, ...styles.overlay_css }}>
             { boxes }
         </div>
     )
@@ -72,6 +81,8 @@ class BoxOverlay extends preact.Component<BoxOverlayProps>  {
                     <select class="ui tiny search dropdown" style="display:none;"></select>
                     <i class="close red icon" title="Remove" onClick={this.on_close.bind(this)}></i>
                 </div>
+
+                <DragAnchor />
             </div>
         )
     }
@@ -82,4 +93,10 @@ class BoxOverlay extends preact.Component<BoxOverlayProps>  {
     }
 }
 
+
+class DragAnchor extends preact.Component {
+    render(): JSX.Element {
+        return <div class="drag-anchor move-anchor"></div>
+    }
+}
 

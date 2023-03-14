@@ -9,15 +9,16 @@ import { ProgressDimmer }                               from "./ProgressDimmer.t
 
 
 
-
-
 export function FileTableHead(props:{labels_column:boolean}): JSX.Element {
-    const first_cell_width:string  = props.labels_column? 'six' : 'sixteen'
-    const second_cell_wdith:string = props.labels_column? 'ten' : ''
+    const first_col_width:string  = props.labels_column? 'six' : 'sixteen'
+    const second_col_width:string = props.labels_column? 'ten' : ''
+    const second_col: JSX.Element =
+        props.labels_column? <th class={second_col_width + ' wide'}>Detections</th> : <></>
+
     return <thead>
         <tr>
-            <th class={first_cell_width+" wide"}></th>
-            {props.labels_column? <th class={second_cell_wdith+" wide"}></th> : []}
+            <th class={first_col_width+" wide"}>Files</th>
+            { second_col }
         </tr>
     </thead>
 }
@@ -59,6 +60,8 @@ export function FileTableItem( props:FileTableItem ): JSX.Element {
         = signals.computed( () => !props.file.$loaded.value )
 
     const no_padding_css = { padding: 0 }
+    //TODO: not here
+    const box_drawing_mode = new signals.Signal(false)
 
     return <>
         <FileTableRow {...props} />
@@ -68,13 +71,17 @@ export function FileTableItem( props:FileTableItem ): JSX.Element {
             <td class="ui content" style={no_padding_css} colSpan={10000}>
                 <SpinnerSwitch loading={loading.value}> 
                     {/* TODO: refactor */}
-                    <ContentMenu file={props.file} />
+                    <ContentMenu 
+                        file={props.file} 
+                        box_drawing_mode_active={box_drawing_mode} 
+                    />
                     <ImageContainer>
                         <ImageControls imagesize={props.file.$size}>
                             <InputImage {...props} /> 
                             <ResultOverlays 
                                 result      =   { props.file.$result } 
                                 imagesize   =   { props.file.$size.value }
+                                box_drawing_mode_active = {box_drawing_mode}
                             />
                         </ImageControls>
                         <ProgressDimmer result={ props.file.$result }/>

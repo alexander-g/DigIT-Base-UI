@@ -1,10 +1,12 @@
-import { preact, JSX, signals }     from "../dep.ts";
+import { preact, JSX, Signal }      from "../dep.ts";
 import type { AppFileState }        from "../state.ts";
 import * as detection               from "../logic/detection.ts";
 
 
 type ContentMenuProps = {
     file: AppFileState;
+
+    box_drawing_mode_active: Signal<boolean>;
 };
 
 /** A menu bar for every image, containing control buttons */
@@ -16,6 +18,7 @@ export function ContentMenu(props: ContentMenuProps): JSX.Element {
         >
             <PlayButton     file={props.file} />
             <ViewMenu       file={props.file} />
+            <NewBoxButton   drawing_mode_active={props.box_drawing_mode_active} />
             <DownloadButton file={props.file} />
             <HelpButton />
         </div>
@@ -35,6 +38,7 @@ function PlayButton(props: PlayButtonProps): JSX.Element {
     const callback_fn: typeof props.callback 
         = props.callback ?? detection.process_image
     
+    //TODO: disable when processing is going on somewhere
     return (
         <a
             class           =   "process item"
@@ -88,7 +92,7 @@ class ShowResultsCheckbox extends preact.Component<{file:AppFileState}> {
     }
 
     on_click() {
-        const $visible: signals.Signal<boolean> | undefined 
+        const $visible: Signal<boolean> | undefined 
             = this.props.file.$result.peek().$visible
         
         if($visible)
@@ -151,4 +155,28 @@ export class HelpButton extends preact.Component<HelpButtonProps> {
     componentDidMount(): void {
         $(`.help-menu-button`).popup({ hoverable: false }); //TODO! only one single component
     }
+}
+
+
+type NewBoxButtonProps = {
+    /** When on, user can add new boxes */
+    drawing_mode_active: Signal<boolean>;
+}
+
+export function NewBoxButton(props:NewBoxButtonProps): JSX.Element {
+    function on_click() {
+        props.drawing_mode_active.value = !props.drawing_mode_active.value;
+    }
+    const active_class:string = props.drawing_mode_active.value ? 'active' : '';
+
+    return (
+    <a 
+        class           =   {"item new-box "+active_class} 
+        onClick         =   {on_click}
+        data-tooltip    =   "Add New Box" 
+        data-position   =   "bottom left"
+    >
+      <i class="vector square icon"></i>
+    </a>
+    )
 }

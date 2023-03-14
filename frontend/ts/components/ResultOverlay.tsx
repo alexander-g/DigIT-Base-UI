@@ -12,6 +12,8 @@ type ResultOverlaysProps = {
 
     /** Dimensions of the corresponding image  */
     imagesize?: util.ImageSize;
+
+    box_drawing_mode_active: ReadonlySignal<boolean>;
 }
 
 /** Type guard to remove undefined from a signal value type */
@@ -34,12 +36,14 @@ export class ResultOverlays extends preact.Component<ResultOverlaysProps> {
                     $visible  = {result.$visible}
                 />
             )
+        //TODO: not a good condition
         if(is_signalvalue_defined(result.$instances) && props.imagesize)
             children.push(
                 <BoxesOverlay 
                     $instances          = {result.$instances}
                     imagesize           = {props.imagesize}
                     on_new_instances    = {this.on_new_instances.bind(this)}
+                    drawing_mode_active = {props.box_drawing_mode_active}
                 />
             )
 
