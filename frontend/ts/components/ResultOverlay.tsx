@@ -8,12 +8,14 @@ import { Instance }                             from "../logic/boxes.ts";
 
 type ResultOverlaysProps = {
     /** Result that should be displayed in this overlay */
-    result:     ReadonlySignal<ResultState>;
+    $result:     ReadonlySignal<ResultState>;
 
-    /** Dimensions of the corresponding image  */
-    imagesize?: util.ImageSize;
-
-    box_drawing_mode_active: ReadonlySignal<boolean>;
+    /** Props passed to the box overlay. If undefined no box overlay is created */
+    boxoverlay_props?: {
+        $drawing_mode_active:       ReadonlySignal<boolean>;
+        /** Dimensions of the corresponding image  */
+        imagesize?:                 util.ImageSize;
+    }
 }
 
 /** Type guard to remove undefined from a signal value type */
@@ -28,7 +30,7 @@ export class ResultOverlays extends preact.Component<ResultOverlaysProps> {
     render(props:ResultOverlaysProps): JSX.Element {
         const children: JSX.Element[] = []
 
-        const result: ResultState = props.result.value;
+        const result: ResultState = props.$result.value;
         if(result.classmap)
             children.push(
                 <ImageOverlay 
@@ -36,14 +38,13 @@ export class ResultOverlays extends preact.Component<ResultOverlaysProps> {
                     $visible  = {result.$visible}
                 />
             )
-        //TODO: not a good condition
-        if(is_signalvalue_defined(result.$instances) && props.imagesize)
+        
+        if(props.boxoverlay_props)
             children.push(
                 <BoxesOverlay 
                     $instances          = {result.$instances}
-                    imagesize           = {props.imagesize}
                     on_new_instances    = {this.on_new_instances.bind(this)}
-                    drawing_mode_active = {props.box_drawing_mode_active}
+                    {...props.boxoverlay_props}
                 />
             )
 
@@ -53,7 +54,7 @@ export class ResultOverlays extends preact.Component<ResultOverlaysProps> {
     }
 
     on_new_instances(new_instances: Instance[]) {
-        this.props.result.peek().set_instances(new_instances)
+        this.props.$result.peek().set_instances(new_instances)
     }
 }
 

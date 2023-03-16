@@ -52,44 +52,48 @@ export function SpinnerSwitch(props:SpinnerSwitchProps): JSX.Element {
 }
 
 
-type FileTableItem = FileTableRowProps;
+type FileTableItemProps = FileTableRowProps;
 
 /** A table row and the corresponding content, which is initially hidden */
-export function FileTableItem( props:FileTableItem ): JSX.Element {
-    const loading: signals.ReadonlySignal<boolean> 
-        = signals.computed( () => !props.file.$loaded.value )
+class FileTableItem extends preact.Component<FileTableItemProps> {
+    $box_drawing_mode: signals.Signal<boolean> = new signals.Signal(false)
+    
+    render( props:FileTableItemProps ): JSX.Element {
+        const loading: signals.ReadonlySignal<boolean> 
+            = signals.computed( () => !props.file.$loaded.value )
 
-    const no_padding_css = { padding: 0 }
-    //TODO: not here
-    const box_drawing_mode = new signals.Signal(false)
+        const no_padding_css = { padding: 0 }
 
-    return <>
-        <FileTableRow {...props} />
+        return <>
+            <FileTableRow {...props} />
 
-        {/* The content, shown when clicked on a row. */}
-        <tr style="display:none" {...{filename:props.file.name} }>
-            <td class="ui content" style={no_padding_css} colSpan={10000}>
-                <SpinnerSwitch loading={loading.value}> 
-                    {/* TODO: refactor */}
-                    <ContentMenu 
-                        file={props.file} 
-                        box_drawing_mode_active={box_drawing_mode} 
-                    />
-                    <ImageContainer>
-                        <ImageControls imagesize={props.file.$size}>
-                            <InputImage {...props} /> 
-                            <ResultOverlays 
-                                result      =   { props.file.$result } 
-                                imagesize   =   { props.file.$size.value }
-                                box_drawing_mode_active = {box_drawing_mode}
-                            />
-                        </ImageControls>
-                        <ProgressDimmer result={ props.file.$result }/>
-                    </ImageContainer>
-                </SpinnerSwitch>
-            </td>
-        </tr>
-    </>
+            {/* The content, shown when clicked on a row. */}
+            <tr style="display:none" {...{filename:props.file.name} }>
+                <td class="ui content" style={no_padding_css} colSpan={10000}>
+                    <SpinnerSwitch loading={loading.value}> 
+                        {/* TODO: refactor */}
+                        <ContentMenu 
+                            file                    = {props.file} 
+                            box_drawing_mode_active = {this.$box_drawing_mode} 
+                        />
+                        <ImageContainer>
+                            <ImageControls imagesize={props.file.$size}>
+                                <InputImage {...props} /> 
+                                <ResultOverlays 
+                                    $result     =   { props.file.$result } 
+                                    boxoverlay_props = {{
+                                        imagesize:            props.file.$size.value,
+                                        $drawing_mode_active: this.$box_drawing_mode
+                                    }}
+                                />
+                            </ImageControls>
+                            <ProgressDimmer result={ props.file.$result }/>
+                        </ImageContainer>
+                    </SpinnerSwitch>
+                </td>
+            </tr>
+        </>
+    }
 }
 
 

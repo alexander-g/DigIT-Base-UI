@@ -11,7 +11,7 @@ Deno.test('ResultOverlays.decide-which-to-display', async (t:Deno.TestContext) =
 
     const result: signals.Signal<ResultState> = new signals.Signal(new ResultState())
     const imagesize = {width:1000, height:1000}
-    preact.render(<ResultOverlays result={result} imagesize={imagesize} />, document.body)
+    preact.render(<ResultOverlays $result={result} />, document.body)
     await util.wait(1);
 
     //no results => no overlays
@@ -37,11 +37,19 @@ Deno.test('ResultOverlays.decide-which-to-display', async (t:Deno.TestContext) =
         asserts.assertEquals(fetch_spy.calls.length, 1)
     })
 
+    //TODO: should be a test of its own
     await t.step('boxes.overlay', async () => {
-        /*result.value = ResultState.from_result(
-            new Result('processed', { "instances":[] } )
-        )*/
-        result.value.set_instances([])
+        const boxprops = {
+            imagesize:            imagesize,
+            $drawing_mode_active: new signals.Signal(false),
+        }
+        preact.render(
+            <ResultOverlays 
+                $result             =   {result} 
+                boxoverlay_props    =   {boxprops} 
+            />,
+            document.body
+        )
         await util.wait(1)
         //now there should be a boxes overlay and the image overlay still there
         asserts.assertEquals( document.body.querySelectorAll('.boxes.overlay').length, 1)

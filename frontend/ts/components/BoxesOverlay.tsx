@@ -1,14 +1,15 @@
 import { preact, JSX, ReadonlySignal }      from "../dep.ts";
 import { Instance }                         from "../logic/boxes.ts";
+import { MaybeInstances }                   from "../state.ts";
 import { ImageSize }                        from "../util.ts";
 import * as styles                          from "./styles.ts";
 
 type BoxesOverlayProps = {
-    $instances:      ReadonlySignal<readonly Instance[]>;
-    imagesize:       ImageSize;
+    $instances:      ReadonlySignal<MaybeInstances>;
+    imagesize?:      ImageSize;
 
     /** When on, user can add new boxes */
-    drawing_mode_active: ReadonlySignal<boolean>;
+    $drawing_mode_active: ReadonlySignal<boolean>;
 
     /** Called when the user requested some changes to the boxes */
     on_new_instances: (x:Instance[]) => void;
@@ -19,27 +20,30 @@ type BoxesOverlayProps = {
 /** A result overlay that displays boxes */
 export function BoxesOverlay(props:BoxesOverlayProps): JSX.Element {
 
+    const instances: readonly Instance[] = props.$instances.value ?? [];
     function on_remove(x: Instance) {
-        const instances: readonly Instance[]    = props.$instances.value;
-        const index: number                     = instances.indexOf(x)
+        const index: number = instances.indexOf(x)
 
         const new_instances: Instance[] 
             = [...instances.slice(0, index), ...instances.slice(index+1)]
         props.on_new_instances(new_instances)
     }
 
-    const boxes: JSX.Element[] = props.$instances.value.map(
-        (inst:Instance) => 
-            <BoxOverlay 
-                instance    =   {inst} 
-                imagesize   =   {props.imagesize}
-                on_remove   =   {on_remove}
-            />
-    )
+    let boxes: JSX.Element[] = []
+    //imagesize undefined means the image has not been opened yet, so dont show
+    if(props.imagesize != undefined)
+        boxes = instances.map(
+            (inst:Instance) => 
+                <BoxOverlay 
+                    instance    =   {inst} 
+                    imagesize   =   {props.imagesize!}
+                    on_remove   =   {on_remove}
+                />
+        )
 
     /** Display a crosshair to indicate that drawing new boxes is possible */
     const cursor_css = {
-        cursor: props.drawing_mode_active.value? 'crosshair' : ''
+        cursor: props.$drawing_mode_active.value? 'crosshair' : ''
     }
 
     return (

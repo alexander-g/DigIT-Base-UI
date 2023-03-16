@@ -18,11 +18,13 @@ Deno.test('BoxesOverlay.basic', async () => {
     ])
 
     const spy:mock.Spy = mock.spy()
+    const drawing_mode = new signals.Signal(false)
     preact.render(
         <BoxesOverlay 
             $instances          =   {instances} 
             imagesize           =   {imagesize} 
             on_new_instances    =   {spy}
+            $drawing_mode_active    =   {drawing_mode}
         />, document.body 
     );
     await util.wait(1)
