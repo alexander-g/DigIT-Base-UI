@@ -3,6 +3,7 @@ import { Instance, Box }                    from "../logic/boxes.ts";
 import { MaybeInstances }                   from "../state.ts";
 import { Size, Point }                      from "../util.ts";
 import * as styles                          from "./styles.ts";
+import * as ui_util                         from "./ui_util.ts";
 
 type BoxesOverlayProps = {
     $instances:      ReadonlySignal<MaybeInstances>;
@@ -35,11 +36,13 @@ export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
         //imagesize undefined means the image has not been opened yet, so dont show
         if(props.imagesize != undefined)
             boxes = instances.map(
-                (inst:Instance) => 
+                (inst:Instance, index:number) => 
                     <BoxOverlay 
                         instance    =   {inst} 
+                        index       =   {index}
                         imagesize   =   {props.imagesize!}
                         on_remove   =   {on_remove}
+                        on_modify   =   {this.on_modify.bind(this)}
                     />
             )
 
@@ -67,7 +70,7 @@ export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
         if(!this.props.$drawing_mode_active.peek())
             return;
         
-        const start_p:Point = page2element_coordinates(
+        const start_p:Point = ui_util.page2element_coordinates(
             {x:event.pageX, y:event.pageY}, this.ref.current, this.props.imagesize
         );
         let move_p:Point = start_p;
@@ -88,7 +91,7 @@ export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
                 return;
             }
 
-            move_p = page2element_coordinates(
+            move_p = ui_util.page2element_coordinates(
                 {x:mousemove_event.pageX, y:mousemove_event.pageY},
                 _this.ref.current!,
                 _this.props.imagesize
@@ -112,24 +115,48 @@ export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
         ]
         this.props.on_new_instances(new_instances)
     }
+
+    on_modify(index:number, new_instance: Instance): void {
+        const instances: MaybeInstances = this.props.$instances.peek()
+        if(!instances) {
+            console.trace('Trying to modify instance but instances are null')
+            return;
+        }
+        if(index >= instances.length) {
+            console.trace('Trying to modify out-of-range instance')
+            return;
+        }
+        
+        const new_instances: Instance[] 
+            = [...instances.slice(0, index), new_instance, ...instances.slice(index+1)]
+        this.props.on_new_instances(new_instances)
+    }
 }
 
 type BoxOverlayProps = {
     instance:       Instance,
     imagesize:      Size;
+    index:          number;
 
     /** Called when user wants to remove a box */
     on_remove:      (x:Instance) => void;
+
+    /** Called when user wants to modify a box / label */
+    on_modify:      (index:number, x:Instance) => void;
 }
 
 /** An individual box. Contains class label, and some controls. */
 class BoxOverlay extends preact.Component<BoxOverlayProps>  {
+    move_offset: Signal<Point> = new Signal({x:0, y:0})
+
     render(props:BoxOverlayProps): JSX.Element {
         const {x0,y0,x1,y1}         = props.instance.box;
         const {width:W, height:H}   = props.imagesize;
         const position_css  = {
-            left:   (x0      / W) *100 + '%',
-            top:    (y0      / H) *100 + '%',
+            //left:   (x0      / W) *100 + '%',
+            //top:    (y0      / H) *100 + '%',
+            left:   ((x0+this.move_offset.value.x)      / W) *100 + '%',
+            top:    ((y0+this.move_offset.value.y)      / H) *100 + '%',
             width:  ((x1-x0) / W) *100 + '%',
             height: ((y1-y0) / H) *100 + '%',
         }
@@ -147,7 +174,11 @@ class BoxOverlay extends preact.Component<BoxOverlayProps>  {
                     <i class="close red icon" title="Remove" onClick={this.on_remove.bind(this)}></i>
                 </div>
 
-                <DragAnchor />
+                <DragAnchor
+                    delta       = {this.move_offset}
+                    imagesize   = {props.imagesize}
+                    on_drag_end = {this.on_move.bind(this)}
+                />
             </div>
         )
     }
@@ -155,45 +186,60 @@ class BoxOverlay extends preact.Component<BoxOverlayProps>  {
     on_remove() {
         this.props.on_remove(this.props.instance)
     }
+
+    on_move() {
+        const old_box: Box = this.props.instance.box;
+        const new_box: Box = {
+            x0: old_box.x0 + this.move_offset.peek().x,
+            y0: old_box.y0 + this.move_offset.peek().y,
+            x1: old_box.x1 + this.move_offset.peek().x,
+            y1: old_box.y1 + this.move_offset.peek().y,
+        }
+        const new_instance: Instance = {
+            box:   new_box,
+            label: this.props.instance.label,
+        }
+        this.props.on_modify(this.props.index, new_instance)
+        this.move_offset.value = {x:0, y:0}
+    }
+
+    //TODO: compute_modified_box(): Box
 }
 
 
-class DragAnchor extends preact.Component {
+type DragAnchorProps = {
+    delta:       Signal<Point>;
+    imagesize:   Size;
+    on_drag_end: () => void;
+}
+
+class DragAnchor extends preact.Component<DragAnchorProps> {
+    ref: preact.RefObject<HTMLDivElement> = preact.createRef()
+
     render(): JSX.Element {
-        return <div class="drag-anchor move-anchor"></div>
+        return (
+            <div 
+                class       = "drag-anchor move-anchor" 
+                onMouseDown = {this.on_mouse_down.bind(this)}
+                ref         = {this.ref}
+            >
+            </div>
+        )
+    }
+
+    on_mouse_down(mousedown_event:MouseEvent) {
+        if(!this.ref.current?.parentElement?.parentElement)
+            return;
+        
+        ui_util.start_drag(
+            mousedown_event,
+            this.ref.current.parentElement.parentElement,
+            this.props.imagesize,
+            (start:Point, end:Point) => { 
+                this.props.delta.value = {x:end.x - start.x, y:end.y - start.y}
+            },  //on_mousemove
+            this.props.on_drag_end,     //on_mouseup
+        )
     }
 }
 
-
-
-/** Convert page coordinates to coordinates within a HTML element. 
- *  @param p       - Point in page coordinates
- *  @param element - Target HTML Element
- *  @param size    - Optional element size, by default clientWidth/clientHeight
- *  @param offset  - Optional offset to apply, by default window page offset
-*/
-function page2element_coordinates(
-    p       : Point, 
-    element : HTMLElement, 
-    size?   : Size, 
-    offset? : Point
-): Point {
-    const rect:DOMRect = element.getBoundingClientRect()
-    /** Absolute point, relative to the top-left corner */
-    const p_rel:Point  = {
-        x : (p.x  - rect.left - (offset?.x ?? window.scrollX)),
-        y : (p.y  - rect.top  - (offset?.y ?? window.scrollY)),
-    }
-    /** Normalized point, relative to the top-left corner */
-    const p_norm:Point = {
-        x : (p_rel.x / rect.width), 
-        y : (p_rel.y / rect.height),
-    }
-
-    /** Absolute point, within the element */
-    const p_el: Point = {
-        x : (p_norm.x * (size?.width  ?? element.clientWidth)),
-        y : (p_norm.y * (size?.height ?? element.clientHeight)),
-    }
-    return p_el;
-}
