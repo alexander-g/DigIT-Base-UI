@@ -4,10 +4,11 @@ import { Box, Instance }    from "../../frontend/ts/logic/boxes.ts";
 
 import * as util            from "./util.ts";
 import { asserts, mock }    from "./dep.ts";
+import { MaybeInstances } from "../../frontend/ts/state.ts";
 
 
 
-Deno.test('BoxesOverlay.basic', async () => {
+Deno.test('BoxesOverlay.basic', async (t:Deno.TestContext) => {
     const document:Document = await util.setup_jsdom()
 
     const imagesize = {width:1000, height:1000}
@@ -18,13 +19,13 @@ Deno.test('BoxesOverlay.basic', async () => {
     ])
 
     const spy:mock.Spy = mock.spy()
-    const drawing_mode = new signals.Signal(false)
+    const $drawing_mode = new signals.Signal(false)
     preact.render(
         <BoxesOverlay 
             $instances          =   {instances} 
             imagesize           =   {imagesize} 
             on_new_instances    =   {spy}
-            $drawing_mode_active    =   {drawing_mode}
+            $drawing_mode_active    =   {$drawing_mode}
         />, document.body 
     );
     await util.wait(1)
@@ -45,4 +46,30 @@ Deno.test('BoxesOverlay.basic', async () => {
     instances.value = []
     await util.wait(1)
     asserts.assertEquals(document.querySelectorAll('.box').length, 0)
+
+    const overlay: HTMLElement = document.querySelector('.boxes.overlay')!
+    await t.step('drawing_active', async () => {
+        //activate drawing mode
+        $drawing_mode.value = true;
+        await util.wait(1)
+
+        //box overlay should indicate that drawing mode is on
+        asserts.assertNotEquals(overlay.style.cursor, '')
+    })
+})
+
+
+Deno.test('BoxesOverlay.add_boxes', () => {
+    const $instances: signals.Signal<MaybeInstances> = new signals.Signal(undefined)
+    const spy:mock.Spy<Instance[]> = mock.spy()
+    const overlay = new BoxesOverlay({
+        $instances           : $instances,
+        $drawing_mode_active : new signals.Signal(false),
+        on_new_instances     : spy,
+    })
+
+    overlay.add_new_box(Box.from_array([50,50,100,100]))
+    mock.assertSpyCalls(spy, 1)
+    const new_instances0:Instance[] = spy.calls[0]?.args[0]
+    asserts.assertEquals(new_instances0.length, 1)
 })

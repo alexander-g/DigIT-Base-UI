@@ -12,7 +12,7 @@ type ResultOverlaysProps = {
 
     /** Props passed to the box overlay. If undefined no box overlay is created */
     boxoverlay_props?: {
-        $drawing_mode_active:       ReadonlySignal<boolean>;
+        $drawing_mode_active:       Signal<boolean>;
         /** Dimensions of the corresponding image  */
         imagesize?:                 util.ImageSize;
     }

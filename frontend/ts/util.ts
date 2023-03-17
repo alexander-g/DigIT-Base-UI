@@ -54,7 +54,15 @@ export function boolean_to_display_css(x: boolean): 'none' | undefined {
   }
   
 
-export type ImageSize = {
+
+export type Point = {
+    x:number, 
+    y:number
+};
+
+export type Size = {
     width:  number;
     height: number;
 }
+
+export type ImageSize = Size;
