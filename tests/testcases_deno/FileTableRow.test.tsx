@@ -12,7 +12,7 @@ Deno.test('LabelsColumn.basics', async () => {
     preact.render(<LabelsColumn $instances={$instances}/>, document.body)
     await util.wait(1)
 
-    const p:HTMLParagraphElement = document.querySelector('p.detected-labels-summary')!
+    const p:HTMLParagraphElement = document.querySelector('label.detected-labels-summary')!
     asserts.assertStrictEquals(p.innerHTML, '')
 
     $instances.value = [

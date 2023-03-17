@@ -72,9 +72,9 @@ export function LabelsColumn(props:LabelsColumnProps): JSX.Element {
     const text:  string   = labels.join(', ')
     return (
         <td>
-            <p class="detected-labels-summary">
+            <label class="detected-labels-summary">
                 { text }
-            </p>
+            </label>
         </td>
     )
 }
