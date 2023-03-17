@@ -146,17 +146,17 @@ type BoxOverlayProps = {
 }
 
 /** An individual box. Contains class label, and some controls. */
-class BoxOverlay extends preact.Component<BoxOverlayProps>  {
-    move_offset: Signal<Point> = new Signal({x:0, y:0})
+export class BoxOverlay extends preact.Component<BoxOverlayProps>  {
+    //temporary box modifiers
+    move_offset: Signal<Point>  = new Signal({x:0, y:0})
+    resize_offset:Signal<Point> = new Signal({x:0, y:0})
 
     render(props:BoxOverlayProps): JSX.Element {
-        const {x0,y0,x1,y1}         = props.instance.box;
+        const {x0,y0,x1,y1}         = this.compute_modified_box()
         const {width:W, height:H}   = props.imagesize;
         const position_css  = {
-            //left:   (x0      / W) *100 + '%',
-            //top:    (y0      / H) *100 + '%',
-            left:   ((x0+this.move_offset.value.x)      / W) *100 + '%',
-            top:    ((y0+this.move_offset.value.y)      / H) *100 + '%',
+            left:   (x0      / W) *100 + '%',
+            top:    (y0      / H) *100 + '%',
             width:  ((x1-x0) / W) *100 + '%',
             height: ((y1-y0) / H) *100 + '%',
         }
@@ -175,9 +175,17 @@ class BoxOverlay extends preact.Component<BoxOverlayProps>  {
                 </div>
 
                 <DragAnchor
+                    type        = "move-anchor"
                     delta       = {this.move_offset}
                     imagesize   = {props.imagesize}
-                    on_drag_end = {this.on_move.bind(this)}
+                    on_drag_end = {this.finalize_box.bind(this)}
+                />
+
+                <DragAnchor
+                    type        = "resize-anchor"
+                    delta       = {this.resize_offset}
+                    imagesize   = {props.imagesize}
+                    on_drag_end = {this.finalize_box.bind(this)}
                 />
             </div>
         )
@@ -187,27 +195,33 @@ class BoxOverlay extends preact.Component<BoxOverlayProps>  {
         this.props.on_remove(this.props.instance)
     }
 
-    on_move() {
-        const old_box: Box = this.props.instance.box;
-        const new_box: Box = {
-            x0: old_box.x0 + this.move_offset.peek().x,
-            y0: old_box.y0 + this.move_offset.peek().y,
-            x1: old_box.x1 + this.move_offset.peek().x,
-            y1: old_box.y1 + this.move_offset.peek().y,
-        }
+    finalize_box() {
         const new_instance: Instance = {
-            box:   new_box,
+            box:   this.compute_modified_box(),
             label: this.props.instance.label,
         }
         this.props.on_modify(this.props.index, new_instance)
-        this.move_offset.value = {x:0, y:0}
+        this.move_offset.value   = {x:0, y:0}
+        this.resize_offset.value = {x:0, y:0}
     }
 
-    //TODO: compute_modified_box(): Box
+    /** Adjust the box of the instance with modifiers */
+    compute_modified_box(): Box {
+        const {x0,y0,x1,y1} = this.props.instance.box;
+        const offset:Point  = this.move_offset.value
+        const resize:Point  = this.resize_offset.value
+        return new Box(
+            x0 + offset.x, 
+            y0 + offset.y, 
+            x1 + offset.x + resize.x, 
+            y1 + offset.y + resize.y,
+        )
+    }
 }
 
 
 type DragAnchorProps = {
+    type:        "move-anchor" | "resize-anchor";
     delta:       Signal<Point>;
     imagesize:   Size;
     on_drag_end: () => void;
@@ -216,10 +230,10 @@ type DragAnchorProps = {
 class DragAnchor extends preact.Component<DragAnchorProps> {
     ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 
-    render(): JSX.Element {
+    render(props:DragAnchorProps): JSX.Element {
         return (
             <div 
-                class       = "drag-anchor move-anchor" 
+                class       = {"drag-anchor " + props.type }
                 onMouseDown = {this.on_mouse_down.bind(this)}
                 ref         = {this.ref}
             >

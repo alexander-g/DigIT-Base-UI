@@ -1,4 +1,5 @@
 import { BoxesOverlay }     from "../../frontend/ts/components/BoxesOverlay.tsx";
+import { BoxOverlay }       from "../../frontend/ts/components/BoxesOverlay.tsx";
 import { preact, signals }  from "../../frontend/ts/dep.ts";
 import { Box, Instance }    from "../../frontend/ts/logic/boxes.ts";
 
@@ -73,3 +74,35 @@ Deno.test('BoxesOverlay.add_boxes', () => {
     const new_instances0:Instance[] = spy.calls[0]?.args[0]
     asserts.assertEquals(new_instances0.length, 1)
 })
+
+
+Deno.test('BoxOverlay.modifiers', async () => {
+    const instance:Instance = {box: Box.from_array([10,10,100,100]), label:'???'}
+    const overlay = new BoxOverlay({
+        instance:  instance,
+        imagesize: {width: 500, height:500},
+        index:     1,
+        on_modify: () => {},
+        on_remove: () => {}
+    })
+
+    const box0: Box = overlay.compute_modified_box()
+    asserts.assertEquals(box0, instance.box)
+
+    overlay.move_offset.value   = {x: 10, y:0}
+    await util.wait(1)
+    const box1: Box = overlay.compute_modified_box()
+    asserts.assertEquals(box1, Box.from_array([20,10,110,100]))
+
+    overlay.finalize_box()
+    asserts.assertEquals(overlay.move_offset.value, {x: 0, y:0})
+
+    overlay.resize_offset.value = {x: 25, y:30}
+    await util.wait(1)
+    const box2: Box = overlay.compute_modified_box()
+    asserts.assertEquals(box2, Box.from_array([10,10,125,130]))
+
+    overlay.finalize_box()
+    asserts.assertEquals(overlay.resize_offset.value, {x: 0, y:0})
+})
+
