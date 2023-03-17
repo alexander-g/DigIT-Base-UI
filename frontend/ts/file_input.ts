@@ -8,9 +8,16 @@ export function on_drag(event:preact.JSX.TargetedDragEvent<HTMLElement>): void {
 }
 
 /** Event handler for file drop events */
-export function on_drop(event:preact.JSX.TargetedDragEvent<HTMLElement>): void {
+export async function on_drop(event:preact.JSX.TargetedDragEvent<HTMLElement>): Promise<void> {
     event.preventDefault()
-    STATE.files.set_from_files(event.dataTransfer?.files ?? [])  //TODO: hard-coded
+    //reset state
+    STATE.files.set_from_files([])
+    //get file list from event, otherwise its gone after the wait
+    const files: FileList | undefined = event.dataTransfer?.files
+    //refresh ui
+    await util.wait(1)
+    //not set the state with the actual files
+    STATE.files.set_from_files(files ?? [])  //TODO: hard-coded
 }
 
 export function set_image_src(img:HTMLImageElement, input:Blob|string|null): void {
@@ -22,12 +29,12 @@ export function set_image_src(img:HTMLImageElement, input:Blob|string|null): voi
         img.style.visibility = '';
         img.addEventListener( 'load', () => URL.revokeObjectURL(url), {once:true} )
         img.src = url;
-        console.log('Setting image src of', img, 'to blob', input)
+        //console.log('Setting image src of', img, 'to blob', input)
     } else if (util.is_string(input)){
         const url  = input as string;
         img.style.visibility = '';
         img.src   = url;
-        console.log('Setting image src of', img, 'to string', input)
+        //console.log('Setting image src of', img, 'to string', input)
     } else if (input == null) {
         //hidden to prevent the browser showing a placeholder
         img.style.visibility = 'hidden';

@@ -66,3 +66,10 @@ export type Size = {
 }
 
 export type ImageSize = Size;
+
+
+export function wait(ms: number): Promise<unknown> {
+    return new Promise((resolve: (x:unknown) => void) => {
+        setTimeout(() => resolve(0), ms)
+    })
+}

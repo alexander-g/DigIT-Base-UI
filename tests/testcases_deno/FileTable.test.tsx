@@ -1,4 +1,5 @@
 import { FileTable }        from "../../frontend/ts/components/FileTable.tsx"
+import { FileTableBody }    from "../../frontend/ts/components/FileTable.tsx"
 import { AppFileList, AppFile, Result }     from "../../frontend/ts/state.ts"
 import * as util            from "./util.ts"
 import { asserts, mock }    from "./dep.ts"
@@ -48,4 +49,48 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
 
         asserts.assertEquals(p2.style.fontWeight, 'bold')
     })
+})
+
+
+
+
+Deno.test('FileTableBody.no-scrolling-on-dead-rows', async () => {
+    const document:Document   = await util.setup_jsdom()
+    const scrollspy: mock.Spy = mock.spy( )
+    // mocking window.scrollTo, still not sure how it works
+    // deno-lint-ignore no-explicit-any
+    window.scrollTo = mock.stub(document.documentElement, 'scrollTo', scrollspy) as any;
+
+    
+    const files       = new AppFileList([])
+    const files0:AppFile[] = [
+        new AppFile(new File([], 'banana.jpg')),
+        new AppFile(new File([], 'potato.jpg')),
+    ]
+    files.set_from_files(files0);
+
+    const active_file = new signals.Signal('notbanana.jpg')
+    preact.render(
+        <FileTableBody files={files} active_file={active_file} labels_column={false}/>, 
+        document.body
+    )
+    await util.wait(1)
+    
+    //set active file, should isse a scrollTo command
+    active_file.value = 'banana.jpg'
+    await util.wait(20) //long sleep needed
+    mock.assertSpyCalls(scrollspy, 1)
+    
+    active_file.value = 'notbanana.jpg'
+    files.set_from_files([]);
+    await util.wait(1)
+
+    //set new files (partially the same as before)
+    files.set_from_files(files0.slice(0,1));
+    await util.wait(1)
+
+    //set again the same active file, scrollTo() should be called only once! (actual bug)
+    active_file.value = 'banana.jpg'
+    await util.wait(20) //long sleep needed
+    mock.assertSpyCalls(scrollspy, 2)
 })

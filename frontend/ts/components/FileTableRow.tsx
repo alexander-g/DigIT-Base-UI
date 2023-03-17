@@ -34,6 +34,9 @@ export class FileTableRow extends preact.Component<FileTableRowProps> {
         </tr>
     }
 
+    // dispose callbacks
+    #scroll_effects:(() => void)[] = []
+
     /** Setup of auto-scrolling behaviour when a table row is opened */
     componentDidMount(): void {
         if(this.tr_ref.current) {
@@ -48,15 +51,25 @@ export class FileTableRow extends preact.Component<FileTableRowProps> {
                 }, 10)
 
             //works on the first time, wont work later
-            signals.effect(() => {
+            const dispose0: (() => void) = signals.effect(() => {
                 if(this.props.file.$loaded.value)
                     scroll_to_row()
             })
             //doesnt work on the first time, will work later
-            signals.effect(() => {
+            const dispose1: (() => void) = signals.effect(() => {
                 if(this.props.active_file.value == this.props.file.name)
                     scroll_to_row()
             })
+
+            this.#scroll_effects.push(dispose0)
+            this.#scroll_effects.push(dispose1)
+        }
+    }
+
+    /** Clean up effects */
+    componentWillUnmount(): void {
+        for(const dispose_fn of this.#scroll_effects) {
+            dispose_fn()
         }
     }
 }
