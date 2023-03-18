@@ -1,6 +1,6 @@
 
 // deno-lint-ignore no-explicit-any
-type jQueryMock = (x:string|HTMLElement) => any;
+type jQueryMock = (x:string|HTMLElement|null) => any;
 
 declare global {
     // deno-lint-ignore no-var

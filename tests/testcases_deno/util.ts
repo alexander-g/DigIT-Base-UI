@@ -19,7 +19,7 @@ export async function setup_jsdom(): Promise<Document> {
 
 export function mock_jQ(returnvalue: any): void {
     set_jQ(
-        (_query: string | HTMLElement) => returnvalue
+        (_query: string | HTMLElement | null) => returnvalue
     )
 }
 

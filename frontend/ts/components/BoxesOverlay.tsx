@@ -64,42 +64,29 @@ export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
     }
 
     /** Callback to initiate manually drawing a new box */
-    on_mouse_down(event:MouseEvent) {
+    on_mouse_down(mousedown_event:MouseEvent) {
         if(!this.ref.current)
             return;
         if(!this.props.$drawing_mode_active.peek())
             return;
         
-        const start_p:Point = ui_util.page2element_coordinates(
-            {x:event.pageX, y:event.pageY}, this.ref.current, this.props.imagesize
-        );
-        let move_p:Point = start_p;
-
         // deno-lint-ignore no-this-alias
         const _this: BoxesOverlay = this;
-        function on_mousemove(mousemove_event: MouseEvent) {
-            if( (mousemove_event.buttons & 0x01)==0 ){
-                //mouse up
-                document.removeEventListener('mousemove', on_mousemove);
-                document.removeEventListener('mouseup',   on_mousemove);
+
+        ui_util.start_drag(
+            mousedown_event,
+            this.ref.current,
+            this.props.imagesize,
+            undefined,                            //on_mousemove
+            (start:Point, end:Point) => { 
                 //disable drawing mode
                 _this.props.$drawing_mode_active.value = false;
 
                 _this.add_new_box(
-                    Box.from_array([start_p.x, start_p.y, move_p.x, move_p.y])
+                    Box.from_array([start.x, start.y, end.x, end.y])
                 )
-                return;
-            }
-
-            move_p = ui_util.page2element_coordinates(
-                {x:mousemove_event.pageX, y:mousemove_event.pageY},
-                _this.ref.current!,
-                _this.props.imagesize
-            )
-            
-        }
-        document.addEventListener('mousemove', on_mousemove)
-        document.addEventListener('mouseup',   on_mousemove)
+            },  //on_mouseup
+        )
     }
 
     add_new_box(box:Box): void {
@@ -164,15 +151,12 @@ export class BoxOverlay extends preact.Component<BoxOverlayProps>  {
 
         return (
             <div class="box box-overlay" style={position_css}>
-                {/* TODO: make a component of its own */}
-                <div class="box-label-container"  data-position="left center" data-variation="mini">
-                    <p class="box-label" onClick={console.trace}>
-                        {label}
-                    </p>
-
-                    <select class="ui tiny search dropdown" style="display:none;"></select>
-                    <i class="close red icon" title="Remove" onClick={this.on_remove.bind(this)}></i>
-                </div>
+                <LabelDropdown 
+                    label={label} 
+                    //label={new Signal(label)} 
+                    on_remove={this.on_remove.bind(this)}
+                    on_change={this.on_new_label.bind(this)}
+                />
 
                 <DragAnchor
                     type        = "move-anchor"
@@ -191,11 +175,16 @@ export class BoxOverlay extends preact.Component<BoxOverlayProps>  {
         )
     }
 
-    on_remove() {
+    on_remove(): void {
         this.props.on_remove(this.props.instance)
     }
 
-    finalize_box() {
+    on_new_label(label:string): void {
+        this.props.instance.label = label;
+        this.finalize_box()
+    }
+
+    finalize_box(): void {
         const new_instance: Instance = {
             box:   this.compute_modified_box(),
             label: this.props.instance.label,
@@ -242,7 +231,7 @@ class DragAnchor extends preact.Component<DragAnchorProps> {
     }
 
     on_mouse_down(mousedown_event:MouseEvent) {
-        if(!this.ref.current?.parentElement?.parentElement)
+        if(!this.ref.current?.parentElement?.parentElement)  //TODO
             return;
         
         ui_util.start_drag(
@@ -254,6 +243,96 @@ class DragAnchor extends preact.Component<DragAnchorProps> {
             },  //on_mousemove
             this.props.on_drag_end,     //on_mouseup
         )
+    }
+}
+
+
+type LabelDropdownProps =  {
+    label:      string;
+    on_remove:  () => void;
+    on_change:  (new_label:string) => void;
+}
+
+/** Textbox, input and dropdown for fast label selection */
+class LabelDropdown extends preact.Component<LabelDropdownProps> {
+    selectref: preact.RefObject<HTMLSelectElement>    = preact.createRef()
+    labelref:  preact.RefObject<HTMLParagraphElement> = preact.createRef()
+
+    // deno-lint-ignore no-inferrable-types
+    #dropdown_initialized:boolean = false;
+
+    render(props: LabelDropdownProps): JSX.Element {
+        /** A select element that is converted by Fomantic into a dropdown.
+         *  Created only once (not on updates), since Fomantic replaces it. */
+        let select_element:JSX.Element|null = null;
+        if(!this.#dropdown_initialized) {
+            select_element = (
+                <select 
+                    class   = "ui tiny search dropdown" 
+                    style   = "display:none;" 
+                    ref     = {this.selectref}
+                ></select>
+            )
+        }
+
+        return (
+            // TODO: tooltip text showing confidences
+            <div class="box-label-container" data-position="left center" data-variation="mini">
+                <p class="box-label" onClick={this.convert_label_into_input.bind(this)} ref={this.labelref}>
+                    {props.label}
+                </p>
+
+                { select_element }
+                <i class="close red icon" title="Remove" onClick={props.on_remove}></i>
+            </div>
+        )
+    }
+
+    //no idea anymore how this works, better don't touch it
+    convert_label_into_input() {
+        if(!this.labelref.current)
+            return;
+
+        // deno-lint-ignore no-this-alias
+        const _this: LabelDropdown = this;
+        // deno-lint-ignore no-inferrable-types
+        function save(txt:string = ''){
+            if(txt.length > 0){
+                _this.props.on_change(txt)
+                
+                //keep this; seems to prevent an error message
+                $input.dropdown('unbind intent')
+            }
+            $label.show().css('visibility', '');
+            $input.hide();
+        }
+
+        $(this.selectref.current).dropdown({
+            allowAdditions:  true, 
+            hideAdditions:   false, 
+            forceSelection:  false, 
+            selectOnKeydown: false,
+            fullTextSearch:  true,
+            silent:          true,
+            action: (t: string) => {  save(t); },
+            onHide: ()          => {  save( ); },
+        });
+        this.#dropdown_initialized = true;
+
+        // deno-lint-ignore no-explicit-any
+        const $label:any = $(this.labelref.current)
+        // deno-lint-ignore no-explicit-any
+        const $input:any = $label.closest('.box-overlay').find('.search.dropdown');
+
+        $input.dropdown('setup menu', {
+            //TODO
+            //values: this.get_set_of_all_labels().map( v => {return {name:v};} ),
+            values: [{name:"banana"}, {name:"potato"}]
+        });
+
+        $label.css('visibility', 'hidden');
+        $input.show()
+        $input.find('input').focus().select();
     }
 }
 
