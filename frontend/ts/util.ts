@@ -2,6 +2,11 @@ export function is_string(x:unknown): x is string {
     return (x instanceof String || typeof x === "string")
 }
 
+/** Perform a full copy of an object */
+export function deepcopy<T>(x:T): T {
+    return JSON.parse(JSON.stringify(x))
+}
+
 /** Send a file to the flask backend */
 export function upload_file(
     file        :   File, 

@@ -1,6 +1,5 @@
 import { preact, JSX }      from "./dep.ts"
 import { TopMenu }          from "./components/TopMenu.tsx"
-import { Modals }           from "./components/Modals.tsx"
 import { MainContainer }    from "./components/MainContainer.tsx"
 import { SVGFilters }       from "./components/SVGFilters.tsx";
 
@@ -11,7 +10,6 @@ export function Body(): JSX.Element {
         <SVGFilters />  {/* Must go first for cosmetic reasons */}
         <TopMenu/>
         <MainContainer />
-        <Modals />
     </body>
 }
 

@@ -1,30 +1,57 @@
 import { JSX, preact }      from "../dep.ts"
+import * as util            from "../util.ts";
 import { load_settings }    from "../logic/settings.ts";
 import { type ModelInfo }   from "../logic/settings.ts";
+import { type Settings }    from "../logic/settings.ts";
 
 import { STATE } from "../state.ts"; //TODO: hardcoded
 
 
 /** The main settings dialog */
-export function SettingsModal(): JSX.Element {
-    const avmodels: string[]|undefined 
-        = STATE.available_models.value?.detection?.map( (x:ModelInfo) => x.name)  //TODO: hardcoded
+export class SettingsModal extends preact.Component {
+    ref: preact.RefObject<HTMLDivElement>            = preact.createRef()
+    model_selection:preact.RefObject<ModelSelection> = preact.createRef()
 
-    return <div class="ui tiny modal" id="settings-dialog">
-        <i class="close icon"></i>
-        <div class="header"> Settings </div>
+    render(): JSX.Element {
+        const avmodels: string[]|undefined 
+            = STATE.available_models.value?.detection?.map( (x:ModelInfo) => x.name)  //TODO: hardcoded
 
-        <div class="ui form content">
-            <ModelSelection 
-            active_model={STATE.settings.value.active_models?.detection}  //TODO: hardcoded
-            available_models={avmodels}
-            />
-            <div class="ui divider"></div>
-            <OkCancelButtons />
+        return <div class="ui tiny modal" id="settings-dialog" ref={this.ref}>
+            <i class="close icon"></i>
+            <div class="header"> Settings </div>
+
+            <div class="ui form content">
+                <ModelSelection 
+                    active_model     = {STATE.settings.value.active_models?.detection}  //TODO: hardcoded
+                    available_models = {avmodels}
+                    ref              = {this.model_selection}
+                />
+                <div class="ui divider"></div>
+                <OkCancelButtons />
+            </div>
         </div>
-    </div>
-}
+    }
 
+    async show_modal(): Promise<void> {
+        await load_settings() //might fail //TODO: maybe move upstream?
+        $(this.ref.current).modal({
+            onApprove: this.save_settings.bind(this)
+        }).modal('show');
+    }
+
+    async save_settings(): Promise<void> {
+        if(!this.model_selection.current)
+            return;
+        
+        const model:string      = this.model_selection.current?.get_selected()
+        const settings:Settings = util.deepcopy(STATE.settings.peek())
+        settings.active_models  = {detection : model};
+        await util.fetch_with_error(
+            [new Request('/settings', {method:'post', body:JSON.stringify(settings)})],
+            () => {console.error('fetch failed')}
+        )
+    }
+}
 
 type ModelSelectionProps = {
     /** Which options to display in the model selection dropdown */
@@ -48,14 +75,17 @@ class ModelSelection extends preact.Component<ModelSelectionProps> {
                 <i class="dropdown icon"></i>
                 <div class="default text"></div>
                 <div class="menu">
-                    <div class="item">Faster-RCNN</div>
-                    <div class="item">Mask-RCNN</div>
+                    {/* NOTE: children inserted here by Fomantic */}
                 </div>
             </div>
 
         {/* TODO: class properties  */}
         
         </div>
+    }
+
+    get_selected(): string {
+        return $(this.dropdown_ref.current).dropdown('get value');
     }
 
     /** Dropdown is handled by Fomantic, not preact */
@@ -96,14 +126,21 @@ export function OkCancelButtons(): JSX.Element {
     </div>
 }
 
+
+type SettingsButtonProps = {
+    on_click?: () => void;
+}
+
 /** Button in the TopMenu. Opens the SettingsModal */
-export function SettingsButton(): JSX.Element {
+export function SettingsButton(props:SettingsButtonProps): JSX.Element {
     async function on_click(): Promise<void> {
         await load_settings() //might fail //TODO: maybe move upstream?
-        $('#settings-dialog').modal({onApprove: console.warn /* TODO */ }).modal('show');
+        $('#settings-dialog').modal({
+            onApprove: console.warn /* TODO */ 
+        }).modal('show');
     }
 
-    return <a class="ui simple item" id="settings-button" onClick={on_click}>
+    return <a class="ui simple item" id="settings-button" onClick={props.on_click}>
         <i class="wrench icon"></i>
         <span class="text">Settings</span>
     </a>  
