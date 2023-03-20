@@ -175,8 +175,10 @@ type BoxOverlayProps = BoxOverlayBaseProps & {
 /** An individual box. Contains class label, and some controls. */
 export class BoxOverlay extends BoxOverlayBase<BoxOverlayProps>  {
     //temporary box modifiers
-    move_offset: Signal<Point>  = new Signal({x:0, y:0})
+    move_offset:  Signal<Point> = new Signal({x:0, y:0})
     resize_offset:Signal<Point> = new Signal({x:0, y:0})
+
+    ref:          preact.RefObject<HTMLDivElement> = preact.createRef()
 
     render(props:BoxOverlayProps): JSX.Element {
         const position_css: Record<string, string>  
@@ -184,33 +186,30 @@ export class BoxOverlay extends BoxOverlayBase<BoxOverlayProps>  {
         const label:string = props.instance.label;
 
         return (
-            <div class="box box-overlay" style={position_css}>
+            <div class="box box-overlay" style={position_css} ref={this.ref}>
                 <LabelDropdown 
-                    label={label} 
-                    //label={new Signal(label)} 
-                    on_remove={this.on_remove.bind(this)}
-                    on_change={this.on_new_label.bind(this)}
+                    label       = {label} 
+                    on_remove   = {() => this.props.on_remove(this.props.instance)}
+                    on_change   = {this.on_new_label.bind(this)}
                 />
 
                 <DragAnchor
+                    imagesize   = {props.imagesize}
                     type        = "move-anchor"
                     delta       = {this.move_offset}
-                    imagesize   = {props.imagesize}
                     on_drag_end = {this.finalize_box.bind(this)}
+                    get_parentoverlay = {() => this.ref.current?.parentElement ?? null}
                 />
 
                 <DragAnchor
+                    imagesize   = {props.imagesize}
                     type        = "resize-anchor"
                     delta       = {this.resize_offset}
-                    imagesize   = {props.imagesize}
                     on_drag_end = {this.finalize_box.bind(this)}
+                    get_parentoverlay = {() => this.ref.current?.parentElement ?? null}
                 />
             </div>
         )
-    }
-
-    on_remove(): void {
-        this.props.on_remove(this.props.instance)
     }
 
     on_new_label(label:string): void {
@@ -244,12 +243,19 @@ export class BoxOverlay extends BoxOverlayBase<BoxOverlayProps>  {
 
 
 type DragAnchorProps = {
-    type:        "move-anchor" | "resize-anchor";
-    delta:       Signal<Point>;
     imagesize:   Size;
+    /** Passed to the class attribute. */
+    type:        "move-anchor" | "resize-anchor";
+    /** Output value, indicates by how much the anchor has been dragged. */
+    delta:       Signal<Point>;
+    /** Called when anchor drag is finished */
     on_drag_end: () => void;
+    /** The top HTML element that contains boxes (BoxesOverlay). Temporarily null. */
+    get_parentoverlay: () => HTMLElement | null;
 }
 
+
+/** Control element for moving and resizing boxes */
 class DragAnchor extends preact.Component<DragAnchorProps> {
     ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 
@@ -265,12 +271,13 @@ class DragAnchor extends preact.Component<DragAnchorProps> {
     }
 
     on_mouse_down(mousedown_event:MouseEvent) {
-        if(!this.ref.current?.parentElement?.parentElement)  //TODO
+        const parentoverlay: HTMLElement|null = this.props.get_parentoverlay()
+        if(!parentoverlay)
             return;
         
         ui_util.start_drag(
             mousedown_event,
-            this.ref.current.parentElement.parentElement,
+            parentoverlay,
             this.props.imagesize,
             (start:Point, end:Point) => { 
                 this.props.delta.value = {x:end.x - start.x, y:end.y - start.y}
@@ -283,7 +290,9 @@ class DragAnchor extends preact.Component<DragAnchorProps> {
 
 type LabelDropdownProps =  {
     label:      string;
+    /** Called when user wants to remove a box */
     on_remove:  () => void;
+    /** Called when user selects a new label for a box */
     on_change:  (new_label:string) => void;
 }
 
@@ -312,7 +321,11 @@ class LabelDropdown extends preact.Component<LabelDropdownProps> {
         return (
             // TODO: tooltip text showing confidences
             <div class="box-label-container" data-position="left center" data-variation="mini">
-                <p class="box-label" onClick={this.convert_label_into_input.bind(this)} ref={this.labelref}>
+                <p 
+                    class   = "box-label" 
+                    onClick = {this.convert_label_into_input.bind(this)} 
+                    ref     = {this.labelref}
+                >
                     {props.label}
                 </p>
 
@@ -373,6 +386,7 @@ class LabelDropdown extends preact.Component<LabelDropdownProps> {
 
 
 
+/** Temporary box as a visual aid for drawing boxes. */
 class IntermediateBoxOverlay extends BoxOverlayBase {
     coordinates: Signal<Box> = new Signal(Box.from_array([0,0,0,0]))
 
