@@ -99,3 +99,8 @@
 .boxes.overlay {
     pointer-events: all;
 }
+
+.box-overlay.intermediate {
+    border:            1px dotted #fff;
+    background:        transparent;
+}

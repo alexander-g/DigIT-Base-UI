@@ -1,7 +1,7 @@
 import { preact, JSX, Signal, ReadonlySignal }      from "../dep.ts";
 import { Instance, Box }                    from "../logic/boxes.ts";
 import { MaybeInstances }                   from "../state.ts";
-import { Size, Point }                      from "../util.ts";
+import { Size, Point, ImageSize }                      from "../util.ts";
 import * as styles                          from "./styles.ts";
 import * as ui_util                         from "./ui_util.ts";
 
@@ -21,6 +21,10 @@ type BoxesOverlayProps = {
 /** A result overlay that displays boxes */
 export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
     ref: preact.RefObject<HTMLDivElement> = preact.createRef()
+
+    /** Instance of IntermediateBoxOverlay  */
+    $drawing_box: Signal<JSX.Element|null> = new Signal(null)
+    drawing_box_ref: preact.RefObject<IntermediateBoxOverlay> = preact.createRef()
 
     render(props:BoxesOverlayProps): JSX.Element {
         const instances: readonly Instance[] = props.$instances.value ?? [];
@@ -59,6 +63,7 @@ export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
                 ref         =   {this.ref}
             >
                 { boxes }
+                { this.$drawing_box.value }
             </div>
         )
     }
@@ -70,6 +75,12 @@ export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
         if(!this.props.$drawing_mode_active.peek())
             return;
         
+        this.$drawing_box.value 
+            =   <IntermediateBoxOverlay 
+                    ref       = {this.drawing_box_ref} 
+                    imagesize = {this.props.imagesize!}
+                />
+
         // deno-lint-ignore no-this-alias
         const _this: BoxesOverlay = this;
 
@@ -77,15 +88,19 @@ export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
             mousedown_event,
             this.ref.current,
             this.props.imagesize,
-            undefined,                            //on_mousemove
-            (start:Point, end:Point) => { 
+            (start:Point, end:Point) => {         //on_mousemove
+                _this.drawing_box_ref.current?.set_coordinates(start, end)
+            },
+            (start:Point, end:Point) => {         //on_mouseup
                 //disable drawing mode
                 _this.props.$drawing_mode_active.value = false;
+                //remove the intermediate box
+                _this.$drawing_box.value               = null;
 
                 _this.add_new_box(
                     Box.from_array([start.x, start.y, end.x, end.y])
                 )
-            },  //on_mouseup
+            },
         )
     }
 
@@ -120,9 +135,34 @@ export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
     }
 }
 
-type BoxOverlayProps = {
+
+
+type BoxOverlayBaseProps = {
+    /** The original size of the displayed image. */
+    imagesize:      ImageSize;
+}
+
+abstract class BoxOverlayBase<T extends BoxOverlayBaseProps = BoxOverlayBaseProps> 
+extends preact.Component<T> {
+    /** Return normalized coordinates a CSS dict */
+    compute_position_css(box:Box): Record<string, string> {
+        const {x0,y0,x1,y1}         = box;
+        const {width:W, height:H}   = this.props.imagesize;
+        const position_css  = {
+            left:   (x0      / W) *100 + '%',
+            top:    (y0      / H) *100 + '%',
+            width:  ((x1-x0) / W) *100 + '%',
+            height: ((y1-y0) / H) *100 + '%',
+        }
+        return position_css
+    }
+}
+
+
+
+
+type BoxOverlayProps = BoxOverlayBaseProps & {
     instance:       Instance,
-    imagesize:      Size;
     index:          number;
 
     /** Called when user wants to remove a box */
@@ -133,21 +173,15 @@ type BoxOverlayProps = {
 }
 
 /** An individual box. Contains class label, and some controls. */
-export class BoxOverlay extends preact.Component<BoxOverlayProps>  {
+export class BoxOverlay extends BoxOverlayBase<BoxOverlayProps>  {
     //temporary box modifiers
     move_offset: Signal<Point>  = new Signal({x:0, y:0})
     resize_offset:Signal<Point> = new Signal({x:0, y:0})
 
     render(props:BoxOverlayProps): JSX.Element {
-        const {x0,y0,x1,y1}         = this.compute_modified_box()
-        const {width:W, height:H}   = props.imagesize;
-        const position_css  = {
-            left:   (x0      / W) *100 + '%',
-            top:    (y0      / H) *100 + '%',
-            width:  ((x1-x0) / W) *100 + '%',
-            height: ((y1-y0) / H) *100 + '%',
-        }
-        const label:string          = props.instance.label;
+        const position_css: Record<string, string>  
+            = this.compute_position_css(this.compute_modified_box())
+        const label:string = props.instance.label;
 
         return (
             <div class="box box-overlay" style={position_css}>
@@ -333,6 +367,25 @@ class LabelDropdown extends preact.Component<LabelDropdownProps> {
         $label.css('visibility', 'hidden');
         $input.show()
         $input.find('input').focus().select();
+    }
+}
+
+
+
+
+class IntermediateBoxOverlay extends BoxOverlayBase {
+    coordinates: Signal<Box> = new Signal(Box.from_array([0,0,0,0]))
+
+    render(): JSX.Element {
+        const position_css: Record<string, string> 
+            = this.compute_position_css(this.coordinates.value)
+
+        return <div class="box-overlay intermediate" style={{...position_css}}>
+        </div>
+    }
+
+    public set_coordinates(start:Point, end:Point): void {
+        this.coordinates.value = Box.from_array([start.x, start.y, end.x, end.y])
     }
 }
 
