@@ -64,6 +64,7 @@ class Settings:
                 _modelfiles = glob.glob(os.path.join(modelsdir, modeltype, '*'+ending))
                 modelfiles += _modelfiles
                 modelnames += [os.path.basename(m)[:-len(ending)] for m in _modelfiles]
+            modelnames = sorted(modelnames)
 
             if with_properties:
                 modelprops        = [cls.get_model_properties(m) for m in modelfiles]
