@@ -79,3 +79,17 @@ Deno.test('ImageOverlay.hide', async () => {
 
     mock.restore()
 })
+
+
+Deno.test('Result.set_instances', () => {
+    const r0:Result = new Result()
+    asserts.assertEquals(r0.status, 'unprocessed')
+
+    r0.set_instances([])
+    asserts.assertEquals(r0.status, 'processed')
+
+
+    const r1:ResultState = ResultState.from_result(new Result())
+    r1.set_instances([])
+    asserts.assertEquals(r1.status, 'processed')
+})

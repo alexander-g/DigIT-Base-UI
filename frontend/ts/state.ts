@@ -34,9 +34,9 @@ export type MaybeInstances = readonly Instance[] | undefined;
 /** Processing result, most fields optional to force error checking */
 export class Result {
     /** Indicates if the result is valid or not */
-    readonly status:    ResultStatus    = 'unprocessed';
+    status:             ResultStatus    = 'unprocessed';
 
-    /** Raw processing outputs, as received from backend or onnnx.
+    /** Raw processing outputs, as received from backend or onnx.
      *  For debugging. */
     // deno-lint-ignore no-explicit-any
     readonly raw?:      any;
@@ -60,6 +60,7 @@ export class Result {
     /** Set the instances, overwritten in the reactive subclass */
     set_instances(instances: MaybeInstances) {
         this.#instances = instances
+        this.status     = 'processed'
     }
 }
 
@@ -90,6 +91,7 @@ export class ResultState extends Result {
     }
 
     set_instances(instances: MaybeInstances): void {
+        super.set_instances(instances)
         this.#$instances.value = instances;
     }
 
