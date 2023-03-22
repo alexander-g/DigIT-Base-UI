@@ -3,7 +3,7 @@ export function is_string(x:unknown): x is string {
 }
 
 /** Perform a full copy of an object */
-export function deepcopy<T>(x:T): T {
+export function deepcopy<T extends Record<string|number, unknown>>(x:T): T {
     return JSON.parse(JSON.stringify(x))
 }
 
@@ -78,3 +78,10 @@ export function wait(ms: number): Promise<unknown> {
         setTimeout(() => resolve(0), ms)
     })
 }
+
+
+/** Recursive Partial<T>. Makes all members of T optional including children */
+export type DeepPartial<T> = T extends Record<string, unknown> ? {
+    [P in keyof T]?: DeepPartial<T[P]>;
+} : T;
+

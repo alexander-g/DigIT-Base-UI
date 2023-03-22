@@ -1,8 +1,8 @@
-import { JSX, preact }      from "../dep.ts"
-import * as util            from "../util.ts";
-import { load_settings }    from "../logic/settings.ts";
-import { type ModelInfo }   from "../logic/settings.ts";
-import { type Settings }    from "../logic/settings.ts";
+import { JSX, preact }                      from "../dep.ts"
+import * as util                            from "../util.ts";
+import { load_settings }                    from "../logic/settings.ts";
+import type { ModelInfo, Settings }         from "../logic/settings.ts";
+import { show_error_toast }                 from "./errors.ts";
 
 import { STATE } from "../state.ts"; //TODO: hardcoded
 
@@ -13,8 +13,8 @@ export class SettingsModal extends preact.Component {
     model_selection:preact.RefObject<ModelSelection> = preact.createRef()
 
     render(): JSX.Element {
-        const avmodels: string[]|undefined 
-            = STATE.available_models.value?.detection?.map( (x:ModelInfo) => x.name)  //TODO: hardcoded
+        const avmodels: ModelInfo[]|undefined 
+            = STATE.available_models.value?.detection //TODO: hardcoded
 
         return <div class="ui tiny modal" id="settings-dialog" ref={this.ref}>
             <i class="close icon"></i>
@@ -22,7 +22,7 @@ export class SettingsModal extends preact.Component {
 
             <div class="ui form content">
                 <ModelSelection 
-                    active_model     = {STATE.settings.value.active_models?.detection}  //TODO: hardcoded
+                    active_model     = {STATE?.settings?.value?.active_models?.detection.name}  //TODO: hardcoded
                     available_models = {avmodels}
                     ref              = {this.model_selection}
                 />
@@ -43,19 +43,23 @@ export class SettingsModal extends preact.Component {
         if(!this.model_selection.current)
             return;
         
-        const model:string      = this.model_selection.current?.get_selected()
-        const settings:Settings = util.deepcopy(STATE.settings.peek())
-        settings.active_models  = {detection : model};
+        const model:ModelInfo|undefined = this.model_selection.current?.get_selected()
+        if(!model) {
+            show_error_toast('Cannot save settings: No model selected')
+            return
+        }
+
+        const settings:Settings = {active_models:{detection : model}}
         await util.fetch_with_error(
             [new Request('/settings', {method:'post', body:JSON.stringify(settings)})],
-            () => {console.error('fetch failed')}
+            () => {show_error_toast('Cannot save settings.')}
         )
     }
 }
 
 type ModelSelectionProps = {
     /** Which options to display in the model selection dropdown */
-    available_models?: string[];
+    available_models?: ModelInfo[];
     /** Which option is active in the model selection dropdown */
     active_model?:     string;
 }
@@ -84,8 +88,15 @@ class ModelSelection extends preact.Component<ModelSelectionProps> {
         </div>
     }
 
-    get_selected(): string {
-        return $(this.dropdown_ref.current).dropdown('get value');
+    get_selected(): ModelInfo|undefined {
+        const selected:number|undefined 
+            = $(this.dropdown_ref.current).dropdown('get value');
+        if(!selected)
+            return undefined
+        
+        const model:ModelInfo|undefined 
+            = this.props.available_models?.[selected]
+        return model
     }
 
     /** Dropdown is handled by Fomantic, not preact */
@@ -93,11 +104,14 @@ class ModelSelection extends preact.Component<ModelSelectionProps> {
         const dropdown_el:HTMLDivElement|null = this.dropdown_ref.current;
 
         if(dropdown_el){
-            type FomanticDropdownItem = {name:string, value:string, selected:boolean}
+            //update the dropdown options with available models
+            type FomanticDropdownItem = {name:string, value:number, selected:boolean}
             const dropdown_items:FomanticDropdownItem[] = props?.available_models?.map(
-                (m:string) => {
-                    return { name:m, value:m, selected:(m == props.active_model) } 
-                }
+                (m:ModelInfo, index:number) => ({
+                    name        : m.name, 
+                    value       : index, 
+                    selected    : (m.name == props.active_model) 
+                }) 
             ) ?? [] //TODO: display some error instead of empty
 
             $(dropdown_el).dropdown({

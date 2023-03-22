@@ -1,16 +1,28 @@
 import { Point, Size }              from "../util.ts";
+import { ModelInfo }                from "../logic/settings.ts";
+import { AppFileState, Result }     from "../state.ts";
 
 
 export type DragCallback = (start:Point, end:Point) => void;
 
-/** Generic function to initiate HTML element dragging */
-export function start_drag(
+/**
+ * Initiate dragging for an HTML element when the user clicks and drags the mouse.
+ * 
+ * @param mousedown_event - The mouse event that triggers the start of dragging.
+ * @param targetelement   - The parent element that contains the dragged element.
+ * @param targetsize      - The size of the target element, used for calculating coordinates.
+ * @param on_move         - Callback that is called every time the mouse moves while dragging.
+ *                          Receives the starting point and the current point of the drag.
+ * @param on_end          - Callback that is called when the drag ends. 
+ *                          Receives the starting point and the end point of the drag.
+ */
+export function start_drag (
     mousedown_event: MouseEvent,
     targetelement:   HTMLElement,
     targetsize?:     Size,
     on_move?:        DragCallback,
     on_end?:         DragCallback,
-) {
+): void {
     const start_p: Point = page2element_coordinates(
         {x:mousedown_event.pageX, y:mousedown_event.pageY},
         targetelement,
@@ -72,3 +84,27 @@ export function page2element_coordinates(
     }
     return p_el;
 }
+
+
+export
+function collect_all_labels(results: Result[], active_model?: ModelInfo): string[] {
+    const labelset = new Set<string>(active_model?.properties?.known_classes);
+    labelset.delete('background')
+  
+    for (const result of results) {
+        for (const instance of result.instances ?? []) {
+            labelset.add(instance.label);
+        }
+    }
+    labelset.delete('')
+    return Array.from(labelset).sort();
+}
+
+
+export function collect_all_labels_default(): string[] {
+    const results: Result[] = globalThis.STATE.files.peek().map((f: AppFileState) => f.result)
+    const model: ModelInfo|undefined = globalThis.STATE.settings.peek()?.active_models?.detection
+
+    return collect_all_labels(results, model)
+}
+

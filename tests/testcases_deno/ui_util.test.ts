@@ -1,6 +1,8 @@
 import * as ui_util         from "../../frontend/ts/components/ui_util.ts";
 import * as testutil        from "./util.ts";
 import { asserts, mock }    from "./dep.ts";
+import { ModelInfo }        from "../../frontend/ts/logic/settings.ts";
+import { Result }           from "../../frontend/ts/state.ts";
 
 
 //mostly just to run through once
@@ -35,5 +37,34 @@ Deno.test('start_drag', async () => {
     document.dispatchEvent(up_event as MouseEvent)
     mock.assertSpyCalls(move_spy, n)
     mock.assertSpyCalls(end_spy, 1)
+})
+
+
+Deno.test('collect_all_labels', () => {
+    const active_model: ModelInfo = {
+        name: 'dontcare',
+        properties: {
+            known_classes: ['background', 'potato', 'pineapple', 'banana']
+        }
+    }
+    const all_results: Result[] = [
+        new Result('unprocessed'),
+        new Result('processed'),
+        new Result('failed'),
+    ]
+    all_results[1]?.set_instances([ 
+        {label: 'tomato'}  as any,
+        {label: 'tomato'}  as any,
+        {label: 'kumquat'} as any,
+    ])
+
+    const collected_labels: string[] = ui_util.collect_all_labels(
+        all_results, active_model
+    )
+
+    //alphabetically sorted, no duplicates, no 'background'
+    asserts.assertEquals(
+        collected_labels, ['banana', 'kumquat', 'pineapple', 'potato', 'tomato']
+    )
 })
 

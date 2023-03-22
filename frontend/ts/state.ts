@@ -165,10 +165,10 @@ export class AppFileList extends Reactive<AppFileState[]> {
 }
 
 /** Reactive Settings */
-class SettingsState extends Reactive<Settings> {}
+class SettingsState extends Reactive<Settings|undefined> {}
 
 /** Reactive AvailableModels */
-class AvailableModelsState extends Reactive<AvailableModels> {}
+class AvailableModelsState extends Reactive<AvailableModels|undefined> {}
 
 
 /** Main application state structure */
@@ -180,10 +180,10 @@ export class AppState {
     processing: Reactive<boolean> = new Reactive<boolean>(false)
 
     /** Currently loaded settings */
-    settings: SettingsState = new SettingsState({})
+    settings: SettingsState = new SettingsState(undefined)
 
     /** Which models can be selected in the settings */
-    available_models: AvailableModelsState = new AvailableModelsState({})
+    available_models: AvailableModelsState = new AvailableModelsState(undefined)
 }
 
 /** Global application state */
