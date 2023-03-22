@@ -58,7 +58,7 @@ Deno.test('collect_all_labels', () => {
         {label: 'kumquat'} as any,
     ])
 
-    const collected_labels: string[] = ui_util.collect_all_labels(
+    const collected_labels: string[] = ui_util.collect_all_classes(
         all_results, active_model
     )
 

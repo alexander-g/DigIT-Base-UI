@@ -87,7 +87,7 @@ export function page2element_coordinates(
 
 
 export
-function collect_all_labels(results: Result[], active_model?: ModelInfo): string[] {
+function collect_all_classes(results: Result[], active_model?: ModelInfo): string[] {
     const labelset = new Set<string>(active_model?.properties?.known_classes);
     labelset.delete('background')
   
@@ -101,7 +101,8 @@ function collect_all_labels(results: Result[], active_model?: ModelInfo): string
 }
 
 
-export function collect_all_labels_default(): string[] {
+/** Collect all possible classes from current global state.  */
+export function collect_all_classes_default(): string[] {
     const STATE = globalThis.STATE;
     const results: Result[] = STATE.files.peek().map((f: AppFileState) => f.result)
     const model: string|undefined = STATE.settings.peek()?.active_models?.detection
@@ -109,6 +110,6 @@ export function collect_all_labels_default(): string[] {
     if(model) 
         modelinfo = find_modelinfo(STATE.available_models.peek()?.detection ?? [], model)
 
-    return collect_all_labels(results, modelinfo)
+    return collect_all_classes(results, modelinfo)
 }
 

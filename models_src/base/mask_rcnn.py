@@ -17,6 +17,7 @@ class MaskRCNN(torch.nn.Module):
         self.basemodule = torchvision.models.detection.maskrcnn_resnet50_fpn(
             pretrained = True, progress = False, box_score_thresh = 0.5
         )
+        self.class_list = list(map(str, range(91)))
     
     def forward(self, x):
         return self.basemodule(x)
@@ -55,6 +56,7 @@ class MaskRCNN(torch.nn.Module):
             pe.intern(interns)
             pe.extern('**')
             pe.save_pickle('model', 'model.pkl', self)
+            pe.save_text('model', 'class_list.txt', '\n'.join(self.class_list))
 
         return destination
 

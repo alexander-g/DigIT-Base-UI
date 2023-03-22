@@ -136,8 +136,6 @@ export function validate_settings_response(raw_data: string): SettingsResponse {
     const parsed_data: unknown = JSON.parse(raw_data)
     if(!is_object(parsed_data))
         throw new Error(`Unexpected settings format: ${parsed_data}`)
-    
-    console.log(parsed_data)
 
     let settings:Settings|null = null;
     if(has_property_of_type(parsed_data, 'settings', validate_settings))

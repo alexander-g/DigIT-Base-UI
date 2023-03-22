@@ -372,9 +372,9 @@ class LabelDropdown extends preact.Component<LabelDropdownProps> {
         const $input:any = $label.closest('.box-overlay').find('.search.dropdown');
 
         $input.dropdown('setup menu', {
-            //TODO
-            //values: this.get_set_of_all_labels().map( v => {return {name:v};} ),
-            values: [{name:"banana"}, {name:"potato"}]
+            values: ui_util.collect_all_classes_default().map( 
+                (v:string) => {return {name:v};} 
+            ),
         });
 
         $label.css('visibility', 'hidden');
