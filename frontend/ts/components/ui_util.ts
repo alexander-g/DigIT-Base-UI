@@ -1,5 +1,5 @@
 import { Point, Size }              from "../util.ts";
-import { ModelInfo }                from "../logic/settings.ts";
+import { ModelInfo, find_modelinfo }    from "../logic/settings.ts";
 import { AppFileState, Result }     from "../state.ts";
 
 
@@ -102,9 +102,13 @@ function collect_all_labels(results: Result[], active_model?: ModelInfo): string
 
 
 export function collect_all_labels_default(): string[] {
-    const results: Result[] = globalThis.STATE.files.peek().map((f: AppFileState) => f.result)
-    const model: ModelInfo|undefined = globalThis.STATE.settings.peek()?.active_models?.detection
+    const STATE = globalThis.STATE;
+    const results: Result[] = STATE.files.peek().map((f: AppFileState) => f.result)
+    const model: string|undefined = STATE.settings.peek()?.active_models?.detection
+    let modelinfo: ModelInfo|undefined;
+    if(model) 
+        modelinfo = find_modelinfo(STATE.available_models.peek()?.detection ?? [], model)
 
-    return collect_all_labels(results, model)
+    return collect_all_labels(results, modelinfo)
 }
 

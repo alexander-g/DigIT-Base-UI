@@ -20,7 +20,7 @@ export type Settings = {
 
 export type ActiveModels = {
     /** Currently set model name for detection */
-    detection:  ModelInfo;
+    detection:  string;
 }
 
 /** Available models and their properties by type */
@@ -32,6 +32,7 @@ export type AvailableModels = {
 
 
 
+/** Request current settings from backend */
 export async function load_settings(
     on_error:errors.error_fn = errors.show_error_toast
 ): Promise<void> {
@@ -39,7 +40,7 @@ export async function load_settings(
         ['/settings'], () => on_error('Loading settings failed.')
     )
     try {
-        validate_settings_response(await response.text())
+        set_settings_from_response_default(await response.text())
     } catch (error) {
         on_error('Loading settings failed. Invalid response data.')
         throw(error)
@@ -48,6 +49,10 @@ export async function load_settings(
 }
 
 
+export function find_modelinfo(models:ModelInfo[], modelname:string): ModelInfo|undefined {
+    const matches:ModelInfo[] = models.filter( (m:ModelInfo) => m.name == modelname )
+    return matches[0]
+}
 
 
 
@@ -77,8 +82,8 @@ function has_string_property<K extends string, T extends Record<never, unknown>>
 /** Type guard converting to an empty object.
  *  
  *  NOTE: Using `Record<never, unknown>` for more type safety. */
-function is_object(x:unknown): x is Record<never, unknown> {
-    return typeof (x === 'object') && (x !== null) && !Array.isArray(x)
+export function is_object(x:unknown): x is Record<never, unknown> {
+    return (typeof x === 'object') && (x !== null) && !Array.isArray(x)
 }
 
 function validate_model_info(x:unknown): ModelInfo|null {
@@ -98,13 +103,13 @@ function validate_model_info_array(x:unknown): ModelInfo[]|null {
 
 function validate_active_models(x:unknown): ActiveModels|null {
     if(is_object(x)
-    && has_property_of_type(x, 'detection', validate_model_info)) {
+    && has_property_of_type(x, 'detection', validate_string)) {
         return x;
     }
     else return null;
 }
 
-function validate_available_models(x:unknown): AvailableModels|null {
+export function validate_available_models(x:unknown): AvailableModels|null {
     if(is_object(x)
     && has_property_of_type(x, 'detection', validate_model_info_array)) {
         return x;
@@ -112,7 +117,7 @@ function validate_available_models(x:unknown): AvailableModels|null {
     else return null;
 }
 
-function validate_settings(x:unknown): Settings|null {
+export function validate_settings(x:unknown): Settings|null {
     if(is_object(x)
     && has_property_of_type(x, 'active_models', validate_active_models)) {
         return x;
@@ -122,15 +127,37 @@ function validate_settings(x:unknown): Settings|null {
 
 
 
+type SettingsResponse = {
+    settings:           Settings, 
+    available_models:   AvailableModels
+}
 
-function validate_settings_response(raw_data: string): void {
+export function validate_settings_response(raw_data: string): SettingsResponse {
     const parsed_data: unknown = JSON.parse(raw_data)
     if(!is_object(parsed_data))
         throw new Error(`Unexpected settings format: ${parsed_data}`)
     
-    if(has_property_of_type(parsed_data, 'settings', validate_settings))
-        STATE.settings.value = parsed_data.settings; //TODO: hard-coded
+    console.log(parsed_data)
 
+    let settings:Settings|null = null;
+    if(has_property_of_type(parsed_data, 'settings', validate_settings))
+        settings = parsed_data.settings;
+    else
+        throw new Error('Cannot parse settings')
+
+    let available_models:AvailableModels|null = null;
     if(has_property_of_type(parsed_data, 'available_models', validate_available_models))
-        STATE.available_models.value = parsed_data.available_models //TODO: hard-coded
+        available_models = parsed_data.available_models
+    else
+        throw new Error('Cannot parse available models')
+    
+    return {settings, available_models}
+}
+
+
+/** Update global STATE with new settings from backend */
+export function set_settings_from_response_default(raw_data:string): void {
+    const response:SettingsResponse         = validate_settings_response(raw_data)
+    globalThis.STATE.settings.value         = response.settings;
+    globalThis.STATE.available_models.value = response.available_models;
 }

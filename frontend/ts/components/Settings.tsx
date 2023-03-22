@@ -22,7 +22,7 @@ export class SettingsModal extends preact.Component {
 
             <div class="ui form content">
                 <ModelSelection 
-                    active_model     = {STATE?.settings?.value?.active_models?.detection.name}  //TODO: hardcoded
+                    active_model     = {STATE?.settings?.value?.active_models?.detection}  //TODO: hardcoded
                     available_models = {avmodels}
                     ref              = {this.model_selection}
                 />
@@ -49,7 +49,7 @@ export class SettingsModal extends preact.Component {
             return
         }
 
-        const settings:Settings = {active_models:{detection : model}}
+        const settings:Settings = {active_models:{detection : model.name}}
         await util.fetch_with_error(
             [new Request('/settings', {method:'post', body:JSON.stringify(settings)})],
             () => {show_error_toast('Cannot save settings.')}

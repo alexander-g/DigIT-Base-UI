@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { load_settings } from "../../frontend/ts/logic/settings.ts";
+import * as settings    from "../../frontend/ts/logic/settings.ts";
 import * as util        from "./util.ts";
 import { mock }         from "./dep.ts";
 import { asserts }      from "./dep.ts";
@@ -11,7 +11,7 @@ Deno.test('load_settings.errorhandling', async (t: Deno.TestContext) => {
         util.mock_fetch_connection_error('Should not be caught')
         const error_spy: mock.Spy<any, [string], void> = mock.spy()
         await asserts.assertRejects(
-            async () => { await load_settings(error_spy) }
+            async () => { await settings.load_settings(error_spy) }
         );
         mock.assertSpyCalls(error_spy, 1)
     })
@@ -22,7 +22,7 @@ Deno.test('load_settings.errorhandling', async (t: Deno.TestContext) => {
         util.mock_fetch_404()
         const error_spy: mock.Spy<any, [string], void> = mock.spy()
         await asserts.assertRejects(
-            async () => { await load_settings(error_spy) }
+            async () => { await settings.load_settings(error_spy) }
         );
         mock.assertSpyCalls(error_spy, 1)
     })
@@ -33,9 +33,43 @@ Deno.test('load_settings.errorhandling', async (t: Deno.TestContext) => {
         util.mock_fetch(async () => await new Response('$&"!'))
         const error_spy: mock.Spy<any, [string], void> = mock.spy()
         await asserts.assertRejects(
-            async () => { await load_settings(error_spy) }
+            async () => { await settings.load_settings(error_spy) }
         );
         mock.assertSpyCalls(error_spy, 1)
     })
 })
 
+
+
+Deno.test('is_object', () => {
+    asserts.assertFalse( settings.is_object(5), 'a number is not a object' )
+    asserts.assertFalse( settings.is_object('a string is not an object') )
+    asserts.assertFalse( settings.is_object(['an array is not an object']) )
+    asserts.assert(      settings.is_object({'an object':'is an object'}) )
+})
+
+
+Deno.test('validate.basic', () => {
+    const test_string0 = `{
+        "available_models": {
+          "detection": [
+            {
+              "name": "model_A", 
+              "properties": null
+            }, 
+            {
+              "name": "model_B", 
+              "properties": null
+            }
+          ]
+        }, 
+        "settings": {
+          "active_models": {
+            "detection": "model_A"
+          }
+        }
+      }`
+
+    //assert no error is thrown
+    settings.validate_settings_response(test_string0)
+})
