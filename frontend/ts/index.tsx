@@ -3,14 +3,20 @@ import { TopMenu }          from "./components/TopMenu.tsx"
 import { MainContainer }    from "./components/MainContainer.tsx"
 import { SVGFilters }       from "./components/SVGFilters.tsx";
 
-import * as file_input from "./file_input.ts"
+import * as file_input      from "./file_input.ts"
+import { load_settings }    from "./logic/settings.ts";
 
 export function Body(): JSX.Element {
-    return <body onDragOver={file_input.on_drag} onDrop={file_input.on_drop}>
+    return (
+    <body 
+        onDragOver  = {file_input.on_drag} 
+        onDrop      = {file_input.on_drop}
+    >
         <SVGFilters />  {/* Must go first for cosmetic reasons */}
         <TopMenu/>
         <MainContainer />
     </body>
+    )
 }
 
 /** CSS that does not seem to work adding via JSX */
@@ -56,4 +62,6 @@ export function Index(): JSX.Element {
 
 if(!globalThis.Deno){
     preact.hydrate(<Body />, document.body.parentElement!)
+    //body onload callback doesnt work for some reason
+    await load_settings()
 }
