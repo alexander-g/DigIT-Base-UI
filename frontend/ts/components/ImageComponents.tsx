@@ -1,8 +1,9 @@
 import { preact, JSX, signals }             from "../dep.ts"
 import type { AppFileState }                from "../state.ts"
-import type { ImageSize }                   from "../util.ts"
+import type { ImageSize, Point }            from "../util.ts"
 import { set_image_src }                    from "../file_input.ts"
 import * as styles                          from "./styles.ts"
+import { start_drag }                       from "./ui_util.ts";
 
 export type InputImageProps = {
     /** Which file to display */
@@ -58,7 +59,9 @@ type ImageControlsProps = {
 /** Responsible for panning and zooming of images and important for layout */
 export class ImageControls extends preact.Component<ImageControlsProps> {
     scale: signals.Signal<number>               = new signals.Signal(1)
-    offset:signals.Signal<{x:number, y:number}> = new signals.Signal({x:0,y:0})
+    offset:signals.Signal<Point>                = new signals.Signal({x:0,y:0})
+
+    ref:   preact.RefObject<HTMLDivElement>     = preact.createRef()
 
     render(props:ImageControlsProps) {
         const stripes_css = {
@@ -103,7 +106,13 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
             transform: matrix.toString(),
         }
 
-        return <div class="view-box stripes" style={{...stripes_css, ...view_box_css}} onDblClick={this.on_dbl_click.bind(this)}>
+        return (
+        <div 
+            class       =   "view-box stripes" 
+            style       =   {{...stripes_css, ...view_box_css}} 
+            onDblClick  =   {this.on_dbl_click.bind(this)}
+            ref         =   {this.ref}
+        >
             {/* TODO: transform-box callbacks */}
             <div 
             class       =   "transform-box unselectable set-aspect-ratio-manually" 
@@ -117,6 +126,7 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
                 </div>
             </div>
         </div>
+        )
     }
 
     /** SHIFT+Double-Click on image: reset to default view */
@@ -143,43 +153,30 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
 
     /** SHIFT+Mouse-Down on image: start panning */
     on_mouse_down(mousedown_event:MouseEvent): boolean {
-        if(!mousedown_event.shiftKey) {
+        if(!mousedown_event.shiftKey)
             return false;
-        }
+        if(!this.ref.current)
+            return false;
 
         //prevent selection of text
         mousedown_event.preventDefault();
 
-        let click_y: number = mousedown_event.pageY;
-        let click_x: number = mousedown_event.pageX;
-    
         // deno-lint-ignore no-this-alias
-        const _this: ImageControls = this;
+        const _this: ImageControls  = this;
+        const start_offset: Point   = this.offset.value
 
-        /** Callback to pan an image. Document-wide against glitches */
-        function on_document_move(mousemove_event: MouseEvent): void {
-            mousemove_event.stopPropagation();
-
-            if( (mousemove_event.buttons & 0x01)==0 ){
-                //mouse up
-                document.removeEventListener('mousemove', on_document_move);
-                return;
+        /** Drag to pan the image */
+        start_drag(
+            mousedown_event,
+            this.ref.current,
+            undefined,
+            (start:Point, end:Point) => {
+                _this.offset.value = { 
+                    x: start_offset.x + (end.x - start.x),
+                    y: start_offset.y + (end.y - start.y),
+                }
             }
-    
-            const delta_y: number = mousemove_event.pageY - click_y;
-            const delta_x: number = mousemove_event.pageX - click_x;
-
-            _this.offset.value = { 
-                x: _this.offset.peek().x + delta_x,
-                y: _this.offset.peek().y + delta_y,
-            }
-
-            //update click coordinates for next callback call
-            click_y = mousemove_event.pageY;
-            click_x = mousemove_event.pageX;
-        }
-        document.addEventListener('mousemove', on_document_move)
-
+        )
         //prevent bubbling or something like that
         return true;
     }

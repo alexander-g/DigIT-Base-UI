@@ -1,6 +1,6 @@
-import { preact, JSX, signals }                 from "../dep.ts"
-import type { AppFileState, AppFileList }       from "../state.ts"
-import { ContentMenu }                          from "./ContentMenu.tsx"
+import { preact, JSX, signals, ReadonlySignal }         from "../dep.ts"
+import type { AppFileState, AppFileList }               from "../state.ts"
+import { ContentMenu }                                  from "./ContentMenu.tsx"
 import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.tsx"
 import { ResultOverlays }                               from "./ResultOverlay.tsx";
 import { FileTableMenu }                                from "./FileTableMenu.tsx";
@@ -144,7 +144,7 @@ type FileTableProps = {
 
 export class FileTable extends preact.Component<FileTableProps> {
     /** The currently displayed filename. null if all closed. */
-    #$active_file:signals.Signal<string|null> = new signals.Signal(null);
+    #$active_file:signals.Signal<string|null> = new signals.Signal(null);  //TODO: reset to null when props.files changes
 
     render(props: FileTableProps): JSX.Element {
         const sort_class: string = props.sortable ? 'sortable' : '';         //TODO fix classes
@@ -172,6 +172,11 @@ export class FileTable extends preact.Component<FileTableProps> {
             onOpening: function(){ _this.on_accordion_open(this[0]) },
             onClose:   function(){ _this.#$active_file.value = null },
         })
+
+        /** Reset #$active_file if input files changed */
+        this.props.files.subscribe(
+            () => {this.#$active_file.value = null;}
+        )
     }
 
     /**
@@ -186,6 +191,11 @@ export class FileTable extends preact.Component<FileTableProps> {
             return
         
         const filename: string|null = opened_row.getAttribute('filename')
-        this.#$active_file.value     = filename;
+        this.#$active_file.value    = filename;
+    }
+
+    /** {@link #$active_file} */
+    get $active_file(): ReadonlySignal<string|null> {
+        return this.#$active_file;
     }
 }

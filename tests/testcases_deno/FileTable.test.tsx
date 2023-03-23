@@ -11,6 +11,7 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
 
     const files: AppFileList = new AppFileList([])
     const processing         = new signals.Signal(false)
+    const table_ref:preact.RefObject<FileTable> = preact.createRef()
 
     await t.step('empty', async () => {
         preact.render(
@@ -19,6 +20,7 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
                 sortable        =   {false} 
                 processing      =   {processing}
                 labels_column   =   {false}
+                ref             = {table_ref}
             />,
             document.body
         )
@@ -26,6 +28,17 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
         await util.wait(1)
         asserts.assertEquals(document.querySelectorAll('table tbody tr').length, 0)
     })
+
+    //removing Readonly from the signal for testing
+    const $active_file:signals.Signal|null|undefined = table_ref.current?.$active_file;
+    asserts.assertExists($active_file)
+    $active_file.value = 'somefile.jpg'
+
+    const active_file_spy: mock.Spy = mock.spy()
+    $active_file.subscribe(active_file_spy)
+    //calls already on subscription
+    mock.assertSpyCalls(active_file_spy, 1)
+    
 
     await t.step('non-empty', async () => {
         const files0:AppFile[] = [
@@ -35,12 +48,17 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
         files.set_from_files(files0);
 
         await util.wait(1)
-        const P: HTMLTableRowElement[] = Array.from(document.querySelectorAll('table tr.table-row') ?? [])
+        const P: HTMLTableRowElement[] 
+            = Array.from(document.querySelectorAll('table tr.table-row') ?? [])
         asserts.assertEquals( P.length, files0.length )
+        //active file should be reset when the input files change
+        mock.assertSpyCalls(active_file_spy, 2)
+        mock.assertSpyCallArg(active_file_spy, 1, 0, null)
     })
 
     await t.step('bold-with-result', async () => {
-        const P: HTMLTableRowElement[] = Array.from(document.querySelectorAll('table tr.table-row') ?? [])
+        const P: HTMLTableRowElement[] 
+            = Array.from(document.querySelectorAll('table tr.table-row') ?? [])
         const p2: HTMLTableRowElement  = P[1]!
         asserts.assertEquals(p2.style.fontWeight, 'normal')
 
@@ -56,6 +74,7 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
 
 Deno.test('FileTableBody.no-scrolling-on-dead-rows', async () => {
     const document:Document   = await util.setup_jsdom()
+    util.mock_fomantic()
     const scrollspy: mock.Spy = mock.spy( )
     // mocking window.scrollTo, still not sure how it works
     // deno-lint-ignore no-explicit-any
