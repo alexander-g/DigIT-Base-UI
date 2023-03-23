@@ -113,3 +113,23 @@ export function collect_all_classes_default(): string[] {
     return collect_all_classes(results, modelinfo)
 }
 
+
+/** Download an element to the hard drive. */
+export function download_URI(uri:string, filename:string): void {
+    const element:HTMLAnchorElement = document.createElement('a');
+    element.setAttribute('href', uri);
+    element.setAttribute('download', filename);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+}
+
+/** Download a string as a text file */
+export function download_text(text:string, filename:string): void {
+    return download_URI('data:text/plain;charset=utf-8,'+encodeURIComponent(text), filename)
+}
+
+export function download_blob(blob: Blob, filename:string): void {
+    return download_URI(URL.createObjectURL(blob), filename);
+}

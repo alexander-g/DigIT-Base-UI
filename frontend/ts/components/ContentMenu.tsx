@@ -1,7 +1,8 @@
 import { preact, JSX, Signal }      from "../dep.ts";
 import type { AppFileState }        from "../state.ts";
 import * as detection               from "../logic/detection.ts";
-
+import { format_results_as_csv }    from "../logic/download.ts";
+import * as ui_util                 from "./ui_util.ts";
 
 type ContentMenuProps = {
     file: AppFileState;
@@ -119,7 +120,7 @@ export function DownloadButton(props: { file: AppFileState }): JSX.Element {
     return (
         <a
             class           =   {"download item " + disabled}
-            onClick         =   {console.warn}
+            onClick         =   {() => download_single_file(props.file)}
             data-tooltip    =   "Download Result"
             data-position   =   "bottom left"
         >
@@ -127,6 +128,13 @@ export function DownloadButton(props: { file: AppFileState }): JSX.Element {
         </a>
     );
 }
+
+/** Format the results of a single file and download */
+export function download_single_file(file:AppFileState): void {
+    const csv:string = format_results_as_csv([file])
+    ui_util.download_text(csv, 'result.csv')
+}
+
 
 
 
