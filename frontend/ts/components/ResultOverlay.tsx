@@ -1,6 +1,7 @@
 import { preact, JSX, Signal, ReadonlySignal }  from "../dep.ts";
 import { ResultState }                          from "../state.ts";
 import * as util                                from "../util.ts";
+import * as ui_util                             from "./ui_util.ts";
 import * as styles                              from "./styles.ts"
 import { black_to_transparent_css }             from "./SVGFilters.tsx";
 import { BoxesOverlay }                         from "./BoxesOverlay.tsx";
@@ -18,11 +19,7 @@ type ResultOverlaysProps = {
     }
 }
 
-/** Type guard to remove undefined from a signal value type */
-function is_signalvalue_defined<T>(x:ReadonlySignal<T|undefined>): x is ReadonlySignal<T>;
-function is_signalvalue_defined<T>(x:Signal<T|undefined>): x is Signal<T> {
-    return (x.value != undefined)
-}
+
 
 
 /** A list of elements that display processing results */
@@ -42,6 +39,7 @@ export class ResultOverlays extends preact.Component<ResultOverlaysProps> {
         if(props.boxoverlay_props)
             children.push(
                 <BoxesOverlay 
+                    $visible            = {result.$visible}
                     $instances          = {result.$instances}
                     on_new_instances    = {this.on_new_instances.bind(this)}
                     {...props.boxoverlay_props}
@@ -64,18 +62,14 @@ export class ResultOverlays extends preact.Component<ResultOverlaysProps> {
 
 type ImageOverlayProps = {
     imagename:        string;
-    $visible:         ReadonlySignal<boolean>;
-}
+    //$visible:         ReadonlySignal<boolean>;
+} & ui_util.MaybeHiddenProps
 
 /** A result overlay that displays an image (e.g. a segmentation result) */
-export class ImageOverlay extends preact.Component<ImageOverlayProps> {
+export class ImageOverlay extends ui_util.MaybeHidden<ImageOverlayProps> {
     img_src: Signal<string|undefined> = new Signal()
 
-    render(props:ImageOverlayProps): JSX.Element {
-        const display_css = {
-            display: util.boolean_to_display_css(props.$visible.value)
-        }
-        
+    render(props:ImageOverlayProps): JSX.Element {        
         return <img 
             class       =   "overlay unselectable pixelated" 
             src         =   {this.img_src.value}  
@@ -84,7 +78,7 @@ export class ImageOverlay extends preact.Component<ImageOverlayProps> {
                 ...styles.overlay_css, 
                 ...styles.pixelated_css,
                 ...black_to_transparent_css,
-                ...display_css,
+                ...super.get_display_css(),
             }}
         />
     }
@@ -100,5 +94,3 @@ export class ImageOverlay extends preact.Component<ImageOverlayProps> {
         this.img_src.value      = URL.createObjectURL(blob)
     }
 }
-
-

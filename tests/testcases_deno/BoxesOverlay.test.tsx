@@ -23,10 +23,11 @@ Deno.test('BoxesOverlay.basic', async (t:Deno.TestContext) => {
     const $drawing_mode = new signals.Signal(false)
     preact.render(
         <BoxesOverlay 
-            $instances          =   {instances} 
-            imagesize           =   {imagesize} 
-            on_new_instances    =   {spy}
+            $instances              =   {instances} 
+            imagesize               =   {imagesize} 
+            on_new_instances        =   {spy}
             $drawing_mode_active    =   {$drawing_mode}
+            $visible                =   {new signals.Signal(true)}
         />, document.body 
     );
     await util.wait(1)
@@ -67,6 +68,7 @@ Deno.test('BoxesOverlay.add_boxes', () => {
         $instances           : $instances,
         $drawing_mode_active : new signals.Signal(false),
         on_new_instances     : spy,
+        $visible             : new signals.Signal(true)
     })
 
     overlay.add_new_box(Box.from_array([50,50,100,100]))

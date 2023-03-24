@@ -1,6 +1,7 @@
-import { Point, Size }              from "../util.ts";
-import { ModelInfo, find_modelinfo }    from "../logic/settings.ts";
-import { AppFileState, Result }     from "../state.ts";
+import { Point, Size }                          from "../util.ts";
+import { ModelInfo, find_modelinfo }            from "../logic/settings.ts";
+import { AppFileState, Result }                 from "../state.ts";
+import { preact, Signal, ReadonlySignal }       from "../dep.ts";
 
 
 export type DragCallback = (start:Point, end:Point) => void;
@@ -132,4 +133,43 @@ export function download_text(text:string, filename:string): void {
 
 export function download_blob(blob: Blob, filename:string): void {
     return download_URI(URL.createObjectURL(blob), filename);
+}
+
+
+/** Return value for the CSS display property to show or hide an element
+ * 
+ * Usage:
+ * ```tsx
+ * const style = {display: boolean_to_display_css(condition)}
+ * <Element style={style} />
+ * ```
+ */
+export function boolean_to_display_css(x: boolean): 'none' | undefined {
+    return x ? undefined : 'none';
+}
+
+
+
+
+export type MaybeHiddenProps = {
+    /** Signal indicating whether the component should be visible or hidden */
+    $visible:   ReadonlySignal<boolean>
+}
+
+/** Abstract component that is hidden or visible based on the $visible prop signal */
+export abstract class MaybeHidden<P extends MaybeHiddenProps> extends preact.Component<P> {
+    /** Return a CSS style with display property to make the component visible or not */
+    get_display_css(): Record<"display", string|undefined> {
+        return {
+            display: boolean_to_display_css(this.props.$visible.value)
+        }
+    }
+}
+
+
+
+/** Type guard to remove undefined from a signal value type */
+export function is_signalvalue_defined<T>(x:ReadonlySignal<T|undefined>): x is ReadonlySignal<T>;
+export function is_signalvalue_defined<T>(x:Signal<T|undefined>): x is Signal<T> {
+    return (x.value != undefined)
 }

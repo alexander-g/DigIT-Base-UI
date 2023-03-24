@@ -45,18 +45,6 @@ export async function fetch_with_error(
 export function url_for_image(imagename:string, cachebuster = true): string {
     return `/images/${imagename}` + (cachebuster? `?_=${Date.now()}` : '')
 }
-
-/** Return value for the CSS display property to show or hide an element
- * 
- * Usage:
- * ```tsx
- * const style = {display: boolean_to_display_css(condition)}
- * <Element style={style} />
- * ```
- */
-export function boolean_to_display_css(x: boolean): 'none' | undefined {
-    return x ? undefined : 'none';
-  }
   
 
 

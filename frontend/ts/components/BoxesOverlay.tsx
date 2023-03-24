@@ -16,10 +16,10 @@ type BoxesOverlayProps = {
     on_new_instances: (x:Instance[]) => void;
 
     //TODO: $visible (but with code re-use)
-}
+} & ui_util.MaybeHiddenProps
 
 /** A result overlay that displays boxes */
-export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
+export class BoxesOverlay extends ui_util.MaybeHidden<BoxesOverlayProps> {
     ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 
     /** Instance of IntermediateBoxOverlay  */
@@ -58,7 +58,11 @@ export class BoxesOverlay extends preact.Component<BoxesOverlayProps> {
         return (
             <div 
                 class       =   "boxes overlay" 
-                style       =   {{ ...cursor_css, ...styles.overlay_css }} 
+                style       =   {{ 
+                    ...cursor_css, 
+                    ...styles.overlay_css, 
+                    ...super.get_display_css() 
+                }} 
                 onMouseDown =   {this.on_mouse_down.bind(this)}
                 ref         =   {this.ref}
             >

@@ -1,6 +1,6 @@
 import { preact, JSX, signals }         from "../dep.ts";
 import { ResultState, ResultStatus }    from "../state.ts";
-import { boolean_to_display_css }       from "../util.ts";
+import { boolean_to_display_css }       from "./ui_util.ts";
 
 
 type ProgressDimmerProps = {
