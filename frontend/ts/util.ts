@@ -73,3 +73,23 @@ export type DeepPartial<T> = T extends Record<string, unknown> ? {
     [P in keyof T]?: DeepPartial<T[P]>;
 } : T;
 
+
+/**
+ * Remove the file extension from a given file name.
+ * @param fileName The name of the file to remove the extension from.
+ * @returns The file name without its extension.
+ */
+export function remove_file_extension(filename: string): string {
+    const last_dot:number   = filename.lastIndexOf(".");
+    if (last_dot === -1) {
+        // The file name doesn't have an extension.
+        return filename;
+    } else {
+        return filename.slice(0, last_dot);
+    }
+}
+
+/** Return the base name of a file given its path. */
+export function file_basename(filename:string): string {
+    return filename.slice(filename.lastIndexOf('/')+1)
+}
