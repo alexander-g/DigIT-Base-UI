@@ -1,6 +1,6 @@
-import { JSX, preact }                      from "../dep.ts"
+import { JSX, preact, Signal }              from "../dep.ts"
 import * as util                            from "../util.ts";
-import { load_settings }                    from "../logic/settings.ts";
+import * as settings                        from "../logic/settings.ts";
 import type { ModelInfo, Settings }         from "../logic/settings.ts";
 import { show_error_toast }                 from "./errors.ts";
 
@@ -33,7 +33,7 @@ export class SettingsModal extends preact.Component {
     }
 
     async show_modal(): Promise<void> {
-        await load_settings() //might fail //TODO: maybe move upstream?
+        await settings.load_settings() //might fail
         $(this.ref.current).modal({
             onApprove: this.save_settings.bind(this)
         }).modal('show');
@@ -57,23 +57,22 @@ export class SettingsModal extends preact.Component {
     }
 }
 
-type ModelSelectionProps = {
+type ModelDropdownProps = {
     /** Which options to display in the model selection dropdown */
     available_models?: ModelInfo[];
-    /** Which option is active in the model selection dropdown */
-    active_model?:     string;
+    /** Which option is displayed in the model selection dropdown (not yet saved) */
+    selected_model:    Signal<string|undefined>;
 }
 
 
 /** Field to select the currently active model.
- *  TODO: Displays more infos about the model if available.
+ *  Displays more infos about the model if available.
  */
-class ModelSelection extends preact.Component<ModelSelectionProps> {
+class ModelDropdown extends preact.Component<ModelDropdownProps> {
     dropdown_ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 
-    render(props:ModelSelectionProps): JSX.Element {
-        return <div class="field">
-            <label>Active Model:</label>
+    render(props:ModelDropdownProps): JSX.Element {
+        return (
             <div class="ui dropdown selection" id="settings-active-model" ref={this.dropdown_ref}>
                 <input type="hidden" name="active-model" />
                 <i class="dropdown icon"></i>
@@ -82,10 +81,7 @@ class ModelSelection extends preact.Component<ModelSelectionProps> {
                     {/* NOTE: children inserted here by Fomantic */}
                 </div>
             </div>
-
-        {/* TODO: class properties  */}
-        
-        </div>
+        )
     }
 
     get_selected(): ModelInfo|undefined {
@@ -100,7 +96,7 @@ class ModelSelection extends preact.Component<ModelSelectionProps> {
     }
 
     /** Dropdown is handled by Fomantic, not preact */
-    shouldComponentUpdate(props: Readonly<ModelSelectionProps>): boolean {
+    shouldComponentUpdate(props: Readonly<ModelDropdownProps>): boolean {
         const dropdown_el:HTMLDivElement|null = this.dropdown_ref.current;
 
         if(dropdown_el){
@@ -110,18 +106,70 @@ class ModelSelection extends preact.Component<ModelSelectionProps> {
                 (m:ModelInfo, index:number) => ({
                     name        : m.name, 
                     value       : index, 
-                    selected    : (m.name == props.active_model) 
+                    selected    : (m.name == props.selected_model.value ) 
                 }) 
             ) ?? [] //TODO: display some error instead of empty
 
             $(dropdown_el).dropdown({
                 values:      dropdown_items, 
-                showOnFocus: false
+                showOnFocus: false,
+                onChange:    (_i:number, modelname:string) => {
+                    props.selected_model.value = modelname}
+                ,
             })
         }
 
         //only update HTML once, fomantic does the rest
         return (dropdown_el == null);
+    }
+}
+
+
+type ModelSelectionProps = {
+    /** Which options to display in the model selection dropdown */
+    available_models?: ModelInfo[];
+    /** Which option is currently set in the settings (not necessarily diplayed) */
+    active_model?:     string;
+}
+
+/**
+ * Dropdown to select a model and additiona infobox with known classes for the selected model.
+ */
+class ModelSelection extends preact.Component<ModelSelectionProps> {
+    private dropdown_ref:preact.RefObject<ModelDropdown> = preact.createRef()
+    private selected_model: Signal<string|undefined>     = new Signal()
+
+    render(props:ModelSelectionProps): JSX.Element {
+        if(this.selected_model.value == undefined)
+            this.selected_model.value = props.active_model;
+        
+        const modelname:string|undefined = this.selected_model.value
+        
+        let known_classes: JSX.Element|undefined;
+        if(props.available_models && modelname) {
+            const active_model_info: ModelInfo|undefined
+                = settings.find_modelinfo(props.available_models, modelname)
+            
+            if(active_model_info)
+                known_classes = <KnownClasses modelinfo={active_model_info} />
+        }
+
+        return (
+        <div class="field">
+            <label>Active Model:</label>
+            <ModelDropdown 
+                available_models = {props.available_models}
+                selected_model   = {this.selected_model}
+                ref              = {this.dropdown_ref}
+            />
+
+            { known_classes }
+        </div>
+        )
+    }
+
+    get_selected(): ModelInfo|undefined {
+        return this.dropdown_ref.current?.get_selected();
     }
 }
 
@@ -140,6 +188,39 @@ export function OkCancelButtons(): JSX.Element {
     </div>
 }
 
+/** A small Fomantic UI label showing the name of a known class */
+function KnownClassLabel(props:{classname:string}): JSX.Element {
+    return <div class="ui label"> 
+        { props.classname }
+    </div>
+}
+
+/** Info box listing which classes a model was trained on */
+function KnownClasses(props:{modelinfo:ModelInfo}): JSX.Element {
+    const known_classes_css = {
+        /* scroll bar for long list of known classes */
+        overflow:   'auto',
+        maxHeight:  '50vh',
+        paddingTop: '5px',
+    }
+    const known_class_labels: JSX.Element[] | undefined 
+        = props.modelinfo?.properties?.known_classes.map( 
+            (c:string) => <KnownClassLabel classname={c} /> 
+        )
+    
+    if(known_class_labels)
+        return (
+            <div class="ui labels known-classes" style={known_classes_css}>
+                <b>Known classes:</b>
+                { known_class_labels }
+            </div>
+        )
+    else
+        return <></>
+}
+
+
+
 
 type SettingsButtonProps = {
     on_click?: () => void;
@@ -147,13 +228,6 @@ type SettingsButtonProps = {
 
 /** Button in the TopMenu. Opens the SettingsModal */
 export function SettingsButton(props:SettingsButtonProps): JSX.Element {
-    async function on_click(): Promise<void> {
-        await load_settings() //might fail //TODO: maybe move upstream?
-        $('#settings-dialog').modal({
-            onApprove: console.warn /* TODO */ 
-        }).modal('show');
-    }
-
     return <a class="ui simple item" id="settings-button" onClick={props.on_click}>
         <i class="wrench icon"></i>
         <span class="text">Settings</span>

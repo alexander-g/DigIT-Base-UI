@@ -48,7 +48,7 @@ export async function load_settings(
     
 }
 
-
+/** Search for a model name in a list of modelinfos */
 export function find_modelinfo(models:ModelInfo[], modelname:string): ModelInfo|undefined {
     const matches:ModelInfo[] = models.filter( (m:ModelInfo) => m.name == modelname )
     return matches[0]
