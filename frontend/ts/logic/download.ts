@@ -1,6 +1,7 @@
 import { AppFile, Result }          from "../state.ts";
 import { Instance }                 from "../logic/boxes.ts";
-
+import * as util                    from "../util.ts";
+import { validate_instance }        from "./boxes.ts";
 
 
 
@@ -51,9 +52,19 @@ export function export_result_to_file(file:AppFile): File|null {
     return new File([result_json], result_name, {type: "application/json"})
 }
 
-// export async function import_result_from_file(file:File): Result {
-//     const raw_data:unknown = JSON.parse(await file.text())
-//     const result = new Result('processed')
-// }
+
+function validate_result(x:unknown): Result|null {
+    if(util.is_array_of_type(x, validate_instance) ){
+        return new Result('processed', {instances: x})
+    }
+    else return null;
+}
+
+/** Load a previously exported result from a file. 
+ *  @returns Result or null if the file is invalid. */
+export async function import_result_from_file(file:File): Promise<Result|null> {
+    const raw_data:unknown = JSON.parse(await file.text())
+    return validate_result(raw_data)
+}
 
 

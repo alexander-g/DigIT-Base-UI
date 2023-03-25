@@ -47,9 +47,14 @@ export class Result {
     /** Boxes and labels of objects */
     #instances?:        MaybeInstances;
 
-    constructor(status: ResultStatus = 'unprocessed', other:Partial<Result> = {}){
-        this.status = status;
-        Object.assign(this, {...other})
+    constructor(
+        status: ResultStatus        = 'unprocessed', 
+        other:  Partial<Result>     = {}
+    ) {
+        this.status     = status;
+        //NOTE: not using set_instances() because of some strange error
+        this.#instances = other.instances
+        this.classmap   = other.classmap
     }
 
     /** Boxes and labels of objects */
@@ -57,10 +62,10 @@ export class Result {
         return this.#instances;
     }
 
-    /** Set the instances, overwritten in the reactive subclass */
+    /** Set the instances and change status accordingly */
     set_instances(instances: MaybeInstances) {
         this.#instances = instances
-        this.status     = 'processed'
+        this.status     = instances ? 'processed' : 'unprocessed';
     }
 }
 
@@ -90,6 +95,7 @@ export class ResultState extends Result {
         return this.#$instances.peek()
     }
 
+    /** @override */
     set_instances(instances: MaybeInstances): void {
         super.set_instances(instances)
         this.#$instances.value = instances;

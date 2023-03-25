@@ -56,38 +56,10 @@ export function find_modelinfo(models:ModelInfo[], modelname:string): ModelInfo|
 
 
 
-function has_property<K extends string, T extends Record<never, unknown>>(x:T, key:K): x is T & Record<K, unknown> {
-    return (key in x)
-}
 
-function has_property_of_type<K extends string, T extends Record<never, unknown>, P>(
-    x:T, 
-    key:K,
-    validate_fn: (x:unknown) => P | null
-): x is T & Record<K, P> {
-    return has_property(x, key) && (validate_fn(x[key]) != null)
-}
-
-function validate_string(x:unknown): string | null {
-    if(util.is_string(x)){
-        return x;
-    }
-    else return null;
-}
-
-function has_string_property<K extends string, T extends Record<never, unknown>>(x:T, key:K): x is T & Record<K, string>  {
-    return has_property_of_type(x, key, validate_string)
-}
-
-/** Type guard converting to an empty object.
- *  
- *  NOTE: Using `Record<never, unknown>` for more type safety. */
-export function is_object(x:unknown): x is Record<never, unknown> {
-    return (typeof x === 'object') && (x !== null) && !Array.isArray(x)
-}
 
 function validate_model_info(x:unknown): ModelInfo|null {
-    if(is_object(x) && has_string_property(x, 'name')) {
+    if(util.is_object(x) && util.has_string_property(x, 'name')) {
         return x;
     }
     else return null;
@@ -102,24 +74,24 @@ function validate_model_info_array(x:unknown): ModelInfo[]|null {
 
 
 function validate_active_models(x:unknown): ActiveModels|null {
-    if(is_object(x)
-    && has_property_of_type(x, 'detection', validate_string)) {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'detection', util.validate_string)) {
         return x;
     }
     else return null;
 }
 
 export function validate_available_models(x:unknown): AvailableModels|null {
-    if(is_object(x)
-    && has_property_of_type(x, 'detection', validate_model_info_array)) {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'detection', validate_model_info_array)) {
         return x;
     }
     else return null;
 }
 
 export function validate_settings(x:unknown): Settings|null {
-    if(is_object(x)
-    && has_property_of_type(x, 'active_models', validate_active_models)) {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'active_models', validate_active_models)) {
         return x;
     } 
     else return null
@@ -134,17 +106,17 @@ type SettingsResponse = {
 
 export function validate_settings_response(raw_data: string): SettingsResponse {
     const parsed_data: unknown = JSON.parse(raw_data)
-    if(!is_object(parsed_data))
+    if(!util.is_object(parsed_data))
         throw new Error(`Unexpected settings format: ${parsed_data}`)
 
     let settings:Settings|null = null;
-    if(has_property_of_type(parsed_data, 'settings', validate_settings))
+    if(util.has_property_of_type(parsed_data, 'settings', validate_settings))
         settings = parsed_data.settings;
     else
         throw new Error('Cannot parse settings')
 
     let available_models:AvailableModels|null = null;
-    if(has_property_of_type(parsed_data, 'available_models', validate_available_models))
+    if(util.has_property_of_type(parsed_data, 'available_models', validate_available_models))
         available_models = parsed_data.available_models
     else
         throw new Error('Cannot parse available models')

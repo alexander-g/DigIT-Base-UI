@@ -41,12 +41,6 @@ Deno.test('load_settings.errorhandling', async (t: Deno.TestContext) => {
 
 
 
-Deno.test('is_object', () => {
-    asserts.assertFalse( settings.is_object(5), 'a number is not a object' )
-    asserts.assertFalse( settings.is_object('a string is not an object') )
-    asserts.assertFalse( settings.is_object(['an array is not an object']) )
-    asserts.assert(      settings.is_object({'an object':'is an object'}) )
-})
 
 
 Deno.test('validate.basic', () => {

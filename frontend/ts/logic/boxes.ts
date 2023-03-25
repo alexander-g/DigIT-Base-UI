@@ -1,9 +1,9 @@
-
+import * as util                from "../util.ts";
 
 export class Box {
     x0: number;
     y0: number;
-    x1!: number;
+    x1: number;
     y1: number;
 
     //TODO? convert to class and add width()/height() getters
@@ -28,12 +28,10 @@ export type Instance = {
 }
 
 
-export function is_number_array(x: unknown): x is number[] {
-    return Array.isArray(x) && x.every(element => typeof element === "number")
-}
+
 
 export function is_4_number_array(x: unknown): x is [number, number, number, number] {
-    return is_number_array(x) && (x.length == 4)
+    return util.is_number_array(x) && (x.length == 4)
 }
 
 
@@ -54,3 +52,28 @@ export function validate_boxes(maybe_boxes:unknown): Box[]|undefined {
     }
     return boxes;
 }
+
+
+
+export function validate_box(x: unknown): Box|null {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'x0', util.validate_number)
+    && util.has_property_of_type(x, 'y0', util.validate_number)
+    && util.has_property_of_type(x, 'x1', util.validate_number)
+    && util.has_property_of_type(x, 'y1', util.validate_number)){
+        return x;
+    } else if(is_4_number_array(x)) {
+        return Box.from_array(x)
+    }
+    else return null;
+}
+
+export function validate_instance(x: unknown): Instance|null {
+    if(util.is_object(x)
+    && util.has_string_property(x, 'label')
+    && util.has_property_of_type(x, 'box', validate_box)){
+        return x;
+    }
+    else return null;
+}
+

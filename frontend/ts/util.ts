@@ -93,3 +93,71 @@ export function remove_file_extension(filename: string): string {
 export function file_basename(filename:string): string {
     return filename.slice(filename.lastIndexOf('/')+1)
 }
+
+
+/** Check if the input has a property with name @param `key` 
+ * @returns A boolean indicating whether the object has the property or not
+*/
+export function has_property<K extends string, T extends Record<never, unknown>>(
+    x:      T, 
+    key:    K
+): x is T & Record<K, unknown> {
+    return (key in x)
+}
+/** Check if the input has a property with name @param `key` and it matches a specific type 
+ *  @param validate_fn - The function used to validate the property value
+*/
+export function has_property_of_type<K extends string, T extends Record<never, unknown>, P>(
+    x:              T, 
+    key:            K,
+    validate_fn:    (x:unknown) => P | null
+): x is T & Record<K, P> {
+    return has_property(x, key) && (validate_fn(x[key]) != null)
+}
+
+/** Validate if the input is a string. @returns either the string or null */
+export function validate_string(x:unknown): string | null {
+    if(is_string(x)){
+        return x;
+    }
+    else return null;
+}
+
+/** Validate if the input is a number. @returns either the number or null */
+export function validate_number(x: unknown): number|null {
+    return (typeof x == "number") ? x : null;
+}
+
+/** Check if the input has a property with name @param `key` and it is a string */
+export function has_string_property<K extends string, T extends Record<never, unknown>>(
+    x:      T, 
+    key:    K
+): x is T & Record<K, string>  {
+    return has_property_of_type(x, key, validate_string)
+}
+
+/** Type guard converting to an empty object.
+ *  
+ *  NOTE: Using `Record<never, unknown>` for more type safety. */
+export function is_object(x:unknown): x is Record<never, unknown> {
+    return (typeof x === 'object') && (x !== null) && !Array.isArray(x)
+}
+
+/** Validates if the unknown input is an array of a specific type
+ *  @param x unknown   - input to be validated
+ *  @param validate_fn - function that takes an unknown input and returns either the same object if it is of the specified type or null otherwise
+ *  @returns           - type guard that returns true if x is an array of T objects
+ */
+export function is_array_of_type<T>(
+    x:              unknown,
+    validate_fn:    (x: unknown) => T | null
+): x is T[] {
+    if (!Array.isArray(x)) {
+        return false;
+    }
+    return x.every(validate_fn)
+}
+
+export function is_number_array(x: unknown): x is number[] {
+    return is_array_of_type(x, validate_number)
+}

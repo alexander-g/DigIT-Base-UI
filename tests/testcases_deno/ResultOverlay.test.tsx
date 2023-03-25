@@ -88,6 +88,9 @@ Deno.test('Result.set_instances', () => {
     r0.set_instances([])
     asserts.assertEquals(r0.status, 'processed')
 
+    r0.set_instances(undefined)
+    asserts.assertEquals(r0.status, 'unprocessed')
+
 
     const r1:ResultState = ResultState.from_result(new Result())
     r1.set_instances([])
