@@ -37,7 +37,7 @@ export async function load_settings(
     on_error:errors.error_fn = errors.show_error_toast
 ): Promise<void> {
     const response: Response = await util.fetch_with_error(
-        ['/settings'], () => on_error('Loading settings failed.')
+        ['settings'], () => on_error('Loading settings failed.')
     )
     try {
         set_settings_from_response_default(await response.text())

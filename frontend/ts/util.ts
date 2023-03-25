@@ -12,7 +12,7 @@ export function upload_file(
     file        :   File, 
     error_fn    :   () => void,
     // deno-lint-ignore no-inferrable-types
-    url         :   string  = '/file_upload',
+    url         :   string  = 'file_upload',
 ): Promise<Response> {
     const data = new FormData()
     data.append('files', file);
@@ -43,7 +43,7 @@ export async function fetch_with_error(
 /** Construct the url to download an image from the backend, 
  *  optionally with a cachebuster to prevent caching */
 export function url_for_image(imagename:string, cachebuster = true): string {
-    return `/images/${imagename}` + (cachebuster? `?_=${Date.now()}` : '')
+    return `images/${imagename}` + (cachebuster? `?_=${Date.now()}` : '')
 }
   
 

@@ -35,7 +35,7 @@ export async function process_files(
             mark_result_as_processing(file)
             await util.upload_file(file, function(){})
             const response: Response 
-                = await util.fetch_with_error([`/process_image/${file.name}`], function(){})
+                = await util.fetch_with_error([`process_image/${file.name}`], function(){})
             await set_result_from_response(response, file)
         } catch (_error) {
             on_error_cb()
