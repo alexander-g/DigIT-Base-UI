@@ -1,4 +1,5 @@
 import * as file_input          from "../../frontend/ts/file_input.ts"
+import { AppFile }              from "../../frontend/ts/state.ts";
 import { asserts, path, mock }  from "./dep.ts"
 
 const IMAGE_ASSET1_PATH: string 
@@ -56,10 +57,10 @@ Deno.test('load_list_of_files', () => {
 
 Deno.test("collect_result_files filters result files for input files", () => {
     // Define some input and result files
-    const input_files: File[] = [
-        new File([], "input1.jpg"),
-        new File([], "input2.tiff"),
-        new File([], "input3.tiff"),
+    const input_files: AppFile[] = [
+        new AppFile(new File([], "input1.jpg")),
+        new AppFile(new File([], "input2.tiff")),
+        new AppFile(new File([], "input3.tiff")),
     ];
     const result_files: File[] = [
         new File([], "input1.json"),
@@ -70,14 +71,14 @@ Deno.test("collect_result_files filters result files for input files", () => {
     ];
 
     // Call the function being tested
-    const collected: Record<string, File[]> 
+    const collected 
         = file_input.collect_result_files(result_files, input_files);
 
     // Check that the function returns the correct output
-    asserts.assertEquals(collected['input1.jpg']?.length, 2);
-    asserts.assertEquals(collected['input1.jpg']?.[0], result_files[0]);
-    asserts.assertEquals(collected['input1.jpg']?.[1], result_files[1]);
-    asserts.assertEquals(collected['input2.tiff']?.length, 1);
-    asserts.assertEquals(collected['input2.tiff']?.[0]?.name, "input2.json");
+    asserts.assertEquals(collected['input1.jpg']?.resultfiles.length, 2);
+    asserts.assertEquals(collected['input1.jpg']?.resultfiles[0], result_files[0]);
+    asserts.assertEquals(collected['input1.jpg']?.resultfiles[1], result_files[1]);
+    asserts.assertEquals(collected['input2.tiff']?.resultfiles.length, 1);
+    asserts.assertEquals(collected['input2.tiff']?.resultfiles[0]?.name, "input2.json");
     asserts.assertEquals(collected['input3.tiff'], undefined);
 });

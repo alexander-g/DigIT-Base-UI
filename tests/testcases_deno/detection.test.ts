@@ -71,4 +71,16 @@ Deno.test('process_image.basic-succcess', async () => {
     asserts.assertExists(mockfile.result.instances)
     asserts.assertEquals(mockfile.result.instances.length, 2)
     asserts.assertEquals(mockfile.result.instances[1]?.label, 'potato')
+
+
+    mock.restore()
+    util.mock_fetch( async () => await new Response(JSON.stringify({
+        classmap: "banana.jpg",
+        boxes:    [
+            [10, 10, 100, 100],
+        ],
+        labels: [ 999 ],  //numbers not allowed (TODO: should give an error)
+    })) );
+    await process_image(mockfile, ()=>{})
+    asserts.assertEquals(mockfile.result.instances, undefined)
 })

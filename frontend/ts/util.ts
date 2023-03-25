@@ -162,3 +162,10 @@ export function is_array_of_type<T>(
 export function is_number_array(x: unknown): x is number[] {
     return is_array_of_type(x, validate_number)
 }
+
+export function validate_string_array(x: unknown): string[]|null {
+    if(is_array_of_type(x, validate_string)){
+        return x
+    }
+    else return null;
+}

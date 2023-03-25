@@ -1,6 +1,7 @@
 import { JSX, UTIF }    from "./dep.ts"
 import * as util        from "./util.ts"
-import { STATE }        from "./state.ts"   //TODO: hard-coded
+import { import_result_from_file }  from "./logic/download.ts";
+import { STATE, AppFile, Result }   from "./state.ts"   //TODO: hard-coded
 
 /** Event handler for file drag events */
 export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
@@ -10,7 +11,7 @@ export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
 /** Event handler for file drop events */
 export async function on_drop(event:preact.JSX.TargetedDragEvent<HTMLElement>): Promise<void> {
     event.preventDefault()
-    //reset state
+    //reset state  //TODO: should not be done here, but when setting the input files
     STATE.files.set_from_files([])
     //get file list from event, otherwise its gone after the wait
     const files: FileList | undefined = event.dataTransfer?.files
@@ -60,12 +61,38 @@ export function load_list_of_files_default(file_list:FileList|File[]): void {
 
 
 /** Load files as results if the match already loaded input files */
-function load_result_files(maybe_resultfiles: FileList|File[], loaded_inputfiles:File[]){
-    const result_files:Record<string, File[]> 
+async function load_result_files(
+    maybe_resultfiles: FileList|File[], 
+    loaded_inputfiles: AppFile[],
+): Promise<void> {
+    const input_result_map:InputResultMap
         = collect_result_files(Array.from(maybe_resultfiles), loaded_inputfiles)
-    console.warn('Settings result files not implemented:', result_files)
+    if(Object.keys(input_result_map).length==0)
+        return;
+    
+    for(const {inputfile, resultfiles} of Object.values(input_result_map)){
+        if(resultfiles.length != 1) {
+            console.error(`Unexpected number of result files for ${inputfile}`)
+            continue
+        }
+        
+        console.log('Settings result of ', inputfile.name)
+        const result: Result|null = await import_result_from_file(resultfiles[0]!)
+        if(result == null){
+            console.error('Failed to parse result.')
+            continue;
+        }
+        inputfile.set_result(result)
+    }
 }
 
+
+type InputResultFiles = {
+    inputfile:   AppFile,
+    resultfiles: File[]
+}
+
+type InputResultMap = Record<string, InputResultFiles>
 
 /** Filter a list of files, matching result files to already loaded input files 
  * @param maybe_result_files - Array of File objects that may include result files.
@@ -74,9 +101,9 @@ function load_result_files(maybe_resultfiles: FileList|File[], loaded_inputfiles
  */
 export function collect_result_files(
     maybe_result_files: File[],
-    input_files:        File[],
-): Record<string, File[]> {
-    const collected: Record<string, File[]> = {}
+    input_files:        AppFile[],
+): InputResultMap {
+    const collected: InputResultMap = {}
     for(const maybe_resultfile of maybe_result_files){
         const zip_filetypes:string[] = ["application/zip", "application/x-zip-compressed"]
         if(zip_filetypes.includes(maybe_resultfile.type)){
@@ -88,8 +115,12 @@ export function collect_result_files(
         /** Check for every input file if this result file matches */
         for(const inputfile of input_files){
             if(match_resultfile_to_inputfile(inputfile, maybe_resultfile)){
-                const prev: File[] = collected[inputfile.name] ?? []
-                collected[inputfile.name] = prev.concat([maybe_resultfile])
+                const prev: InputResultFiles = collected[inputfile.name] ?? {
+                    inputfile:   inputfile,
+                    resultfiles: []
+                }
+                prev.resultfiles.push(maybe_resultfile)
+                collected[inputfile.name] = prev
             }
         }
     }

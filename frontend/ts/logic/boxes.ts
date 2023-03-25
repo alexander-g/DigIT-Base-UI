@@ -36,9 +36,9 @@ export function is_4_number_array(x: unknown): x is [number, number, number, num
 
 
 
-export function validate_boxes(maybe_boxes:unknown): Box[]|undefined {
+export function validate_boxes(maybe_boxes:unknown): Box[]|null {
     if(maybe_boxes == undefined)
-        return undefined;
+        return null;
     
     if(!Array.isArray(maybe_boxes))
         throw Error('Encountered invalid element for boxes')

@@ -15,9 +15,10 @@ def process_image(imagepath, settings):
     )
     classmap = result['classmap']
     PIL.Image.fromarray( classmap ).save(output_path)
+    labels   = [str(l) for l in result['labels']]
     return {
         'segmentation' : output_filename,
         'classmap'     : output_filename,
         'boxes'        : result['boxes'].tolist(),
-        'labels'       : result['labels'].tolist(),
+        'labels'       : labels,
     }

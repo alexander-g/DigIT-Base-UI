@@ -47,7 +47,7 @@ export function export_result_to_file(file:AppFile): File|null {
     if(result.status != 'processed') {
         return null;
     }
-    const result_json:string = JSON.stringify(result.instances)
+    const result_json:string = JSON.stringify(result.instances, undefined, 2)
     const result_name:string = file.name + '.result.json'
     return new File([result_json], result_name, {type: "application/json"})
 }

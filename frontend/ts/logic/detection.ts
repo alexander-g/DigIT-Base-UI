@@ -38,6 +38,7 @@ export async function process_files(
                 = await util.fetch_with_error([`process_image/${file.name}`], function(){})
             await set_result_from_response(response, file)
         } catch (_error) {
+            console.error(_error)
             on_error_cb()
             mark_result_as_failed(file)
             continue;
@@ -72,22 +73,31 @@ export function cancel_processing_all_files(): void {
 }
 
 
-
+//TODO: rework
 async function set_result_from_response(response:Response, file:AppFile): Promise<Result> {
     //TODO: JSON.parse might fail if invalid json
-    // deno-lint-ignore no-explicit-any
-    const rawresult: any = JSON.parse(await response.text())
-    const result:Result  = new Result('processed', {raw:rawresult})
+    const rawresult: unknown = JSON.parse(await response.text())
+    const result:Result      = new Result('processed', {raw:rawresult})
 
-    if('classmap' in rawresult && util.is_string(rawresult.classmap)) {
+    if(util.is_object(rawresult) 
+    && util.has_string_property(rawresult, 'classmap')){
         result.classmap = rawresult.classmap;
     }
 
     //set instances if any
-    const maybeboxes: boxes.Box[]|undefined = boxes.validate_boxes(rawresult.boxes)
-    result.set_instances(maybeboxes?.map( 
-        (box:boxes.Box, i:number) => ({box, label:rawresult.labels[i]}) 
-    ))
+    if(util.is_object(rawresult)
+    && util.has_property_of_type(rawresult, 'boxes',  boxes.validate_boxes)
+    && util.has_property_of_type(rawresult, 'labels', util.validate_string_array)){
+        const _boxes: boxes.Box[]   = boxes.validate_boxes(rawresult.boxes)!
+        const labels: string[]      = rawresult.labels
+        if(_boxes.length != labels.length) {
+            console.error('Received unequal number of boxes and labels')
+        } else {
+            result.set_instances( _boxes.map(
+                (box:boxes.Box, i:number) => ({box, label:labels[i]!})
+            ))
+        }
+    }
 
     file.set_result(result);
     return result
