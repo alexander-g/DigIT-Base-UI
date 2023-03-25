@@ -32,12 +32,28 @@ export function format_instances_as_csv(instances:readonly Instance[]): string {
 }
 
 
-// export function format_single_result_as_json(result:Result): string {
+/** Export the results of processed files to JSON format */
+export function export_results(files:AppFile[]): File[] {
+    return files.map(export_result_to_file).filter(Boolean) as File[];
+}
 
+/** Export the processing result of an AppFile to a File object.
+ *  @param file - AppFile object with a processed Result.
+ *  @returns New File object with the processing results in JSON format, or null if the file has not been processed yet or failed processing.
+*/
+export function export_result_to_file(file:AppFile): File|null {
+    const result: Result = file.result;
+    if(result.status != 'processed') {
+        return null;
+    }
+    const result_json:string = JSON.stringify(result.instances)
+    const result_name:string = file.name + '.result.json'
+    return new File([result_json], result_name, {type: "application/json"})
+}
+
+// export async function import_result_from_file(file:File): Result {
+//     const raw_data:unknown = JSON.parse(await file.text())
+//     const result = new Result('processed')
 // }
 
-
-// export function load_result_from_json(jsondata:string): Result {
-
-// }
 
