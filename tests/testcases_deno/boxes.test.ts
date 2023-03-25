@@ -8,10 +8,11 @@ Deno.test('boxes.validate', () => {
         [10, 10, 50, 50],
         [100,100,200,200],
         [130,120,100,101],  //should get sanitized
+        [100,  0,110, 10],  //zero, actual bug
     ]
     const out0: boxeslib.Box[] | undefined = boxeslib.validate_boxes(raw0)
     asserts.assertExists(out0)
-    asserts.assertEquals(out0.length, 3)
+    asserts.assertEquals(out0.length, 4)
     asserts.assertEquals(out0[2]!.x0, raw0[2]![2]) //sanitize coordinates
 
     const out1: boxeslib.Box[] | undefined = boxeslib.validate_boxes([])
