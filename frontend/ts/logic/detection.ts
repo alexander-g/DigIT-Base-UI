@@ -21,14 +21,10 @@ export async function process_files(
 ): Promise<void> {
     //check if not already processing (CLI ne?)
     //
-
-
     for(const file of files) {
-        //TODO: clear results
-        //TODO: set file as currently processing
-
         //TODO: add filename to error message
-        const on_error_cb: () => void = function(){ on_error('Processing failed.') }
+        const on_error_cb: (e:Error) => void 
+            = function(e:Error){ on_error('Processing failed.', e) }
 
         // do actual processing //TODO: refactor into own file
         try {
@@ -38,8 +34,7 @@ export async function process_files(
                 = await util.fetch_with_error([`process_image/${file.name}`], function(){})
             await set_result_from_response(response, file)
         } catch (_error) {
-            console.error(_error)
-            on_error_cb()
+            on_error_cb(_error)
             mark_result_as_failed(file)
             continue;
         }

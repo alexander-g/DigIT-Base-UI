@@ -46,18 +46,30 @@ export function load_list_of_files(
 }
 
 
+const MIMETYPES: string[] = ["image/jpeg", "image/tiff"]          //NOTE: no png
+const set_inputfiles: (_:File[]) => void 
+    = (inputfiles:File[]) => globalThis.STATE.files.set_from_files(inputfiles)
+const set_resultfiles: (_:File[]) => void
+    = (maybe_resultfiles:File[]) => load_result_files(
+        maybe_resultfiles, globalThis.STATE.files.peek()
+    )
+
 /** Load input or result files @see {@link load_list_of_files}, uses global state */
 export function load_list_of_files_default(file_list:FileList|File[]): void {
     //TODO: still too hard-coded
-    return load_list_of_files(
-        file_list, 
-        ["image/jpeg", "image/tiff"],               //NOTE: no png
-        (inputfiles:File[]) => globalThis.STATE.files.set_from_files(inputfiles),
-        (maybe_resultfiles:File[]) => load_result_files(
-            maybe_resultfiles, globalThis.STATE.files.peek()
-        )
-    )
+    return load_list_of_files(file_list, MIMETYPES, set_inputfiles, set_resultfiles)
 }
+
+/** Load input files only (filtering file types), uses global state */
+export function load_inputfiles(file_list:FileList|File[]): void {
+    return load_list_of_files(file_list, MIMETYPES, set_inputfiles, () => {})
+}
+
+/** Load result files only (filtering file types), uses global state */
+export function load_resultfiles(file_list:FileList|File[]): void {
+    return load_list_of_files(file_list, MIMETYPES, () => {}, set_resultfiles)
+}
+
 
 
 /** Load files as results if the match already loaded input files */
