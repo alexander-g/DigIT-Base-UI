@@ -6,9 +6,10 @@ import { SVGFilters }       from "./components/SVGFilters.tsx";
 import * as file_input      from "./file_input.ts"
 import { load_settings }    from "./logic/settings.ts";
 
-export function Body(): JSX.Element {
+export function Body(props:{id?:string}): JSX.Element {
     return (
     <body 
+        id          = {props.id ?? "base"}
         onDragOver  = {file_input.on_drag} 
         onDrop      = {file_input.on_drop}
     >
@@ -45,23 +46,40 @@ function ExtraStyles(): JSX.Element {
 }
 
 
+type HeadProps = {
+    title:      string;
+    import_src: string;
+}
+
+export function Head(props:HeadProps): JSX.Element {
+    return <head>
+        <title>{ props.title }</title>
+        <link rel="stylesheet" href="thirdparty/semantic.min.css" />
+        <script src="thirdparty/jquery-3.4.1.min.js"></script>
+        <script src="thirdparty/semantic.min.js"></script>
+        <script type="module" src={props.import_src}></script>
+        <link rel="stylesheet" href="css/box_styles.css" />
+        <ExtraStyles />
+    </head>
+}
+
 export function Index(): JSX.Element {
     return <html>
-        <head>
-            <title>Base UI</title>
-            <link rel="stylesheet" href="thirdparty/semantic.min.css" />
-            <script src="thirdparty/jquery-3.4.1.min.js"></script>
-            <script src="thirdparty/semantic.min.js"></script>
-            <script type="module" src="ts/index.tsx"></script>
-            <link rel="stylesheet" href="css/box_styles.css" />
-            <ExtraStyles />
-        </head>
+        <Head title={"Base UI"} import_src={"ts/index.tsx"} />
         <Body />
     </html>
 }
 
+// deno-lint-ignore no-inferrable-types
+export function hydrate_body(id:string = 'base'): void {
+    const body: Element|null = document.querySelector(`body#${id}`)
+    if(body && body.parentElement) {
+        preact.hydrate(<Body />, body.parentElement)
+    }
+}
+
 if(!globalThis.Deno){
-    preact.hydrate(<Body />, document.body.parentElement!)
+    hydrate_body()
     //body onload callback doesnt work for some reason
     await load_settings()
 }
