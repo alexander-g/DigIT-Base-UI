@@ -39,7 +39,6 @@ function CustomResolvePlugin(remap:Record<string, string> = {}): esbuild.Plugin 
             }
         })
 
-
         /** Resolve absolute paths to https:// */
         build.onResolve({ filter: /^\// }, (args:esbuild.OnResolveArgs) => {
             const resolved_url = new URL(args.path, args.importer)

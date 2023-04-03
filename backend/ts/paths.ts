@@ -10,9 +10,9 @@ export function static_folder():string {
 }
 
 export function frontend():string {
-    return path.join(root(), 'frontend', 'ts')
+    return path.join(root(), 'frontend')
 }
 
 export function index_tsx():string {
-    return path.join(frontend(), 'index.tsx')
+    return path.join(frontend(), 'ts', 'index.tsx')
 }

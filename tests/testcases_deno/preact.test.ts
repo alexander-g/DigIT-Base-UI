@@ -13,7 +13,7 @@ Deno.test('preact.compile_default', async () => {
     
     const dir_contents: Deno.DirEntry[] = [...Deno.readDirSync(tempdir)]
     const files:string[] = dir_contents.map(e => e.name)
-    asserts.assertArrayIncludes(files, ['dep.ts'])
+    asserts.assertArrayIncludes(files, ['index.html'])
 
     const expected_index_path:string = path.join(tempdir, 'index.html')
     const content:string = Deno.readTextFileSync(expected_index_path)

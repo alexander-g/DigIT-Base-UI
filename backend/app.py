@@ -72,13 +72,6 @@ class App(flask.Flask):
             self.recompile_static()
             return self.send_static_file('index.html')
         
-        @self.route('/ts/<path:path>')
-        def static_with_mimetype_corrections(path):
-            response = self.send_static_file(path)
-            if path.endswith('.ts') or path.endswith('.tsx'):
-                response.mimetype = 'application/javascript'
-            return response
-        
         @self.route('/images/<path:path>')
         def images(path):
             print(f'Download: {get_cache_path(path)}')
@@ -145,6 +138,14 @@ class App(flask.Flask):
             r.headers['Cache-Control'] = 'public, max-age=0'
             return r
 
+        @self.after_request
+        def ts_to_js_mimetype_corrections(response:flask.Response):
+            #NOTE: this contains the filename, but is this always present?
+            dispo = response.headers.get('Content-Disposition', '')
+
+            if dispo.endswith('.ts') or dispo.endswith('.tsx'):
+                response.mimetype = 'application/javascript'
+            return response
 
         if not is_debug:
             with self.app_context():
@@ -197,14 +198,6 @@ class App(flask.Flask):
         if not is_debug and not force:
             #only in development and during build, not in release
             return
-        
-        #clear the folder before copying
-        shutil.rmtree(self.static_folder, ignore_errors=True)
-        os.makedirs(self.static_folder)
-        for source in self.frontend_folders:
-            if os.path.abspath(source) != os.path.abspath(self.static_folder):
-                #shutil.copytree(source, target)
-                copytree(source, self.static_folder)
 
         subprocess.check_call(f'{self.deno} task {self.deno_cfg} compile_index', shell=True)
         #subprocess.check_call('./deno.sh task bundle_deps',  shell=True)

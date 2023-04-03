@@ -1,4 +1,4 @@
-#!./deno.sh run --allow-read=./frontend/ts,./static --allow-write=./static --no-prompt
+#!./deno.sh run --allow-read=./frontend,./static --allow-write=./static --no-prompt
 
 import { preact_ssr, sucrase }          from "./dep.ts";
 import { path, fs, flags }              from "./dep.ts"
@@ -16,19 +16,29 @@ type CompilationPaths = {
      */
     frontend:       string;
     
-    /** Glob pattern starting from the root path `frontend` to find files 
+    /** Glob pattern relative to the root path `frontend` to find files 
      *  that need to be compiled. E.g: `'**\/*.ts{x,}'` */
     frontend_glob:  string;
     
     /** Path to the main tsx file, relative to `frontend` */
     index_tsx:      string;
+
+    /** Additional glob patterns relative to `frontend` to find files
+     *  that need to be copyied into `static` */
+    copy_globs?:    string[];
 }
 
-const DEFAULT_PATHS: CompilationPaths = {
+export const DEFAULT_PATHS: CompilationPaths = {
     static          :   paths.static_folder(),
     frontend        :   paths.frontend(),
-    frontend_glob   :   '**/*.ts{x,}',
-    index_tsx       :   'index.tsx',
+    frontend_glob   :   'ts/**/*.ts{x,}',
+    index_tsx       :   'ts/index.tsx',
+    copy_globs      :   [
+        'css/**/*.*',
+        'thirdparty/**/*.*',
+        'favicon.ico',
+        'logo.svg',
+    ]
 }
 
 
@@ -61,6 +71,7 @@ export async function compile_everything(
     if(clear)
         clear_folder(paths.static)
     
+    copy_files_to_static(paths)
     for(const filepath of collect_files(paths.frontend_glob, paths.frontend)){
         const jscode:string = transpile( path.join(paths.frontend, filepath) )
         write_to_static(filepath, paths.static, jscode)
@@ -70,7 +81,7 @@ export async function compile_everything(
 
 export async function compile_default(overrides:Partial<CompilationPaths> = {}): Promise<void> {
     //TODO: (need to coordinate with flask) clear static
-    await compile_everything({...DEFAULT_PATHS, ...overrides}, false)
+    await compile_everything({...DEFAULT_PATHS, ...overrides}, true)
 }
 
 /** Compile the main frontend JSX component `<Index/>` and write to the static folder */
@@ -84,8 +95,24 @@ export async function compile_index(paths: CompilationPaths): Promise<void> {
     // deno-lint-ignore no-explicit-any
     const main_element:any = module.Index()
     const rendered:string  = preact_ssr.render(main_element, {}, {pretty:true})
-    write_to_static(paths.index_tsx.replace('.tsx', '.html'), paths.static, rendered)
+    write_to_static(path.basename(paths.index_tsx).replace('.tsx', '.html'), paths.static, rendered)
 
+}
+
+export function copy_files_to_static(paths:CompilationPaths): void {
+    //TODO: make async
+    for(const pattern of paths.copy_globs ?? []) {
+        const files_to_copy:string[] = collect_files(pattern, paths.frontend)
+        if(files_to_copy.length == 0)
+            throw new Error(`No files found for glob pattern "${pattern}"`)
+        
+        for(const file of files_to_copy){
+            const fullpath:string    = path.join(paths.frontend, file)
+            const destination:string = path.join(paths.static, file)
+            fs.ensureFileSync(destination)
+            fs.copySync(fullpath, destination, {overwrite:true})
+        }
+    }
 }
 
 export function write_to_static(filepath:string, destination:string, content:string) {
@@ -112,12 +139,10 @@ function transpile(path:string): string {
     return transpiled.code;
 }
 
-function clear_folder(path:string): void {
+export function clear_folder(path:string): void {
     Deno.removeSync(path, {recursive:true})
     fs.ensureDirSync(path)
 }
-
-
 
 
 if(import.meta.main){
