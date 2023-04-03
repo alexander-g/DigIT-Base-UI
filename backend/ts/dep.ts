@@ -1,9 +1,10 @@
 export * as path                from "https://deno.land/std@0.176.0/path/mod.ts";
 export * as fs                  from "https://deno.land/std@0.176.0/fs/mod.ts";
+export * as flags               from "https://deno.land/std@0.176.0/flags/mod.ts";
 
 export * as sucrase             from "https://cdn.skypack.dev/sucrase@3.29.0?dts";
 export * as esbuild             from 'https://deno.land/x/esbuild@v0.17.10/wasm.js';
-export * as preact_ssr          from "https://esm.sh/preact-render-to-string@5.2.6";
+export * as preact_ssr          from "https://esm.sh/preact-render-to-string@5.2.6?deps=preact@10.11.3";
 
 
 //import * as cache from "https://deno.land/x/deno_cache@0.4.1/mod.ts";

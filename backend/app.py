@@ -1,4 +1,5 @@
 import os, sys, shutil, glob, tempfile, json, webbrowser, subprocess
+import typing as tp
 import warnings
 warnings.simplefilter('ignore')
 
@@ -25,7 +26,7 @@ from .paths import (
 
 
 class App(flask.Flask):
-    def __init__(self, **kw):
+    def __init__(self, path_to_deno:str = None, path_to_deno_cfg:str = None, **kw):
         is_debug         = sys.argv[0].endswith('.py')
         is_second_start  = (os.environ.get("WERKZEUG_RUN_MAIN") == 'true')
         do_not_reload    = (os.environ.get('DO_NOT_RELOAD',None) is not None)
@@ -56,6 +57,12 @@ class App(flask.Flask):
             print('Template paths:  ', self.template_folders)
             print('Frontend paths:  ', self.frontend_folders)
         print()
+
+
+        #TODO: check if paths exist        
+        self.deno     = path_to_deno     or default_deno_path()[0]
+        self.deno_cfg = path_to_deno_cfg or default_deno_path()[1]
+        self.deno_cfg = f'--config {self.deno_cfg}' if self.deno_cfg else ''
 
         setup_cache(self.cache_path)
         self.recompile_static()
@@ -198,14 +205,8 @@ class App(flask.Flask):
             if os.path.abspath(source) != os.path.abspath(self.static_folder):
                 #shutil.copytree(source, target)
                 copytree(source, self.static_folder)
-        
-        env   = jinja2.Environment(loader=jinja2.FileSystemLoader(self.template_folders))
-        tmpl  = env.get_template('index.html')
-        outf  = os.path.join(self.static_folder, 'index.html')
-        os.makedirs(os.path.dirname(outf), exist_ok=True)
-        open(outf,'w', encoding="utf-8").write(tmpl.render(warning='GENERATED FILE. DO NOT EDIT MANUALLY'))
 
-        subprocess.check_call('./deno.sh task compile_index', shell=True)
+        subprocess.check_call(f'{self.deno} task {self.deno_cfg} compile_index', shell=True)
         #subprocess.check_call('./deno.sh task bundle_deps',  shell=True)
     
     def run(self, parse_args=True, **args):
@@ -231,3 +232,9 @@ def setup_cache(cache_path):
     os.makedirs(cache_path)
     import atexit
     atexit.register(lambda: shutil.rmtree(cache_path, ignore_errors=True))
+
+
+def default_deno_path() -> tp.Tuple[str,str]:
+    executable = os.path.join(path_to_this_module(), '..', 'deno.sh')
+    configfile = os.path.join(path_to_this_module(), '..', 'deno.jsonc')
+    return executable, configfile
