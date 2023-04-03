@@ -6,18 +6,30 @@ import { SVGFilters }       from "./components/SVGFilters.tsx";
 import * as file_input      from "./file_input.ts"
 import { load_settings }    from "./logic/settings.ts";
 
-export function Body(props:{id?:string}): JSX.Element {
-    return (
-    <body 
-        id          = {props.id ?? "base"}
-        onDragOver  = {file_input.on_drag} 
-        onDrop      = {file_input.on_drop}
-    >
-        <SVGFilters />  {/* Must go first for cosmetic reasons */}
-        <TopMenu/>
-        <MainContainer />
-    </body>
-    )
+
+export class Body extends preact.Component {
+    /** The `id` attribute of `<body>`. Should be overwritten downstream. */
+    // deno-lint-ignore no-inferrable-types
+    id:string = 'base';
+
+    render(): JSX.Element {
+        return (
+        <body 
+            id          =   {this.id}
+            onDragOver  =   {file_input.on_drag}
+            onDrop      =   {file_input.on_drop}
+        >
+            <SVGFilters />  {/* Must go first for cosmetic reasons */}
+            <TopMenu/>
+            { this.main_container() }
+        </body>
+        )
+    }
+
+    /** Should be overwritten downstream */
+    main_container(): JSX.Element {
+        return <MainContainer />
+    }
 }
 
 /** CSS that does not seem to work adding via JSX */
@@ -70,16 +82,15 @@ export function Index(): JSX.Element {
     </html>
 }
 
-// deno-lint-ignore no-inferrable-types
-export function hydrate_body(id:string = 'base'): void {
+export function hydrate_body(body_jsx:JSX.Element, id:string): void {
     const body: Element|null = document.querySelector(`body#${id}`)
     if(body && body.parentElement) {
-        preact.hydrate(<Body />, body.parentElement)
+        preact.hydrate(body_jsx, body.parentElement)
     }
 }
 
 if(!globalThis.Deno){
-    hydrate_body()
+    hydrate_body(<Body />, 'base')
     //body onload callback doesnt work for some reason
     await load_settings()
 }
