@@ -44,7 +44,7 @@ Deno.test('ViewMenu.show_results', async () => {
     asserts.assertStringIncludes(checkbox.className, 'disabled')
 
     //set a dummy result
-    const result:ResultState = ResultState.from_result(new Result('processed'))
+    const result:ResultState = new ResultState(new Result('processed'))
     file.set_result(result)
     await util.wait(1)
     //the disabled class should be gone

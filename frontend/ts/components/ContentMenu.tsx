@@ -1,5 +1,5 @@
 import { preact, JSX, Signal }      from "../dep.ts";
-import type { AppFileState }        from "../state.ts";
+import { AppFileState }        from "../state.ts";
 import * as detection               from "../logic/detection.ts";
 import { export_result_to_file }    from "../logic/download.ts";
 import * as ui_util                 from "./ui_util.ts";
@@ -7,19 +7,28 @@ import * as ui_util                 from "./ui_util.ts";
 type ContentMenuProps = {
     file: AppFileState;
 
-    box_drawing_mode_active: Signal<boolean>;
+    /** Flag indicating if box drawing is activated. 
+     *  If undefined no New-Box button is shown */
+    box_drawing_mode?: Signal<boolean>;
+
+    /** Additional menu items to pass to the view menu */
+    view_menu_extras?: JSX.Element[];
 };
 
 /** A menu bar for every image, containing control buttons */
 export function ContentMenu(props: ContentMenuProps): JSX.Element {
+    let new_box_button: JSX.Element|null = null;
+    if(props.box_drawing_mode)
+        new_box_button = <NewBoxButton drawing_mode_active={props.box_drawing_mode}/>
+    
     return (
         <div
             class = "ui bottom attached secondary icon menu"
             style = "border-top-width:0px; margin-bottom:0px;"
         >
             <PlayButton     file={props.file} />
-            <ViewMenu       file={props.file} />
-            <NewBoxButton   drawing_mode_active={props.box_drawing_mode_active} />
+            <ViewMenu       file={props.file} extra_items={props.view_menu_extras}/>
+            { new_box_button }
             <DownloadButton file={props.file} />
             <HelpButton />
         </div>
@@ -54,26 +63,31 @@ function PlayButton(props: PlayButtonProps): JSX.Element {
 
 
 
+type ViewMenuProps = {
+    file:           AppFileState,
+    extra_items?:   JSX.Element[],
+}
+
 /** Button with dropdown that contains control elements regarding the presentation */
-export function ViewMenu(props:{file:AppFileState}): JSX.Element {
+export function ViewMenu(props: ViewMenuProps): JSX.Element {
     return (
         <div class="ui simple dropdown icon item view-menu-button">
             <i class="eye icon"></i>
-            <ViewMenuDropdown file={props.file}/>
+            <ViewMenuDropdown file={props.file} extra_items={props.extra_items}/>
         </div>
     );
 }
 
-function ViewMenuDropdown(props:{file:AppFileState}): JSX.Element {
+function ViewMenuDropdown(props:ViewMenuProps): JSX.Element {
     return (
         <div class="menu view-menu">
             <ShowResultsCheckbox file={props.file}/>
+            { props.extra_items }
         </div>
     )
 }
 
 /** A checkbox to toggle results */
-//function ShowResultsCheckbox(props:{file:AppFileState}): JSX.Element {
 class ShowResultsCheckbox extends preact.Component<{file:AppFileState}> {
     ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 

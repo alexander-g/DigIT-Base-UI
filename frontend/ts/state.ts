@@ -101,26 +101,37 @@ export class ResultState extends Result {
         this.#$instances.value = instances;
     }
 
-    /** Convert a basic non-state result to this class */
-    static from_result(result:Result): ResultState {
-        const resultstate = new ResultState()
-        resultstate.set_instances(result.instances)
-        return Object.assign(resultstate, result)
+    constructor(result?:Result) {
+        super(result?.status)
+        this.set_instances(result?.instances)
+        Object.assign(this, result)
     }
 }
 
+/** From https://github.com/sindresorhus/type-fest/blob/5374588a88ee643893784f66367bc26b8e6509ec/source/basic.d.ts */
+// deno-lint-ignore no-explicit-any
+export type Constructor<T, Arguments extends unknown[] = any[]> 
+    = new(...arguments_: Arguments) => T;
 
 
-
-
-/** Reactive version of AppFile */
-export class AppFileState extends AppFile {
+/** AppFile with additional attributes for UI */
+export class AppFileState<RS extends ResultState = ResultState> extends AppFile {
+    /** Flag indicating whether the input image has been loaded */
     #$loaded:   signals.Signal<boolean>     = new signals.Signal(false)
+    /** Size of the input image */
     #$size:     signals.Signal<ImageSize|undefined> = new signals.Signal()
     
-    #$result:   Reactive<ResultState> = new Reactive(
-        ResultState.from_result(super.result)
-    )
+    /** @virtual @defaultValue ResultState */
+    ResultClass: Constructor<RS>;// = ResultState;
+    #$result:    Reactive< RS >;
+
+    constructor(f:File, ResultClass: Constructor<RS> = ResultState as any){
+        super(f)
+        this.ResultClass = ResultClass;
+        this.#$result    = new Reactive(
+            new this.ResultClass(super.result)
+        )
+    }
 
     set_loaded(image:HTMLImageElement): void {
         this.#$loaded.value = true;
@@ -140,10 +151,10 @@ export class AppFileState extends AppFile {
 
     /** @override */
     set_result(result: Result): void {
-        this.#$result.value = ResultState.from_result(result)
+        this.#$result.value = new this.ResultClass(result)
     }
 
-    get $result(): signals.ReadonlySignal<ResultState> {
+    get $result(): signals.ReadonlySignal< RS  > {
         return this.#$result;
     }
 
@@ -160,6 +171,10 @@ export class AppFileState extends AppFile {
 
 /** Reactive list of AppFiles */
 export class AppFileList extends Reactive<AppFileState[]> {
+    /** @virtual */
+    AppFileClass: Constructor<AppFileState> = AppFileState;
+    //AppFileClass: typeof AppFileState = AppFileState;
+
     /**
      * Update the state to set new input files.
      * @param files A list of files that will be converted to AppFiles
@@ -167,7 +182,7 @@ export class AppFileList extends Reactive<AppFileState[]> {
     set_from_files(files:File[]|FileList) {
         files       = Array.from(files)
         super.value = files.map( 
-            (f:File) => new AppFileState(f)
+            (f:File) => new this.AppFileClass(f)
         )
     }
 }
@@ -194,14 +209,25 @@ export class AppState {
     available_models: AvailableModelsState = new AvailableModelsState(undefined)
 }
 
+
+
+
 /** Global application state */
-export const STATE = new AppState()
-
-
+export let STATE: AppState;
 
 //make global for debugging
 declare global {
     // deno-lint-ignore no-var
     var STATE: AppState;
 }
-globalThis.STATE = STATE;
+
+
+
+/** Global application state setter */
+export function set_global_app_state(state:AppState){
+    STATE = state;
+    globalThis.STATE = state;
+}
+
+set_global_app_state(new AppState())
+

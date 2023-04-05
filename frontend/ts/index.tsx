@@ -63,6 +63,7 @@ type HeadProps = {
     import_src: string;
 }
 
+/** The `<head>` part of the HTML document. */
 export function Head(props:HeadProps): JSX.Element {
     return <head>
         <title>{ props.title }</title>
@@ -75,6 +76,7 @@ export function Head(props:HeadProps): JSX.Element {
     </head>
 }
 
+/** Main JSX entry point */
 export function Index(): JSX.Element {
     return <html>
         <Head title={"Base UI"} import_src={"ts/index.tsx"} />

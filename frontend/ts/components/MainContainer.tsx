@@ -27,16 +27,6 @@ export class Tabs extends preact.Component<TabsProps> {
 }
 
 
-export class MainContainerProps {
-    /** Tab names and their contents */
-    tab_contents: Record<string, JSX.Element> = {
-        'Detection' :   <DetectionTab />,
-        'Training'  :   <div>Not Implemented</div>,
-    }
-}
-
-
-
 export class MainContainer extends preact.Component {
     tab_names: string[] = ['Detection', 'Training']
 
@@ -59,20 +49,15 @@ export class MainContainer extends preact.Component {
 
     tab_contents(): JSX.Element[] {
         return [
-            this.detection_tab_content(this.tab_names[0]!), 
-            this.training_tab_content(this.tab_names[1]!)
+            <DetectionTab name={this.tab_names[0]!}/>, 
+            <TrainingTab  name={this.tab_names[1]!}/>,
         ]
     }
+}
 
-    detection_tab_content(name:string): JSX.Element {
-        return <div class="ui active tab segment unselectable" data-tab={name} style="padding:0">
-            <DetectionTab />
-        </div>
-    }
 
-    training_tab_content(name:string): JSX.Element {
-        return <div class="ui bottom attached tab" data-tab={name}>
-            Training Not Implemented.
-        </div>
-    }
+export function TrainingTab(props:{name:string}): JSX.Element {
+    return <div class="ui bottom attached tab" data-tab={props.name}>
+        Training Not Implemented.
+    </div>
 }
