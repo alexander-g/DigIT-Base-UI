@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/bash -e
 
 COVERAGE_DIR=./tests/coverage
-rm -r $COVERAGE_DIR 2> /dev/null;
+rm -rf $COVERAGE_DIR
 
 ./deno.sh test                  \
     --allow-read=.,/tmp         \

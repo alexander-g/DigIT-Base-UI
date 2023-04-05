@@ -13,6 +13,8 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
     const processing         = new signals.Signal(false)
     const table_ref:preact.RefObject<FileTable> = preact.createRef()
 
+    await util.wait(1)
+
     await t.step('empty', async () => {
         preact.render(
             <FileTable 
