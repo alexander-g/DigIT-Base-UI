@@ -6,11 +6,16 @@ import { SVGFilters }       from "./components/SVGFilters.tsx";
 import * as file_input      from "./file_input.ts"
 import { load_settings }    from "./logic/settings.ts";
 
+import * as state           from "./state.ts";
+
 
 export class Body extends preact.Component {
     /** The `id` attribute of `<body>`. Should be overwritten downstream. */
     // deno-lint-ignore no-inferrable-types
     id:string = 'base';
+
+    /** Global application state */
+    appstate: state.AppState = new state.AppState();
 
     render(): JSX.Element {
         return (
@@ -20,15 +25,21 @@ export class Body extends preact.Component {
             onDrop      =   {file_input.on_drop}
         >
             <SVGFilters />  {/* Must go first for cosmetic reasons */}
-            <TopMenu/>
+            <TopMenu
+                $settings           = {this.appstate.settings}
+                $available_models   = {this.appstate.available_models}
+            />
             { this.main_container() }
         </body>
         )
     }
+    componentDidMount(): void {
+        state.set_global_app_state(this.appstate)
+    }
 
     /** Should be overwritten downstream */
     main_container(): JSX.Element {
-        return <MainContainer />
+        return <MainContainer appstate={this.appstate}/>
     }
 }
 

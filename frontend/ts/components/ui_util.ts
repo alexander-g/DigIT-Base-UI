@@ -1,6 +1,6 @@
 import { Point, Size }                          from "../util.ts";
 import { ModelInfo, find_modelinfo }            from "../logic/settings.ts";
-import { AppFileState, Result }                 from "../state.ts";
+import { AppState, InputResultPair, Result }    from "../state.ts";
 import { preact, Signal, ReadonlySignal }       from "../dep.ts";
 
 
@@ -104,8 +104,13 @@ function collect_all_classes(results: Result[], active_model?: ModelInfo): strin
 
 /** Collect all possible classes from current global state.  */
 export function collect_all_classes_default(): string[] {
-    const STATE = globalThis.STATE;
-    const results: Result[] = STATE.files.peek().map((f: AppFileState) => f.result)
+    const STATE: AppState|undefined = globalThis.STATE;    //TODO: hard-coded
+    if(!STATE)
+        return []
+    
+    const results: Result[] = STATE.files.peek().map(
+        (pair: InputResultPair) => pair.$result.peek()
+    )
     const model: string|undefined = STATE.settings.peek()?.active_models?.detection
     let modelinfo: ModelInfo|undefined;
     if(model) 

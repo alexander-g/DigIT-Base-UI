@@ -1,7 +1,7 @@
 import { JSX, UTIF }    from "./dep.ts"
 import * as util        from "./util.ts"
-import { import_result_from_file }  from "./logic/download.ts";
-import { STATE, AppFile, Result }   from "./state.ts"   //TODO: hard-coded
+import { import_result_from_file }      from "./logic/download.ts";
+import { InputFile, Result, InputResultPair } from "./logic/files.ts"
 
 /** Event handler for file drag events */
 export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
@@ -12,7 +12,7 @@ export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
 export async function on_drop(event:preact.JSX.TargetedDragEvent<HTMLElement>): Promise<void> {
     event.preventDefault()
     //reset state  //TODO: should not be done here, but when setting the input files
-    STATE.files.set_from_files([])
+    globalThis.STATE?.files.set_from_files([])                       //TODO: hard-coded
     //get file list from event, otherwise its gone after the wait
     const files: FileList | undefined = event.dataTransfer?.files
     //refresh ui
@@ -22,98 +22,112 @@ export async function on_drop(event:preact.JSX.TargetedDragEvent<HTMLElement>): 
 }
 
 
-/** Load files, some might be input files, others results 
+
+/** Two sets of files, in no well-defined order. 
+ *  First one to be interpreted as inputfiles, second one might be results */
+type CategorizedFiles = {
+    inputfiles:  File[],
+    resultfiles: File[]
+}
+
+/** Sort list of files into input files and files that look like results.
  *  @param file_list            - The list of files to load.
- *  @param input_file_types     - File types that are interpreted as input files.
- *  @param load_input_files_fn  - Callback that sets the input files.
- *  @param load_result_files_fn - Callback that loads the result files.
+ *  @param input_file_types     - Mime types that are interpreted as input files.
  */
-export function load_list_of_files(
+export function categorize_files(
     file_list:                  FileList|File[],
     input_file_types:           string[],
-    load_input_files_fn:        (files:File[]) => void,
-    load_result_files_fn:       (files:File[]) => void,
-): void {
-    const files: File[]         = Array.from(file_list)
-    const inputfiles: File[]    = files.filter(
+): CategorizedFiles {
+    const files: File[]       = Array.from(file_list)
+    const inputfiles: File[]  = files.filter(
         (f:File) => input_file_types.includes(f.type)
     )
-    if(inputfiles.length)
-        load_input_files_fn(inputfiles)
-    
-    const remaining_files: File[] = files.filter((f:File) => !inputfiles.includes(f))
-    load_result_files_fn(remaining_files)
+    const resultfiles: File[] = files.filter((f:File) => !inputfiles.includes(f))
+    return {inputfiles, resultfiles}
 }
 
 
 const MIMETYPES: string[] = ["image/jpeg", "image/tiff"]          //NOTE: no png
-const set_inputfiles: (_:File[]) => void 
-    = (inputfiles:File[]) => globalThis.STATE.files.set_from_files(inputfiles)
-const set_resultfiles: (_:File[]) => void
-    = (maybe_resultfiles:File[]) => load_result_files(
-        maybe_resultfiles, globalThis.STATE.files.peek()
-    )
+// const set_inputfiles: (_:File[]) => void 
+//     = (inputfiles:File[]) => globalThis.STATE.files.set_from_files(inputfiles)
+// const set_resultfiles: (_:File[]) => void
+//     = (maybe_resultfiles:File[]) => load_result_files(
+//         maybe_resultfiles, globalThis.STATE.files.peek().map(pair => pair.input)
+//     )
 
 /** Load input or result files @see {@link load_list_of_files}, uses global state */
-export function load_list_of_files_default(file_list:FileList|File[]): void {
-    //TODO: still too hard-coded
-    return load_list_of_files(file_list, MIMETYPES, set_inputfiles, set_resultfiles)
+export async function load_list_of_files_default(file_list:FileList|File[]): Promise<void> {
+    const {inputfiles, resultfiles:mayberesults} = categorize_files(file_list, MIMETYPES)
+
+    globalThis.STATE?.files.set_from_pairs(                             //TODO: hard-coded
+        await load_result_files(inputfiles, mayberesults)
+    )
 }
 
 /** Load input files only (filtering file types), uses global state */
 export function load_inputfiles(file_list:FileList|File[]): void {
-    return load_list_of_files(file_list, MIMETYPES, set_inputfiles, () => {})
+    throw new Error('TODO')
+    //return load_list_of_files(file_list, MIMETYPES, set_inputfiles, () => {})
 }
 
 /** Load result files only (filtering file types), uses global state */
 export function load_resultfiles(file_list:FileList|File[]): void {
-    return load_list_of_files(file_list, MIMETYPES, () => {}, set_resultfiles)
+    throw new Error('TODO')
+    //return load_list_of_files(file_list, MIMETYPES, () => {}, set_resultfiles)
 }
 
 
 
 /** Load files as results if the match already loaded input files */
-async function load_result_files(
+export async function load_result_files(
+    inputfiles:        InputFile[],
     maybe_resultfiles: FileList|File[], 
-    loaded_inputfiles: AppFile[],
-): Promise<void> {
+): Promise<InputResultPair[]> {
+    const pairs: InputResultPair[] = inputfiles.map(
+        (input: InputFile) => ({input, result: new Result('unprocessed')})
+    )
     const input_result_map:InputResultMap
-        = collect_result_files(Array.from(maybe_resultfiles), loaded_inputfiles)
-    if(Object.keys(input_result_map).length==0)
-        return;
+        = collect_result_files(inputfiles, Array.from(maybe_resultfiles))
     
-    for(const {inputfile, resultfiles} of Object.values(input_result_map)){
-        if(resultfiles.length != 1) {
+    for(const pair of pairs){
+        const inputfile:InputFile = pair.input;
+        const result_candidates:File[]|undefined = input_result_map[pair.input.name]?.resultfiles
+        if(!result_candidates)
+            continue;
+        
+        if(result_candidates.length > 1) {
             console.error(`Unexpected number of result files for ${inputfile}`)
             continue
         }
         
-        console.log('Settings result of ', inputfile.name)
-        const result: Result|null = await import_result_from_file(resultfiles[0]!)
+        console.log('Loading result of ', inputfile.name)
+        const result: Result|null = await import_result_from_file(result_candidates[0]!)
         if(result == null){
             console.error('Failed to parse result.')
             continue;
         }
-        inputfile.set_result(result)
+
+        pair.result = result;
     }
+    return pairs;
 }
 
 
 type InputResultFiles = {
-    inputfile:   AppFile,
+    inputfile:   InputFile,
     resultfiles: File[]
 }
 
 type InputResultMap = Record<string, InputResultFiles>
 
-/** Filter a list of files, matching result files to already loaded input files 
+/** Filter a list of files, matching result files to input files 
  * @param maybe_result_files - Array of File objects that may include result files.
  * @param input_files        - Array of File objects representing the input files that have already been loaded.
  * @returns Object mapping input file names to arrays of File objects representing the result files that match each input file.
  */
 export function collect_result_files(
+    input_files:        InputFile[],
     maybe_result_files: File[],
-    input_files:        AppFile[],
 ): InputResultMap {
     const collected: InputResultMap = {}
     for(const maybe_resultfile of maybe_result_files){

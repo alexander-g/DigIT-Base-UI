@@ -1,73 +1,11 @@
-import { signals } from "./dep.ts"
-import { Settings, AvailableModels }    from "./logic/settings.ts";
-import { Instance }                     from "./logic/boxes.ts";
-import { ImageSize }                    from "./util.ts";
+import { signals, Signal, ReadonlySignal }      from "./dep.ts"
+import { Settings, AvailableModels }            from "./logic/settings.ts";
+import { Result, InputFile, type MaybeInstances }    from "./logic/files.ts";
+import * as files                               from "./logic/files.ts";
+import { ImageSize }                            from "./util.ts";
 
-/** Main input file structure with results */
-export class AppFile extends File {
-
-    /** This file's processing results */
-    #result:Result = new Result()
-
-    constructor(f:File) {
-        super([f], f.name, {type:f.type, lastModified:f.lastModified})
-    }
-
-    /** Set the result, overwritten in the reactive version */
-    set_result(result: Result): void {
-        this.#result = result;
-    }
-
-    get result(): Readonly<Result> {
-        return this.#result;
-    }
-}
-
-
-export type ResultStatus = 'unprocessed' | 'processing' | 'processed' | 'failed';
-
-/** Immutable array of Instance to avoid unintentional modification.
- *  Can be also undefined to indicate that no boxes are available.
- */
-export type MaybeInstances = readonly Instance[] | undefined;
-
-/** Processing result, most fields optional to force error checking */
-export class Result {
-    /** Indicates if the result is valid or not */
-    status:             ResultStatus    = 'unprocessed';
-
-    /** Raw processing outputs, as received from backend or onnx.
-     *  For debugging. */
-    // deno-lint-ignore no-explicit-any
-    readonly raw?:      any;
-
-    /** URL to a classmap (segmentation result) */
-    classmap?:          string;
-
-    /** Boxes and labels of objects */
-    #instances?:        MaybeInstances;
-
-    constructor(
-        status: ResultStatus        = 'unprocessed', 
-        other:  Partial<Result>     = {}
-    ) {
-        this.status     = status;
-        //NOTE: not using set_instances() because of some strange error
-        this.#instances = other.instances
-        this.classmap   = other.classmap
-    }
-
-    /** Boxes and labels of objects */
-    get instances(): MaybeInstances {
-        return this.#instances;
-    }
-
-    /** Set the instances and change status accordingly */
-    set_instances(instances: MaybeInstances) {
-        this.#instances = instances
-        this.status     = instances ? 'processed' : 'unprocessed';
-    }
-}
+//for convenience
+export {Result, InputFile, type MaybeInstances};
 
 
 /** Helper class to prevent undefined initial values */
@@ -78,111 +16,92 @@ class Reactive<T> extends signals.Signal<T> {
     }
 }
 
-
-/** Result with additional attributes specifically for UI */
-export class ResultState extends Result {
-    /** Indicates whether the result should be displayed in the UI */
-    $visible:   signals.Signal<boolean>          = new signals.Signal(true)
-
-    #$instances: signals.Signal<MaybeInstances>  = new signals.Signal(undefined)
-
-    get $instances(): signals.ReadonlySignal<MaybeInstances> {
-        return this.#$instances
-    }
-
-    /** @override */
-    get instances(): MaybeInstances {
-        return this.#$instances.peek()
-    }
-
-    /** @override */
-    set_instances(instances: MaybeInstances): void {
-        super.set_instances(instances)
-        this.#$instances.value = instances;
-    }
-
-    constructor(result?:Result) {
-        super(result?.status)
-        this.set_instances(result?.instances)
-        Object.assign(this, result)
-    }
-}
-
 /** From https://github.com/sindresorhus/type-fest/blob/5374588a88ee643893784f66367bc26b8e6509ec/source/basic.d.ts */
 // deno-lint-ignore no-explicit-any
-export type Constructor<T, Arguments extends unknown[] = any[]> 
+export type Constructor<T, Arguments extends unknown[] = any[]>
     = new(...arguments_: Arguments) => T;
 
 
-/** AppFile with additional attributes for UI */
-export class AppFileState<RS extends ResultState = ResultState> extends AppFile {
-    /** Flag indicating whether the input image has been loaded */
-    #$loaded:   signals.Signal<boolean>     = new signals.Signal(false)
-    /** Size of the input image */
-    #$size:     signals.Signal<ImageSize|undefined> = new signals.Signal()
-    
-    /** @virtual @defaultValue ResultState */
-    ResultClass: Constructor<RS>;// = ResultState;
-    #$result:    Reactive< RS >;
+/** Mixin adding additional attributes for UI*/
+export function createResultStateClass<TBase extends Constructor<Result> >(BaseClass:TBase)  {
+    /** Result with additional attributes for UI */
+    return class ResultState extends BaseClass {
+        /** Indicates whether the result should be displayed in the UI */
+        $visible:       Signal<boolean>         = new Signal(true)
 
-    constructor(f:File, ResultClass: Constructor<RS> = ResultState as any){
-        super(f)
-        this.ResultClass = ResultClass;
-        this.#$result    = new Reactive(
-            new this.ResultClass(super.result)
-        )
-    }
+        /** Signal of {@link Result.instances} */
+        #$instances:    Signal<MaybeInstances>  = new Signal(undefined)
+
+        /** @override Set instances notifying signal listeners */
+        set_instances(instances: MaybeInstances): void {
+            super.set_instances(instances)
+            this.#$instances.value = instances
+        }
+
+        /** Signal of {@link Result.instances} 
+         * (readonly getter, set via {@link ResultState.set_instances}) */
+        get $instances(): ReadonlySignal<MaybeInstances> {
+            return this.#$instances;
+        }
+    };
+}
+
+type ResultStateConstructor = ReturnType<typeof createResultStateClass<typeof Result>>
+
+/** Result with additional attributes for UI */
+export type ResultState  = InstanceType<ResultStateConstructor>
+export const ResultState: ResultStateConstructor = createResultStateClass(Result)
+
+
+
+/** InputImage with added attributes for UI */
+export class InputFileState extends InputFile {
+    /** Flag indicating whether the input image has been loaded */
+    $loaded: ReadonlySignal<boolean>       = signals.computed(
+        () => this.#$size.value != undefined
+    )
+    /** Size of the input image */
+    #$size:  Signal<ImageSize|undefined> = new Signal()
+
+    /** Size of the input image (getter, set via `set_loaded()`) */
+    get $size(): ReadonlySignal<ImageSize|undefined> { return this.#$size; }
 
     set_loaded(image:HTMLImageElement): void {
-        this.#$loaded.value = true;
         this.#$size.value   = {
             width:  image.naturalWidth,
             height: image.naturalHeight,
         }
     }
-
-    get $loaded(): signals.ReadonlySignal<boolean> { 
-        return this.#$loaded;
-    }
-
-    get $size(): signals.ReadonlySignal<ImageSize|undefined> {
-        return this.#$size;
-    }
-
-    /** @override */
-    set_result(result: Result): void {
-        this.#$result.value = new this.ResultClass(result)
-    }
-
-    get $result(): signals.ReadonlySignal< RS  > {
-        return this.#$result;
-    }
-
-    /** @override */
-    get result(): Readonly<Result> {
-        return this.#$result.peek()
-    }
 }
 
+/** InputImage and its corresponding Result */
+export type InputResultPair = {
+    input:   InputFileState;
+    $result: Signal<ResultState>;
+}
 
-
-
-
-
-/** Reactive list of AppFiles */
-export class AppFileList extends Reactive<AppFileState[]> {
-    /** @virtual */
-    AppFileClass: Constructor<AppFileState> = AppFileState;
-    //AppFileClass: typeof AppFileState = AppFileState;
-
+/** Reactive list of InputImage-Result pairs */
+export class InputFileList extends Reactive<InputResultPair[]> {
     /**
      * Update the state to set new input files.
-     * @param files A list of files that will be converted to AppFiles
+     * @param files A list of `File` objects that will be converted to InputFiles
      */
-    set_from_files(files:File[]|FileList) {
-        files       = Array.from(files)
-        super.value = files.map( 
-            (f:File) => new this.AppFileClass(f)
+    set_from_files(files:File[]|FileList): void {
+        files = Array.from(files)
+        super.value = files.map(
+            (f:File) => ({
+                input:   new InputFileState(f),
+                $result: new Signal(new ResultState()),
+            })
+        )
+    }
+
+    set_from_pairs(pairs:files.InputResultPair[]): void {
+        super.value = pairs.map(
+            ({input, result}: files.InputResultPair) => ({
+                input:   new InputFileState(input),
+                $result: new Signal(new ResultState(result.status, result))
+            })
         )
     }
 }
@@ -196,11 +115,11 @@ class AvailableModelsState extends Reactive<AvailableModels|undefined> {}
 
 /** Main application state structure */
 export class AppState {
-    /** Currently loaded files */
-    files: AppFileList = new AppFileList([]);
+    /** Currently loaded files and their results */
+    files:InputFileList = new InputFileList([])
 
     /** Indicates whether there is a processing operation running somewhere */
-    processing: Reactive<boolean> = new Reactive<boolean>(false)
+    $processing: Reactive<boolean> = new Reactive<boolean>(false)
 
     /** Currently loaded settings */
     settings: SettingsState = new SettingsState(undefined)
@@ -212,22 +131,16 @@ export class AppState {
 
 
 
-/** Global application state */
-export let STATE: AppState;
 
-//make global for debugging
+//making application state global for debugging
 declare global {
     // deno-lint-ignore no-var
-    var STATE: AppState;
+    var STATE: AppState|undefined;
 }
-
 
 
 /** Global application state setter */
 export function set_global_app_state(state:AppState){
-    STATE = state;
     globalThis.STATE = state;
 }
-
-set_global_app_state(new AppState())
 

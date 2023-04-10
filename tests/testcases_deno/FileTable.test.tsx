@@ -1,6 +1,6 @@
 import { FileTable }        from "../../frontend/ts/components/FileTable.tsx"
 import { FileTableBody }    from "../../frontend/ts/components/FileTable.tsx"
-import { AppFileList, AppFile, Result }     from "../../frontend/ts/state.ts"
+import { InputFileList, InputFile, ResultState }     from "../../frontend/ts/state.ts"
 import * as util            from "./util.ts"
 import { asserts, mock }    from "./dep.ts"
 import { preact, signals }  from "../../frontend/ts/dep.ts"
@@ -9,7 +9,7 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
     const document:Document = await util.setup_jsdom()
     util.mock_fomantic()
 
-    const files: AppFileList = new AppFileList([])
+    const files: InputFileList = new InputFileList([])
     const processing         = new signals.Signal(false)
     const table_ref:preact.RefObject<FileTable> = preact.createRef()
 
@@ -43,9 +43,9 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
     
 
     await t.step('non-empty', async () => {
-        const files0:AppFile[] = [
-            new AppFile(new File([], 'file000.jpg')),
-            new AppFile(new File([], 'file001.jpg')),
+        const files0:InputFile[] = [
+            new InputFile(new File([], 'file000.jpg')),
+            new InputFile(new File([], 'file001.jpg')),
         ]
         files.set_from_files(files0);
 
@@ -64,7 +64,7 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
         const p2: HTMLTableRowElement  = P[1]!
         asserts.assertEquals(p2.style.fontWeight, 'normal')
 
-        files.peek()[1]?.set_result(new Result('processed'))
+        files.peek()[1]!.$result.value = new ResultState('processed')
         await util.wait(1)
 
         asserts.assertEquals(p2.style.fontWeight, 'bold')
@@ -83,10 +83,10 @@ Deno.test('FileTableBody.no-scrolling-on-dead-rows', async () => {
     window.scrollTo = mock.stub(document.documentElement, 'scrollTo', scrollspy) as any;
 
     
-    const files       = new AppFileList([])
-    const files0:AppFile[] = [
-        new AppFile(new File([], 'banana.jpg')),
-        new AppFile(new File([], 'potato.jpg')),
+    const files       = new InputFileList([])
+    const files0:InputFile[] = [
+        new InputFile(new File([], 'banana.jpg')),
+        new InputFile(new File([], 'potato.jpg')),
     ]
     files.set_from_files(files0);
 

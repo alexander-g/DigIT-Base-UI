@@ -1,7 +1,5 @@
 import * as errors                      from "../components/errors.ts";
 import * as util                        from "../util.ts"
-import { STATE }                        from "../state.ts"; //TODO: hard-coded
-
 
 
 
@@ -128,6 +126,9 @@ export function validate_settings_response(raw_data: string): SettingsResponse {
 /** Update global STATE with new settings from backend */
 export function set_settings_from_response_default(raw_data:string): void {
     const response:SettingsResponse         = validate_settings_response(raw_data)
-    globalThis.STATE.settings.value         = response.settings;
-    globalThis.STATE.available_models.value = response.available_models;
+    if(globalThis.STATE){
+        //TODO: hard-coded
+        globalThis.STATE.settings.value         = response.settings;
+        globalThis.STATE.available_models.value = response.available_models;
+    }
 }

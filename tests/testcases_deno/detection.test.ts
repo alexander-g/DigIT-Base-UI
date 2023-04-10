@@ -2,41 +2,43 @@
 import * as util            from "./util.ts";
 import { mock, asserts }    from "./dep.ts";
 import { process_image }    from "../../frontend/ts/logic/detection.ts";
-import { AppFile, AppFileState }          from "../../frontend/ts/state.ts";
+import { InputFile, InputFileState, Result }  from "../../frontend/ts/state.ts";
 
 
 Deno.test('process_image.fail', async (t:Deno.TestContext) => {
-    const mockfile:AppFile = new AppFile(new File([], ''))
-    const set_result_spy: mock.Stub = mock.stub(mockfile, 'set_result', mock.spy())
+    const mockfile:InputFile = new InputFile(new File([], ''))
 
     await t.step('upload-fail', async () => {
         // fetch that throws an error
         util.mock_fetch_connection_error('Should be caught')
-        const error_spy: mock.Spy<any, [string], void> = mock.spy()
-        await process_image(mockfile, error_spy)
-        mock.assertSpyCalls(error_spy, 1)
+        //const error_spy: mock.Spy<any, [string], void> = mock.spy()
+        const result:Result|undefined = await process_image(mockfile)
+        asserts.assertEquals(result?.status, 'failed')
+        //mock.assertSpyCalls(error_spy, 1)
 
-        mock.assertSpyCalls(set_result_spy, 2) //processing+failed = 2x
-        asserts.assertEquals(
+        //mock.assertSpyCalls(set_result_spy, 2) //processing+failed = 2x
+        /*asserts.assertEquals(
             set_result_spy.calls[0]?.args[0].status,
             'processing',
             //'Should mark result as processing'
-        )
+        )*/
 
-        asserts.assertEquals(
+        /*asserts.assertEquals(
             set_result_spy.calls[1]?.args[0].status,
             'failed',
             //'Should mark result as processing'
-        )
+        )*/
     })
     mock.restore();
 
     await t.step('error-on-404', async () => {
         // fetch that throws an error
         util.mock_fetch_404()
-        const error_spy: mock.Spy<any, [string], void> = mock.spy()
-        await process_image(mockfile, error_spy)
-        mock.assertSpyCalls(set_result_spy, 2) //processing+failed = 2x
+        //const error_spy: mock.Spy<any, [string], void> = mock.spy()
+        const result: Result|undefined = await process_image(mockfile)
+        asserts.assertEquals(result?.status, 'failed')
+        //mock.assertSpyCalls(set_result_spy, 2) //processing+failed = 2x
+
     })
     mock.restore()
 
@@ -44,9 +46,10 @@ Deno.test('process_image.fail', async (t:Deno.TestContext) => {
     await t.step('error.invalid-response', async () => {
         //fetch that returns invalid json
         util.mock_fetch( async () => await new Response('@!#%§&') );
-        const error_spy: mock.Spy<any, [string], void> = mock.spy()
-        await process_image(mockfile, error_spy)
-        mock.assertSpyCalls(set_result_spy, 2) //processing+failed = 2x
+        //const error_spy: mock.Spy<any, [string], void> = mock.spy()
+        const result: Result|undefined = await process_image(mockfile)
+        asserts.assertEquals(result?.status, 'failed')
+        //mock.assertSpyCalls(set_result_spy, 2) //processing+failed = 2x
     })
     mock.restore()
 })
@@ -54,7 +57,7 @@ Deno.test('process_image.fail', async (t:Deno.TestContext) => {
 
 
 Deno.test('process_image.basic-succcess', async () => {
-    const mockfile:AppFile = new AppFileState(new File([], ''))
+    const mockfile:InputFile = new InputFileState(new File([], ''))
 
     util.mock_fetch( async () => await new Response(JSON.stringify({
         classmap: "banana.jpg",
@@ -64,13 +67,14 @@ Deno.test('process_image.basic-succcess', async () => {
         ],
         labels: [ "banana", "potato" ],
     })) );
-    await process_image(mockfile, ()=>{})
+    const result:Result|undefined = await process_image(mockfile, ()=>{})
 
-    asserts.assertEquals(mockfile.result.status, 'processed')
-    asserts.assertExists(mockfile.result.classmap)
-    asserts.assertExists(mockfile.result.instances)
-    asserts.assertEquals(mockfile.result.instances.length, 2)
-    asserts.assertEquals(mockfile.result.instances[1]?.label, 'potato')
+    asserts.assertExists(result)
+    asserts.assertEquals(result.status, 'processed')
+    asserts.assertExists(result.classmap)
+    asserts.assertExists(result.instances)
+    asserts.assertEquals(result.instances.length, 2)
+    asserts.assertEquals(result.instances[1]?.label, 'potato')
 
 
     mock.restore()
@@ -81,6 +85,11 @@ Deno.test('process_image.basic-succcess', async () => {
         ],
         labels: [ 999 ],  //numbers not allowed (TODO: should give an error)
     })) );
-    await process_image(mockfile, ()=>{})
-    asserts.assertEquals(mockfile.result.instances, undefined)
+    const result2:Result|undefined = await process_image(mockfile, ()=>{})
+    asserts.assertExists(result2)
+    asserts.assertEquals(result2.instances, undefined)
 })
+
+
+
+//TODO: process_files (multiple) + assert number of results and inputs is the same

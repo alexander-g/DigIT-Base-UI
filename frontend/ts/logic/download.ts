@@ -1,4 +1,4 @@
-import { AppFile, Result }          from "../state.ts";
+import { InputResultPair, Result }  from "./files.ts";
 import { Instance }                 from "../logic/boxes.ts";
 import * as util                    from "../util.ts";
 import { validate_instance }        from "./boxes.ts";
@@ -8,15 +8,15 @@ import { validate_instance }        from "./boxes.ts";
 /** filename, detections */
 type csv_line_type = [string, string]
 
-export function format_results_as_csv(files:readonly AppFile[]): string {
+export function format_results_as_csv(files:readonly InputResultPair[]): string {
     const header: csv_line_type   = ['#filename', 'detections']
     const lines:  csv_line_type[] = []
-    for(const file of files) {
-        const result: Readonly<Result> = file.result;
+    for(const pair of files) {
+        const result: Readonly<Result> = pair.result;
         if(result.status != 'processed')
             continue;
         
-        lines.push( [file.name, format_instances_as_csv(result.instances ?? [])] )
+        lines.push( [pair.input.name, format_instances_as_csv(result.instances ?? [])] )
     }
     return [header].concat(lines).map((line:csv_line_type) => line.join(', ')).join('\n')
 }
@@ -34,7 +34,7 @@ export function format_instances_as_csv(instances:readonly Instance[]): string {
 
 
 /** Export the results of processed files to JSON format */
-export function export_results(files:AppFile[]): File[] {
+export function export_results(files:InputResultPair[]): File[] {
     return files.map(export_result_to_file).filter(Boolean) as File[];
 }
 
@@ -42,13 +42,13 @@ export function export_results(files:AppFile[]): File[] {
  *  @param file - AppFile object with a processed Result.
  *  @returns New File object with the processing results in JSON format, or null if the file has not been processed yet or failed processing.
 */
-export function export_result_to_file(file:AppFile): File|null {
-    const result: Result = file.result;
+export function export_result_to_file(pair:InputResultPair): File|null {
+    const result:Result = pair.result;
     if(result.status != 'processed') {
         return null;
     }
     const result_json:string = JSON.stringify(result.instances, undefined, 2)
-    const result_name:string = file.name + '.result.json'
+    const result_name:string = pair.input.name + '.result.json'
     return new File([result_json], result_name, {type: "application/json"})
 }
 

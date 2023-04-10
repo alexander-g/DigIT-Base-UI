@@ -1,6 +1,6 @@
 import * as ContentMenu     from "../../frontend/ts/components/ContentMenu.tsx";
-import { AppFileState, ResultState, Result }     from "../../frontend/ts/state.ts"
-import { preact }           from "../../frontend/ts/dep.ts"
+import { InputFileState, ResultState, Result }     from "../../frontend/ts/state.ts"
+import { preact, Signal }   from "../../frontend/ts/dep.ts"
 import * as util            from "./util.ts"
 import { asserts }          from "./dep.ts";
 
@@ -8,8 +8,9 @@ import { asserts }          from "./dep.ts";
 Deno.test('DownloadButton.enable', async () => {
     const document:Document = await util.setup_jsdom();
 
-    const file:AppFileState = new AppFileState(new File([], 'file000.jpg'))
-    const dbutton = <ContentMenu.DownloadButton file={file} />
+    const file:InputFileState = new InputFileState(new File([], 'file000.jpg'))
+    const $result:Signal      = new Signal(new ResultState())
+    const dbutton = <ContentMenu.DownloadButton inputfile={file} $result={$result} />
     
     preact.render(dbutton, document.body)
     await util.wait(1)
@@ -18,13 +19,13 @@ Deno.test('DownloadButton.enable', async () => {
     asserts.assertEquals(document.querySelectorAll('a.download.disabled').length, 1)
 
     //set a dummy result
-    file.set_result(new Result('processed'))
+    $result.value = new Result('processed')
     await util.wait(1)
     //the disabled class should be gone
     asserts.assertEquals(document.querySelectorAll('a.download.disabled').length, 0)
 
     //remove result again
-    file.set_result(new Result('unprocessed'))
+    $result.value = new Result('unprocessed')
     await util.wait(1)
     //the disabled class should be gone
     asserts.assertEquals(document.querySelectorAll('a.download.disabled').length, 1)
@@ -35,8 +36,8 @@ Deno.test('ViewMenu.show_results', async () => {
     const document:Document = await util.setup_jsdom();
     util.mock_jQ({checkbox:()=>{}})
 
-    const file:AppFileState = new AppFileState(new File([], 'file000.jpg'))
-    preact.render(<ContentMenu.ViewMenu file={file}/>, document.body)
+    const $result:Signal      = new Signal(new ResultState())
+    preact.render(<ContentMenu.ViewMenu $result={$result}/>, document.body)
     await util.wait(1)
 
     const checkbox: HTMLInputElement|null = document.querySelector('.show-results-checkbox')
@@ -44,8 +45,8 @@ Deno.test('ViewMenu.show_results', async () => {
     asserts.assertStringIncludes(checkbox.className, 'disabled')
 
     //set a dummy result
-    const result:ResultState = new ResultState(new Result('processed'))
-    file.set_result(result)
+    const result:ResultState = new ResultState('processed')
+    $result.value = result;
     await util.wait(1)
     //the disabled class should be gone
     asserts.assertFalse(checkbox.className.includes('disabled'), 'Checkbox not enabled')

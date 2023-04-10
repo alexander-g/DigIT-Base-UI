@@ -1,8 +1,8 @@
-import { JSX, preact } from "../dep.ts"
-import { SettingsButton } from "./Settings.tsx"
-import { page_wide_css } from "./styles.ts";
-import { SettingsModal } from "./Settings.tsx"
-import * as file_input   from "../file_input.ts";
+import { JSX, preact }      from "../dep.ts"
+import { SettingsButton }   from "./Settings.tsx"
+import { page_wide_css }    from "./styles.ts";
+import * as Settings        from "./Settings.tsx"
+import * as file_input      from "../file_input.ts";
 
 
 function Logo(): JSX.Element {
@@ -106,10 +106,9 @@ function on_annotationfiles_selected(event:Event): void {
     )
 }
 
-
 /** Menu bar on the top of the page, containing file menu and settings button */
-export class TopMenu extends preact.Component {
-    settings_modal: preact.RefObject<SettingsModal> = preact.createRef()
+export class TopMenu extends preact.Component<Settings.SettingsModalProps> {
+    settings_modal: preact.RefObject<Settings.SettingsModal> = preact.createRef()
 
     render(): JSX.Element {
         return <>
@@ -119,7 +118,11 @@ export class TopMenu extends preact.Component {
                 <SettingsButton on_click={() => this.settings_modal.current?.show_modal()}/>
             </div>
             
-            <SettingsModal ref={this.settings_modal} />
+            <Settings.SettingsModal
+                ref                 = {this.settings_modal}
+                $available_models   = {this.props.$available_models} 
+                $settings           = {this.props.$settings}
+            />
         </>
     }
 }

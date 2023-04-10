@@ -1,6 +1,6 @@
 import * as file_input          from "../../frontend/ts/file_input.ts"
-import { AppFile }              from "../../frontend/ts/state.ts";
-import { asserts, path, mock }  from "./dep.ts"
+import { InputFile }            from "../../frontend/ts/state.ts";
+import { asserts, path }        from "./dep.ts"
 
 const IMAGE_ASSET1_PATH: string 
     = path.fromFileUrl(import.meta.resolve('../testcases/assets/test_image2.tiff'))
@@ -29,7 +29,7 @@ Deno.test("imagetools.load_tiff", async () => {
 
 
 //TODO: test that files are reset
-Deno.test('load_list_of_files', () => {
+Deno.test('categorize_files', () => {
     const mock_files: File[] = [
         new File([""], "input.jpg",  { type: "image/jpeg" }),
         new File([""], "result.zip", { type: "application/zip" }),
@@ -37,30 +37,22 @@ Deno.test('load_list_of_files', () => {
         new File([""], "jpg_without_jpg",  { type: "image/jpeg" }),
     ];
 
-    const set_inputfiles_mock: mock.Spy     = mock.spy()
-    const set_resultfiles_mock: mock.Spy    = mock.spy()
-
-    file_input.load_list_of_files(
+    const categorized_files = file_input.categorize_files(
         mock_files,
-        ["image/jpeg", "image/tiff"],
-        set_inputfiles_mock,
-        set_resultfiles_mock,
+        ["image/jpeg", "image/tiff"]
     );
 
-    mock.assertSpyCalls(set_inputfiles_mock,  1)
-    mock.assertSpyCallArg(set_inputfiles_mock, 0, 0, [mock_files[0], mock_files[2], mock_files[3]])
-
-    mock.assertSpyCalls(set_resultfiles_mock, 1)
-    mock.assertSpyCallArg(set_resultfiles_mock, 0, 0, [mock_files[1]])
+    asserts.assertEquals(categorized_files.inputfiles, [mock_files[0], mock_files[2], mock_files[3]])
+    asserts.assertEquals(categorized_files.resultfiles, [mock_files[1]])
 })
 
 
 Deno.test("collect_result_files filters result files for input files", () => {
     // Define some input and result files
-    const input_files: AppFile[] = [
-        new AppFile(new File([], "input1.jpg")),
-        new AppFile(new File([], "input2.tiff")),
-        new AppFile(new File([], "input3.tiff")),
+    const input_files: InputFile[] = [
+        new InputFile(new File([], "input1.jpg")),
+        new InputFile(new File([], "input2.tiff")),
+        new InputFile(new File([], "input3.tiff")),
     ];
     const result_files: File[] = [
         new File([], "input1.json"),
@@ -72,7 +64,7 @@ Deno.test("collect_result_files filters result files for input files", () => {
 
     // Call the function being tested
     const collected 
-        = file_input.collect_result_files(result_files, input_files);
+        = file_input.collect_result_files(input_files, result_files);
 
     // Check that the function returns the correct output
     asserts.assertEquals(collected['input1.jpg']?.resultfiles.length, 2);
@@ -82,3 +74,15 @@ Deno.test("collect_result_files filters result files for input files", () => {
     asserts.assertEquals(collected['input2.tiff']?.resultfiles[0]?.name, "input2.json");
     asserts.assertEquals(collected['input3.tiff'], undefined);
 });
+
+
+Deno.test('load_result_files', async () => {
+    const input_files: InputFile[] = [
+        new InputFile(new File([], "input1.jpg")),
+        new InputFile(new File([], "input2.tiff")),
+        new InputFile(new File([], "input3.tiff")),
+    ];
+    const result_files:File[] = []
+    //just dont throw
+    await file_input.load_result_files(input_files, result_files)
+})

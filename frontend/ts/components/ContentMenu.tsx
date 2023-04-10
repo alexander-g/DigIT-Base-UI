@@ -1,11 +1,12 @@
 import { preact, JSX, Signal }      from "../dep.ts";
-import { AppFileState }        from "../state.ts";
+import { Result, ResultState, InputFile }   from "../state.ts";
 import * as detection               from "../logic/detection.ts";
 import { export_result_to_file }    from "../logic/download.ts";
 import * as ui_util                 from "./ui_util.ts";
 
 type ContentMenuProps = {
-    file: AppFileState;
+    inputfile:          InputFile;
+    $result:            Signal<ResultState>;
 
     /** Flag indicating if box drawing is activated. 
      *  If undefined no New-Box button is shown */
@@ -26,10 +27,10 @@ export function ContentMenu(props: ContentMenuProps): JSX.Element {
             class = "ui bottom attached secondary icon menu"
             style = "border-top-width:0px; margin-bottom:0px;"
         >
-            <PlayButton     file={props.file} />
-            <ViewMenu       file={props.file} extra_items={props.view_menu_extras}/>
+            <PlayButton     inputfile={props.inputfile} />
+            <ViewMenu       $result={props.$result} extra_items={props.view_menu_extras}/>
             { new_box_button }
-            <DownloadButton file={props.file} />
+            <DownloadButton inputfile={props.inputfile} $result={props.$result} />
             <HelpButton />
         </div>
     );
@@ -39,8 +40,8 @@ export function ContentMenu(props: ContentMenuProps): JSX.Element {
 
 
 type PlayButtonProps = {
-    file:       AppFileState;
-    callback?:  (f: AppFileState) => void;
+    inputfile:   InputFile;
+    callback?:  (f: InputFile) => void;
 };
 
 /** Button to trigger the processing of a single input file */
@@ -52,7 +53,7 @@ function PlayButton(props: PlayButtonProps): JSX.Element {
     return (
         <a
             class           =   "process item"
-            onClick         =   {() => callback_fn(props.file)}
+            onClick         =   {() => callback_fn(props.inputfile)}
             data-tooltip    =   "Process Image"
             data-position   =   "bottom left"
         >
@@ -64,7 +65,7 @@ function PlayButton(props: PlayButtonProps): JSX.Element {
 
 
 type ViewMenuProps = {
-    file:           AppFileState,
+    $result:        Signal<ResultState>;
     extra_items?:   JSX.Element[],
 }
 
@@ -73,7 +74,7 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
     return (
         <div class="ui simple dropdown icon item view-menu-button">
             <i class="eye icon"></i>
-            <ViewMenuDropdown file={props.file} extra_items={props.extra_items}/>
+            <ViewMenuDropdown $result={props.$result} extra_items={props.extra_items}/>
         </div>
     );
 }
@@ -81,24 +82,29 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
 function ViewMenuDropdown(props:ViewMenuProps): JSX.Element {
     return (
         <div class="menu view-menu">
-            <ShowResultsCheckbox file={props.file}/>
+            <ShowResultsCheckbox result={props.$result.value}/>
             { props.extra_items }
         </div>
     )
 }
 
+
+type ShowResultsCheckboxProps = {
+    result:    ResultState;
+}
+
 /** A checkbox to toggle results */
-class ShowResultsCheckbox extends preact.Component<{file:AppFileState}> {
+class ShowResultsCheckbox extends preact.Component<ShowResultsCheckboxProps> {
     ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 
-    render(props:{file:AppFileState}): JSX.Element {
-        const processed:boolean = ( props.file.$result.value.status == 'processed')
+    render(props:ShowResultsCheckboxProps): JSX.Element {
+        const processed:boolean = ( props.result.status == 'processed')
         const disabled:string   = processed?  '' : 'disabled'
         return (
             <div class={"ui item checkbox show-results-checkbox " + disabled} ref={this.ref}>
                 <input 
                     type        = "checkbox" 
-                    checked     = {props.file.$result.value.$visible} 
+                    checked     = {props.result.$visible} 
                     onChange    = {this.on_click.bind(this)}
                 />
                 <label style="padding-top:2px;">Show results</label>
@@ -108,7 +114,7 @@ class ShowResultsCheckbox extends preact.Component<{file:AppFileState}> {
 
     on_click() {
         const $visible: Signal<boolean> | undefined 
-            = this.props.file.$result.peek().$visible
+            = this.props.result.$visible
         
         if($visible)
             $visible.value = !$visible.value
@@ -123,18 +129,25 @@ class ShowResultsCheckbox extends preact.Component<{file:AppFileState}> {
 
 
 
+type DownloadButtonProps = {
+    inputfile:          InputFile;
+    $result:            Signal<ResultState>;
+}
+
 
 /** Button to trigger the download of a single result.
  *  Disabled if the corresponding input file has not been processed yet.
  *  //TODO: also disable when processing a batch of files.
  */
-export function DownloadButton(props: { file: AppFileState }): JSX.Element {
-    const enabled:boolean  = (props.file.$result.value.status == 'processed')
+export function DownloadButton(props:DownloadButtonProps): JSX.Element {
+    const enabled:boolean  = (props.$result.value.status == 'processed')
     const disabled: string = enabled ? "" : "disabled";
     return (
         <a
             class           =   {"download item " + disabled}
-            onClick         =   {() => download_single_file(props.file)}
+            onClick         =   {
+                () => download_single_result(props.inputfile, props.$result.peek())
+            }
             data-tooltip    =   "Download Result"
             data-position   =   "bottom left"
         >
@@ -144,8 +157,8 @@ export function DownloadButton(props: { file: AppFileState }): JSX.Element {
 }
 
 /** Format the results of a single file and download */
-export function download_single_file(file:AppFileState): void {
-    const jsondata:File|null = export_result_to_file(file)
+export function download_single_result(input:InputFile, result:Result): void {
+    const jsondata:File|null = export_result_to_file({input, result})
     if(jsondata)
         ui_util.download_blob(jsondata, jsondata.name)
 }
@@ -157,11 +170,13 @@ type HelpButtonProps = {
     children?: preact.ComponentChildren
 }
 
-//function HelpButton(props:HelpButtonProps): JSX.Element {
+/** Not a realbutton, but a popup that displays usage information */
 export class HelpButton extends preact.Component<HelpButtonProps> {
+    ref: preact.RefObject<HTMLAnchorElement> = preact.createRef()
+
     render(): JSX.Element {
         return <>
-            <a class="item help-menu-button">
+            <a class="item help-menu-button" ref={this.ref}>
                 <i class="help icon"></i>
             </a>
             <div class="ui segment flowing popup">
@@ -175,8 +190,9 @@ export class HelpButton extends preact.Component<HelpButtonProps> {
         </>
     }
 
+    /** Initialize the Fomantic popup */
     componentDidMount(): void {
-        $(`.help-menu-button`).popup({ hoverable: false }); //TODO! only one single component
+        $(this.ref.current).popup({ hoverable: false });
     }
 }
 

@@ -1,4 +1,5 @@
 import { preact, JSX }      from "../dep.ts"
+import { AppState }         from "../state.ts";
 import { DetectionTab }     from "./DetectionTab.tsx";
 import { page_wide_css }    from "./styles.ts";
 
@@ -27,7 +28,8 @@ export class Tabs extends preact.Component<TabsProps> {
 }
 
 
-export class MainContainer extends preact.Component {
+export class MainContainer extends preact.Component<{appstate:AppState}> {
+    /** @virtual */
     tab_names: string[] = ['Detection', 'Training']
 
     render(): JSX.Element {
@@ -49,7 +51,7 @@ export class MainContainer extends preact.Component {
 
     tab_contents(): JSX.Element[] {
         return [
-            <DetectionTab name={this.tab_names[0]!}/>, 
+            <DetectionTab name={this.tab_names[0]!} appstate={this.props.appstate}/>, 
             <TrainingTab  name={this.tab_names[1]!}/>,
         ]
     }

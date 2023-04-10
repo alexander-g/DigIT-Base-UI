@@ -1,10 +1,18 @@
 import { preact, JSX }  from "../dep.ts"
 import { FileTable }    from "./FileTable.tsx"
-import { STATE }        from "../state.ts"         //FIXME: hard-coded
+import { AppState }     from "../state.ts"
 
 
+export type DetectionTabProps = {
+    /** Name of the tab, used to associate it with the tab button */
+    name:           string;
 
-export class DetectionTab extends preact.Component<{name:string}>{
+    /** Global application state */
+    appstate:       AppState;
+}
+
+
+export class DetectionTab extends preact.Component<DetectionTabProps>{
     render(): JSX.Element {
         return (
         <div class="ui active tab segment unselectable" data-tab={this.props.name} style="padding:0">
@@ -14,10 +22,11 @@ export class DetectionTab extends preact.Component<{name:string}>{
     }
 
     file_table(): JSX.Element {
+        const appstate: AppState = this.props.appstate;
         return <FileTable 
             sortable        =   {false} 
-            files           =   {STATE.files}        //FIXME: hard-coded
-            processing      =   {STATE.processing}   //FIXME: hard-coded
+            files           =   {appstate.files}
+            processing      =   {appstate.$processing}
             labels_column   =   {true}
         />; 
     }

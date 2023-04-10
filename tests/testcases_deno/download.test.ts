@@ -1,30 +1,36 @@
 import * as download            from "../../frontend/ts/logic/download.ts";
-import { AppFile, Result }      from "../../frontend/ts/state.ts";
+import { InputFile, Result, InputResultPair }    from "../../frontend/ts/logic/files.ts";
 import { Box }                  from "../../frontend/ts/logic/boxes.ts";
 import { asserts }              from "./dep.ts";
 
 
 
-function create_mock_files(): AppFile[] {
-    const files0:AppFile[] = [0,1,2,3,4].map(
-        (i:number) => new AppFile(new File([], `banana${i}.jpg`))
+function create_mock_files(): InputResultPair[] {
+    const files0:InputFile[] = [0,1,2,3,4].map(
+        (i:number) => new InputFile(new File([], `banana${i}.jpg`))
     )
-    files0[1]?.result?.set_instances(
-        [
+    const result1:Result = new Result('processed')
+    result1.set_instances([
             {label:'banana', box: Box.from_array([  0,  0, 100,100])}, 
             {label:'banana', box: Box.from_array([200,200, 500,300])}, 
             {label:'banana', box: Box.from_array([200,200, 300,250])}
     ])
-    files0[2]?.result?.set_instances(
+    const result2:Result = new Result('processed')
+    result2.set_instances(
         [{label:'banana', box: Box.from_array([200,200, 500,300])}
     ])
-    return files0;
+    const pairs:InputResultPair[] = files0.map(
+        f => ({input:f, result: new Result('unprocessed')})
+    )
+    pairs[1]!.result = result1
+    pairs[2]!.result = result2
+    return pairs;
 }
 
 Deno.test('format_results_as_csv', () => {
-    const files0:AppFile[] = create_mock_files()
+    const pairs0:InputResultPair[] = create_mock_files()
 
-    const csv0:string       = download.format_results_as_csv(files0)
+    const csv0:string       = download.format_results_as_csv(pairs0)
     const lines0:string[]   = csv0.split('\n')
     //2 processed + 1 header lines
     asserts.assertEquals(lines0.length, 2+1)
@@ -33,8 +39,8 @@ Deno.test('format_results_as_csv', () => {
 })
 
 Deno.test("export_result", async () => {
-    const files0:AppFile[]          = create_mock_files()
-    const exported_results:File[]   = download.export_results(files0);
+    const pairs0:InputResultPair[] = create_mock_files()
+    const exported_results:File[]  = download.export_results(pairs0);
     asserts.assertEquals(exported_results.length, 2);
 
     const reimported_results:(Result|null)[] 
@@ -43,7 +49,7 @@ Deno.test("export_result", async () => {
     asserts.assertExists(reimported_results[0])
     asserts.assertExists(reimported_results[1])
 
-    asserts.assertEquals(reimported_results[0], files0[1]?.result)
-    asserts.assertEquals(reimported_results[1], files0[2]?.result)
+    asserts.assertEquals(reimported_results[0], pairs0[1]?.result)
+    asserts.assertEquals(reimported_results[1], pairs0[2]?.result)
 });
 

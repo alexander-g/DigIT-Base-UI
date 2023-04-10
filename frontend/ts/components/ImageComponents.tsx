@@ -1,5 +1,5 @@
 import { preact, JSX, signals }             from "../dep.ts"
-import type { AppFileState }                from "../state.ts"
+import type { InputFileState }              from "../state.ts"
 import type { ImageSize, Point }            from "../util.ts"
 import { set_image_src }                    from "../file_input.ts"
 import * as styles                          from "./styles.ts"
@@ -7,7 +7,7 @@ import { start_drag }                       from "./ui_util.ts";
 
 export type InputImageProps = {
     /** Which file to display */
-    file:           AppFileState;
+    inputfile:      InputFileState;
     /** Which file(name) is currently displayed in this file table */
     active_file:    signals.ReadonlySignal<string|null>;
 }
@@ -21,10 +21,10 @@ export class InputImage extends preact.Component<InputImageProps> {
 
     componentDidMount(): void {
         this.#init = signals.effect( () => {
-            if(this.props.active_file.value == this.props.file.name 
-                && !this.props.file.$loaded.value
+            if(this.props.active_file.value == this.props.inputfile.name 
+                && !this.props.inputfile.$loaded.value
                 && this.ref.current) {
-                    set_image_src(this.ref.current, this.props.file)
+                    set_image_src(this.ref.current, this.props.inputfile)
             }
         })
     }
@@ -44,7 +44,7 @@ export class InputImage extends preact.Component<InputImageProps> {
     on_load(): void {
         if(this.ref.current) {
             //TODO: resize if too large
-            this.props.file.set_loaded(this.ref.current)
+            this.props.inputfile.set_loaded(this.ref.current)
         }
     }
 }

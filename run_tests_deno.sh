@@ -3,6 +3,7 @@
 COVERAGE_DIR=./tests/coverage
 rm -rf $COVERAGE_DIR
 
+./deno.sh check frontend/ts/index.tsx
 ./deno.sh test                  \
     --allow-read=.,/tmp         \
     --allow-write=/tmp          \

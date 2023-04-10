@@ -28,7 +28,7 @@ Deno.test('ResultOverlays.decide-which-to-display', async (t:Deno.TestContext) =
     await t.step('classmap.overlay', async () => {
         const fetch_spy: mock.Spy = util.mock_fetch(async () => await new Response())
         result.value = new ResultState(
-            new Result('processed', { classmap: "url-to-classmap.png" })
+            'processed', { classmap: "url-to-classmap.png" }
         )
         await util.wait(1)
         //now there should be an image overlay
@@ -92,7 +92,7 @@ Deno.test('Result.set_instances', () => {
     asserts.assertEquals(r0.status, 'unprocessed')
 
 
-    const r1:ResultState = new ResultState(new Result())
+    const r1:ResultState = new ResultState()
     r1.set_instances([])
     asserts.assertEquals(r1.status, 'processed')
 })

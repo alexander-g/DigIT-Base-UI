@@ -1,20 +1,25 @@
 import { JSX, preact, Signal }              from "../dep.ts"
 import * as util                            from "../util.ts";
 import * as settings                        from "../logic/settings.ts";
-import type { ModelInfo, Settings }         from "../logic/settings.ts";
+import type { ModelInfo, Settings, AvailableModels }         from "../logic/settings.ts";
 import { show_error_toast }                 from "./errors.ts";
 
-import { STATE } from "../state.ts"; //TODO: hardcoded
+
+
+export type SettingsModalProps = {
+    $settings:          Signal<Settings|undefined>;
+    $available_models:  Signal<AvailableModels|undefined>;
+}
 
 
 /** The main settings dialog */
-export class SettingsModal extends preact.Component {
+export class SettingsModal extends preact.Component<SettingsModalProps> {
     ref: preact.RefObject<HTMLDivElement>            = preact.createRef()
     model_selection:preact.RefObject<ModelSelection> = preact.createRef()
 
-    render(): JSX.Element {
+    render(props:SettingsModalProps): JSX.Element {
         const avmodels: ModelInfo[]|undefined 
-            = STATE.available_models.value?.detection //TODO: hardcoded
+            = props.$available_models.value?.detection
 
         return <div class="ui tiny modal" id="settings-dialog" ref={this.ref}>
             <i class="close icon"></i>
@@ -22,7 +27,7 @@ export class SettingsModal extends preact.Component {
 
             <div class="ui form content">
                 <ModelSelection 
-                    active_model     = {STATE?.settings?.value?.active_models?.detection}  //TODO: hardcoded
+                    active_model     = {props.$settings.value?.active_models?.detection}
                     available_models = {avmodels}
                     ref              = {this.model_selection}
                 />
@@ -51,7 +56,7 @@ export class SettingsModal extends preact.Component {
 
         const settings:Settings = {active_models:{detection : model.name}}
         await util.fetch_with_error(
-            [new Request('/settings', {method:'post', body:JSON.stringify(settings)})],
+            [new Request('settings', {method:'post', body:JSON.stringify(settings)})],
             () => {show_error_toast('Cannot save settings.')}
         )
     }

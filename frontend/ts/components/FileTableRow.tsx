@@ -1,10 +1,13 @@
 import { preact, JSX, signals }     from "../dep.ts";
+import { ResultState }              from "../state.ts";
 import { FileTableStatusIcons }     from "./StatusIcons.tsx";
 import type { InputImageProps }     from "./ImageComponents.tsx"
 import type { Instance }            from "../logic/boxes.ts";
 
 
 export type FileTableRowProps = InputImageProps & {
+    $result:        signals.ReadonlySignal<ResultState>;
+
     /** Add a second column that contains labels */
     labels_column:  boolean;
 }
@@ -16,20 +19,20 @@ export class FileTableRow extends preact.Component<FileTableRowProps> {
     tr_ref: preact.RefObject<HTMLTableRowElement> = preact.createRef()
 
     render(props: FileTableRowProps): JSX.Element {
-        const processed: boolean = (props.file.$result.value.status == 'processed')
+        const processed: boolean = (props.$result.value.status == 'processed')
         const css = {
             fontWeight:     processed? 'bold' : 'normal'
         }
         return <tr class="ui title table-row" ref={this.tr_ref} style={css}>
             <td>
                 <i class="dropdown icon"></i>
-                <FileTableStatusIcons $result={props.file.$result}/>
+                <FileTableStatusIcons $result={props.$result}/>
                 <label>
-                    {props.file.name}
+                    {props.inputfile.name}
                 </label>
             </td>
             { props.labels_column? 
-                <LabelsColumn $instances={props.file.$result.value.$instances} /> : []
+                <LabelsColumn $instances={props.$result.value.$instances} /> : []
             }
         </tr>
     }
@@ -52,12 +55,12 @@ export class FileTableRow extends preact.Component<FileTableRowProps> {
 
             //works on the first time, wont work later
             const dispose0: (() => void) = signals.effect(() => {
-                if(this.props.file.$loaded.value)
+                if(this.props.inputfile.$loaded.value)
                     scroll_to_row()
             })
             //doesnt work on the first time, will work later
             const dispose1: (() => void) = signals.effect(() => {
-                if(this.props.active_file.value == this.props.file.name)
+                if(this.props.active_file.value == this.props.inputfile.name)
                     scroll_to_row()
             })
 

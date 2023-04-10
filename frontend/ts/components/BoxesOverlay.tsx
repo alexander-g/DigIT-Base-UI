@@ -1,7 +1,7 @@
 import { preact, JSX, Signal, ReadonlySignal }      from "../dep.ts";
 import { Instance, Box }                    from "../logic/boxes.ts";
 import { MaybeInstances }                   from "../state.ts";
-import { Size, Point, ImageSize }                      from "../util.ts";
+import { Size, Point, ImageSize }           from "../util.ts";
 import * as styles                          from "./styles.ts";
 import * as ui_util                         from "./ui_util.ts";
 
