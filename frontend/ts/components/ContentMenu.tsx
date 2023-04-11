@@ -1,7 +1,7 @@
 import { preact, JSX, Signal }      from "../dep.ts";
-import { Result, ResultState, InputFile }   from "../state.ts";
-import * as detection               from "../logic/detection.ts";
+import { Result, ResultState, InputFile, InputFileState }   from "../state.ts";
 import { export_result_to_file }    from "../logic/download.ts";
+import { process_files }            from "./FileTableMenu.tsx";
 import * as ui_util                 from "./ui_util.ts";
 
 type ContentMenuProps = {
@@ -27,7 +27,7 @@ export function ContentMenu(props: ContentMenuProps): JSX.Element {
             class = "ui bottom attached secondary icon menu"
             style = "border-top-width:0px; margin-bottom:0px;"
         >
-            <PlayButton     inputfile={props.inputfile} />
+            <PlayButton     inputfile={props.inputfile} $result={props.$result} />
             <ViewMenu       $result={props.$result} extra_items={props.view_menu_extras}/>
             { new_box_button }
             <DownloadButton inputfile={props.inputfile} $result={props.$result} />
@@ -41,13 +41,14 @@ export function ContentMenu(props: ContentMenuProps): JSX.Element {
 
 type PlayButtonProps = {
     inputfile:   InputFile;
+    $result:     Signal<ResultState>;
     callback?:  (f: InputFile) => void;
 };
 
 /** Button to trigger the processing of a single input file */
 function PlayButton(props: PlayButtonProps): JSX.Element {
     const callback_fn: typeof props.callback 
-        = props.callback ?? detection.process_image
+        = props.callback ?? ((f:InputFile) => process_files([{input:new InputFileState(f), $result:props.$result}]))
     
     //TODO: disable when processing is going on somewhere
     return (

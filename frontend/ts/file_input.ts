@@ -80,17 +80,20 @@ export function load_resultfiles(file_list:FileList|File[]): void {
 
 /** Load files as results if the match already loaded input files */
 export async function load_result_files(
-    inputfiles:        InputFile[],
+    inputfiles:        File[],
     maybe_resultfiles: FileList|File[], 
 ): Promise<InputResultPair[]> {
     const pairs: InputResultPair[] = inputfiles.map(
-        (input: InputFile) => ({input, result: new Result('unprocessed')})
+        (input: File) => ({
+            input:  new InputFile(input), 
+            result: new Result('unprocessed'),
+        })
     )
     const input_result_map:InputResultMap
         = collect_result_files(inputfiles, Array.from(maybe_resultfiles))
     
     for(const pair of pairs){
-        const inputfile:InputFile = pair.input;
+        const inputfile:File = pair.input;
         const result_candidates:File[]|undefined = input_result_map[pair.input.name]?.resultfiles
         if(!result_candidates)
             continue;
@@ -114,7 +117,7 @@ export async function load_result_files(
 
 
 type InputResultFiles = {
-    inputfile:   InputFile,
+    inputfile:   File,
     resultfiles: File[]
 }
 
@@ -126,7 +129,7 @@ type InputResultMap = Record<string, InputResultFiles>
  * @returns Object mapping input file names to arrays of File objects representing the result files that match each input file.
  */
 export function collect_result_files(
-    input_files:        InputFile[],
+    input_files:        File[],
     maybe_result_files: File[],
 ): InputResultMap {
     const collected: InputResultMap = {}

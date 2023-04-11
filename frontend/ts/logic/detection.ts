@@ -10,41 +10,52 @@ type ProcessingCallback = (x:InputResultPair) => void;
  * @param file - The input file to process
  */
 export async function process_image(
-    file:           InputFile, 
-    on_start?:      ProcessingCallback,
-    on_success?:    ProcessingCallback,
-    on_error?:      ProcessingCallback
+    file:           InputFile
 ): Promise<Result|undefined> {
-    return (await process_files([file], on_start, on_success, on_error))[0]
+    return (await process_files([file]))[0]
 }
 
 
 export async function process_files(
     files:          InputFile[],
-    on_start?:      ProcessingCallback,
-    on_success?:    ProcessingCallback,
-    on_error?:      ProcessingCallback
+    on_progress?:   ProcessingCallback
 ): Promise<Result[]> {
     const results: Result[] = []
     for(const input of files) {
         // do actual processing //TODO: refactor into own file
         try {
-            on_start?.({input, result:new Result('processing')})
+            on_progress?.({input, result:new Result('processing')})
             await util.upload_file(input, function(){})
             const response: Response 
                 = await util.fetch_with_error([`process_image/${input.name}`], function(){})
             const result = await result_from_response(response)
             results.push( result )
-            on_success?.({input, result})
+            on_progress?.({input, result})
         } catch (error) {
             //TODO: pass error to callback
             const result = new Result('failed')
             results.push(result)
-            on_error?.( {input, result} )
+            on_progress?.( {input, result} )
             continue;
         }
     }
     return results;
+}
+
+
+export async function process_file(input:InputFile): Promise<Result> {
+    let result:Result;
+    try {
+        await util.upload_file(input, console.error) //TODO: error handling
+        const response: Response 
+                = await util.fetch_with_error([`process_image/${input.name}`], function(){}) //TODO: error handling
+        result = await result_from_response(response)
+    } catch (error) {
+        //TODO: more info on error
+        console.error(error)
+        result = new Result('failed')
+    }
+    return result;
 }
 
 
@@ -55,6 +66,8 @@ export function cancel_processing_all_files(): void {
     console.trace('Not Implemented')
 }
 
+
+//TODO: code re-use with download.ts
 
 /** Parse a fetch response object received from the backend converting to a `Result` */
 async function result_from_response(response:Response): Promise<Result> {

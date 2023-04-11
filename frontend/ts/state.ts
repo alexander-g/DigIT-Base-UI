@@ -1,4 +1,4 @@
-import { signals, Signal, ReadonlySignal }      from "./dep.ts"
+import { signals, ReadonlySignal }      from "./dep.ts"
 import { Settings, AvailableModels }            from "./logic/settings.ts";
 import { Result, InputFile, type MaybeInstances }    from "./logic/files.ts";
 import * as files                               from "./logic/files.ts";
@@ -27,10 +27,13 @@ export function createResultStateClass<TBase extends Constructor<Result> >(BaseC
     /** Result with additional attributes for UI */
     return class ResultState extends BaseClass {
         /** Indicates whether the result should be displayed in the UI */
-        $visible:       Signal<boolean>         = new Signal(true)
+        $visible:       Reactive<boolean>         = new Reactive(true)
 
         /** Signal of {@link Result.instances} */
-        #$instances:    Signal<MaybeInstances>  = new Signal(undefined)
+        #$instances:    Reactive<MaybeInstances>  = new Reactive(undefined)
+
+        /** Signal of {@link Result.status} */
+        #$status:       Reactive<files.ResultStatus> = new Reactive(this.status)
 
         /** @override Set instances notifying signal listeners */
         set_instances(instances: MaybeInstances): void {
@@ -42,6 +45,13 @@ export function createResultStateClass<TBase extends Constructor<Result> >(BaseC
          * (readonly getter, set via {@link ResultState.set_instances}) */
         get $instances(): ReadonlySignal<MaybeInstances> {
             return this.#$instances;
+        }
+
+        copy_from(other:Result): void {
+            //TODO? signals.batch()?
+            this.status   = other.status
+            this.classmap = other.classmap
+            this.set_instances(other.instances)
         }
     };
 }
@@ -61,7 +71,7 @@ export class InputFileState extends InputFile {
         () => this.#$size.value != undefined
     )
     /** Size of the input image */
-    #$size:  Signal<ImageSize|undefined> = new Signal()
+    #$size:  Reactive<ImageSize|undefined> = new Reactive(undefined)
 
     /** Size of the input image (getter, set via `set_loaded()`) */
     get $size(): ReadonlySignal<ImageSize|undefined> { return this.#$size; }
@@ -77,7 +87,7 @@ export class InputFileState extends InputFile {
 /** InputImage and its corresponding Result */
 export type InputResultPair = {
     input:   InputFileState;
-    $result: Signal<ResultState>;
+    $result: Reactive<ResultState>;
 }
 
 /** Reactive list of InputImage-Result pairs */
@@ -91,7 +101,7 @@ export class InputFileList extends Reactive<InputResultPair[]> {
         super.value = files.map(
             (f:File) => ({
                 input:   new InputFileState(f),
-                $result: new Signal(new ResultState()),
+                $result: new Reactive(new ResultState()),
             })
         )
     }
@@ -100,7 +110,7 @@ export class InputFileList extends Reactive<InputResultPair[]> {
         super.value = pairs.map(
             ({input, result}: files.InputResultPair) => ({
                 input:   new InputFileState(input),
-                $result: new Signal(new ResultState(result.status, result))
+                $result: new Reactive(new ResultState(result.status, result))
             })
         )
     }

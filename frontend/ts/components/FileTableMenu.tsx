@@ -6,7 +6,7 @@ import * as state                   from "../state.ts";
 
 
 type FileTableMenuProps = {
-    displayed_files:    state.InputResultPair[];
+    displayed_files:    readonly state.InputResultPair[];
     $processing:        signals.Signal<boolean>;
 }
 
@@ -18,10 +18,11 @@ export function FileTableMenu(props:FileTableMenuProps): JSX.Element {
             return;
         
         props.$processing.value = true;
-        await detection.process_files(
+        /*await detection.process_files(
             props.displayed_files.map( (x:state.InputResultPair) => x.input)
             //TODO: callbacks
-        )
+        )*/
+        await process_files(props.displayed_files)
         props.$processing.value = false;
     }
 
@@ -33,6 +34,14 @@ export function FileTableMenu(props:FileTableMenuProps): JSX.Element {
             />
         </div>
     )
+}
+
+export async function process_files(pairs:readonly state.InputResultPair[]): Promise<void> {
+    for(const pair of pairs){
+        pair.$result.value.copy_from(new state.Result('processing'))
+        const result:state.Result = await pair.input.process()
+        pair.$result.value.copy_from(result)
+    }
 }
 
 
