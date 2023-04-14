@@ -1,12 +1,12 @@
 import { preact, JSX, Signal }      from "../dep.ts";
-import { Result, ResultState, InputFile, InputFileState }   from "../state.ts";
+import { Result, ResultSignal, InputFile, InputFileState }   from "../state.ts";
 import { export_result_to_file }    from "../logic/download.ts";
 import { process_files }            from "./FileTableMenu.tsx";
 import * as ui_util                 from "./ui_util.ts";
 
 type ContentMenuProps = {
     inputfile:          InputFile;
-    $result:            Signal<ResultState>;
+    $result:            ResultSignal;
 
     /** Flag indicating if box drawing is activated. 
      *  If undefined no New-Box button is shown */
@@ -41,7 +41,7 @@ export function ContentMenu(props: ContentMenuProps): JSX.Element {
 
 type PlayButtonProps = {
     inputfile:   InputFile;
-    $result:     Signal<ResultState>;
+    $result:     ResultSignal;
     callback?:  (f: InputFile) => void;
 };
 
@@ -66,7 +66,7 @@ function PlayButton(props: PlayButtonProps): JSX.Element {
 
 
 type ViewMenuProps = {
-    $result:        Signal<ResultState>;
+    $result:        ResultSignal;
     extra_items?:   JSX.Element[],
 }
 
@@ -83,7 +83,7 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
 function ViewMenuDropdown(props:ViewMenuProps): JSX.Element {
     return (
         <div class="menu view-menu">
-            <ShowResultsCheckbox result={props.$result.value}/>
+            <ShowResultsCheckbox $result={props.$result}/>
             { props.extra_items }
         </div>
     )
@@ -91,7 +91,7 @@ function ViewMenuDropdown(props:ViewMenuProps): JSX.Element {
 
 
 type ShowResultsCheckboxProps = {
-    result:    ResultState;
+    $result:    ResultSignal;
 }
 
 /** A checkbox to toggle results */
@@ -99,13 +99,13 @@ class ShowResultsCheckbox extends preact.Component<ShowResultsCheckboxProps> {
     ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 
     render(props:ShowResultsCheckboxProps): JSX.Element {
-        const processed:boolean = ( props.result.status == 'processed')
+        const processed:boolean = ( props.$result.value.status == 'processed')
         const disabled:string   = processed?  '' : 'disabled'
         return (
             <div class={"ui item checkbox show-results-checkbox " + disabled} ref={this.ref}>
                 <input 
                     type        = "checkbox" 
-                    checked     = {props.result.$visible} 
+                    checked     = {props.$result.$visible} 
                     onChange    = {this.on_click.bind(this)}
                 />
                 <label style="padding-top:2px;">Show results</label>
@@ -115,7 +115,7 @@ class ShowResultsCheckbox extends preact.Component<ShowResultsCheckboxProps> {
 
     on_click() {
         const $visible: Signal<boolean> | undefined 
-            = this.props.result.$visible
+            = this.props.$result.$visible
         
         if($visible)
             $visible.value = !$visible.value
@@ -132,7 +132,7 @@ class ShowResultsCheckbox extends preact.Component<ShowResultsCheckboxProps> {
 
 type DownloadButtonProps = {
     inputfile:          InputFile;
-    $result:            Signal<ResultState>;
+    $result:            ResultSignal;
 }
 
 

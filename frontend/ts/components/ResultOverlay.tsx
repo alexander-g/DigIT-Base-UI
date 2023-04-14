@@ -1,5 +1,5 @@
 import { preact, JSX, Signal, ReadonlySignal }  from "../dep.ts";
-import { ResultState }                          from "../state.ts";
+import { ResultSignal, Result }                 from "../state.ts";
 import * as util                                from "../util.ts";
 import * as ui_util                             from "./ui_util.ts";
 import * as styles                              from "./styles.ts"
@@ -9,7 +9,7 @@ import { Instance }                             from "../logic/boxes.ts";
 
 export type ResultOverlaysProps = {
     /** Result that should be displayed in this overlay */
-    $result:     ReadonlySignal<ResultState>;
+    $result:     Readonly<ResultSignal>;
 
     /** Props passed to the box overlay. If undefined no box overlay is created */
     boxoverlay_props?: {
@@ -24,7 +24,6 @@ export class ResultOverlays<P extends ResultOverlaysProps> extends preact.Compon
     render(props:P): JSX.Element {
         const children: (JSX.Element|null)[] = []
 
-        const result: ResultState = props.$result.value;
         children.push(this.maybe_create_image_overlay())
         children.push(this.maybe_create_boxoverlay())
 
@@ -35,25 +34,25 @@ export class ResultOverlays<P extends ResultOverlaysProps> extends preact.Compon
 
     /** Callback from child component reporting new instances after user input */
     on_new_instances(new_instances: Instance[]) {
-        this.props.$result.peek().set_instances(new_instances)
+        this.props.$result.set_instances(new_instances)
     }
 
     maybe_create_image_overlay(): JSX.Element|null {
-        const result:ResultState = this.props.$result.value
-        if(result.classmap)
+        const $result:ResultSignal = this.props.$result
+        if($result.value.classmap)
             return <ImageOverlay
-                imagename = {result.classmap}
-                $visible  = {result.$visible}
+                imagename = {$result.value.classmap}
+                $visible  = {$result.$visible}
             />
         else return null;
     }
 
     maybe_create_boxoverlay(): JSX.Element|null {
-        const result:ResultState = this.props.$result.value
+        const $result:ResultSignal = this.props.$result
         if(this.props.boxoverlay_props)
             return <BoxesOverlay 
-                $visible            = {result.$visible}
-                $instances          = {result.$instances}
+                $visible            = {$result.$visible}
+                $instances          = {$result.$instances}
                 on_new_instances    = {this.on_new_instances.bind(this)}
                 {...this.props.boxoverlay_props}
             />

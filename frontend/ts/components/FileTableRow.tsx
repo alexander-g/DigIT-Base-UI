@@ -1,12 +1,12 @@
 import { preact, JSX, signals }     from "../dep.ts";
-import { ResultState }              from "../state.ts";
+import { ResultSignal }             from "../state.ts";
 import { FileTableStatusIcons }     from "./StatusIcons.tsx";
 import type { InputImageProps }     from "./ImageComponents.tsx"
 import type { Instance }            from "../logic/boxes.ts";
 
 
 export type FileTableRowProps = InputImageProps & {
-    $result:        signals.ReadonlySignal<ResultState>;
+    $result:        ResultSignal;
 
     /** Add a second column that contains labels */
     labels_column:  boolean;
@@ -32,7 +32,7 @@ export class FileTableRow extends preact.Component<FileTableRowProps> {
                 </label>
             </td>
             { props.labels_column? 
-                <LabelsColumn $instances={props.$result.value.$instances} /> : []
+                <LabelsColumn $instances={props.$result.$instances} /> : []
             }
         </tr>
     }

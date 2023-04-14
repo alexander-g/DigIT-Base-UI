@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-explicit-any
 import * as util            from "./util.ts";
 import { mock, asserts }    from "./dep.ts";
 import { process_image }    from "../../frontend/ts/logic/detection.ts";
@@ -67,7 +66,7 @@ Deno.test('process_image.basic-succcess', async () => {
         ],
         labels: [ "banana", "potato" ],
     })) );
-    const result:Result|undefined = await process_image(mockfile, ()=>{})
+    const result:Result|undefined = await process_image(mockfile)
 
     asserts.assertExists(result)
     asserts.assertEquals(result.status, 'processed')
@@ -85,7 +84,7 @@ Deno.test('process_image.basic-succcess', async () => {
         ],
         labels: [ 999 ],  //numbers not allowed (TODO: should give an error)
     })) );
-    const result2:Result|undefined = await process_image(mockfile, ()=>{})
+    const result2:Result|undefined = await process_image(mockfile)
     asserts.assertExists(result2)
     asserts.assertEquals(result2.instances, undefined)
 })

@@ -9,7 +9,7 @@ export {Result, InputFile, type MaybeInstances};
 
 
 /** Helper class to prevent undefined initial values */
-class Reactive<T> extends signals.Signal<T> {
+export class Reactive<T> extends signals.Signal<T> {
     /** Constructor making sure that undefined is not an option */
     constructor(x:T) {
         super(x)
@@ -23,44 +23,40 @@ export type Constructor<T, Arguments extends unknown[] = any[]>
 
 
 /** Mixin adding additional attributes for UI*/
-export function createResultStateClass<TBase extends Constructor<Result> >(BaseClass:TBase)  {
-    /** Result with additional attributes for UI */
-    return class ResultState extends BaseClass {
+export function ResultSignalMixin<TBase extends Result >(BaseClass: Constructor<TBase>){
+    /** Signal of a result with additional attributes for UI */
+    return class ResultSignal extends Reactive<TBase> {
+    //return class ResultSignal extends Reactive<InstanceType<TBase>> {
         /** Indicates whether the result should be displayed in the UI */
-        $visible:       Reactive<boolean>         = new Reactive(true)
-
-        /** Signal of {@link Result.instances} */
-        #$instances:    Reactive<MaybeInstances>  = new Reactive(undefined)
-
-        /** Signal of {@link Result.status} */
-        #$status:       Reactive<files.ResultStatus> = new Reactive(this.status)
-
-        /** @override Set instances notifying signal listeners */
+        $visible:   Reactive<boolean>   =   new Reactive(true)
+    
+        /** Signal of {@link Result.instances} */  //TODO: remove
+        $instances: Reactive<MaybeInstances>  = new Reactive(undefined)
+    
+        constructor(result?:TBase) {
+            super(result ?? new BaseClass('unprocessed'))
+        }
+    
+        set(result_or_status:TBase|'processing') {
+            if(result_or_status == 'processing')
+                this.value = new BaseClass(result_or_status)
+            else {
+                this.set_instances(result_or_status.instances)
+                this.value = result_or_status;
+            }
+        }
+    
         set_instances(instances: MaybeInstances): void {
-            super.set_instances(instances)
-            this.#$instances.value = instances
+            this.value.set_instances(instances)
+            this.$instances.value = instances;
         }
-
-        /** Signal of {@link Result.instances} 
-         * (readonly getter, set via {@link ResultState.set_instances}) */
-        get $instances(): ReadonlySignal<MaybeInstances> {
-            return this.#$instances;
-        }
-
-        copy_from(other:Result): void {
-            //TODO? signals.batch()?
-            this.status   = other.status
-            this.classmap = other.classmap
-            this.set_instances(other.instances)
-        }
-    };
+    }
 }
 
-type ResultStateConstructor = ReturnType<typeof createResultStateClass<typeof Result>>
-
+export type  ResultSignalConstructor = ReturnType<typeof ResultSignalMixin<Result>>
 /** Result with additional attributes for UI */
-export type ResultState  = InstanceType<ResultStateConstructor>
-export const ResultState: ResultStateConstructor = createResultStateClass(Result)
+export type  ResultSignal  = InstanceType<ResultSignalConstructor>
+export const ResultSignal: ResultSignalConstructor = ResultSignalMixin(Result)
 
 
 
@@ -87,34 +83,48 @@ export class InputFileState extends InputFile {
 /** InputImage and its corresponding Result */
 export type InputResultPair = {
     input:   InputFileState;
-    $result: Reactive<ResultState>;
+    $result: ResultSignal;
 }
 
-/** Reactive list of InputImage-Result pairs */
-export class InputFileList extends Reactive<InputResultPair[]> {
-    /**
-     * Update the state to set new input files.
-     * @param files A list of `File` objects that will be converted to InputFiles
-     */
-    set_from_files(files:File[]|FileList): void {
-        files = Array.from(files)
-        super.value = files.map(
-            (f:File) => ({
-                input:   new InputFileState(f),
-                $result: new Reactive(new ResultState()),
-            })
-        )
-    }
 
-    set_from_pairs(pairs:files.InputResultPair[]): void {
-        super.value = pairs.map(
-            ({input, result}: files.InputResultPair) => ({
-                input:   new InputFileState(input),
-                $result: new Reactive(new ResultState(result.status, result))
-            })
-        )
+/** Mixin factory creating a list class of input-result pairs */
+export function InputFileListMixin<IFS extends InputFileState, RS extends ResultSignal>(
+    IFSClass:Constructor<IFS>, 
+    RSClass:Constructor<RS>
+) {
+    return class InputFileList extends Reactive<{input:IFS, $result:RS}[]>{
+        /** Update the state to set new input files.
+         *  @param files A list of `File` objects that will be converted to InputFiles
+         */
+        set_from_files(files:File[]|FileList): void {
+            files = Array.from(files)
+            super.value = files.map(
+                (f:File) => ({
+                    input:   new IFSClass(f),
+                    $result: new RSClass(),
+                })
+            )
+        }
+
+        set_from_pairs(pairs:files.InputResultPair[]): void {
+            super.value = pairs.map(
+                ({input, result}: files.InputResultPair) => ({
+                    input:   new IFSClass(input),
+                    $result: new RSClass(result)
+                })
+            )
+        }
     }
 }
+
+export type  InputFileListConstructor 
+    = ReturnType<typeof InputFileListMixin<InputFileState, ResultSignal>>
+/** Reactive list of input-result pairs */
+export const InputFileList:InputFileListConstructor 
+    = InputFileListMixin(InputFileState, ResultSignal)
+export type  InputFileList = InstanceType<InputFileListConstructor>
+
+
 
 /** Reactive Settings */
 class SettingsState extends Reactive<Settings|undefined> {}

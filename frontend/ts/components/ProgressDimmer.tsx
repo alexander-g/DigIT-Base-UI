@@ -1,11 +1,11 @@
 import { preact, JSX, signals }         from "../dep.ts";
-import { ResultState }                  from "../state.ts";
+import { ResultSignal }                 from "../state.ts";
 import { ResultStatus }                 from "../logic/files.ts"
 import { boolean_to_display_css }       from "./ui_util.ts";
 
 
 type ProgressDimmerProps = {
-    result: signals.ReadonlySignal<ResultState>;
+    $result: Readonly<ResultSignal>;
 }
 
 
@@ -16,7 +16,7 @@ export class ProgressDimmer extends preact.Component<ProgressDimmerProps> {
     render(props:ProgressDimmerProps): JSX.Element {
         //whether to show the "progressing" spinner or the "failed" error message
         //TODO: use JSX instead of CSS
-        const failed:boolean = (props.result.value.status == 'failed')
+        const failed:boolean = (props.$result.value.status == 'failed')
         const processing_css = {
             display:    boolean_to_display_css(!failed),
         }
@@ -50,7 +50,7 @@ export class ProgressDimmer extends preact.Component<ProgressDimmerProps> {
             if(ref == null)
                 return;
 
-            const status: ResultStatus = this.props.result.value.status;
+            const status: ResultStatus = this.props.$result.value.status;
             if(status == 'processing' || status == 'failed'){
                 $(ref).dimmer({closable:(status=='failed')})
                 $(ref).dimmer('show')

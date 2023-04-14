@@ -1,5 +1,5 @@
 import * as ContentMenu     from "../../frontend/ts/components/ContentMenu.tsx";
-import { InputFileState, ResultState, Result }     from "../../frontend/ts/state.ts"
+import { InputFileState, ResultSignal, Result }     from "../../frontend/ts/state.ts"
 import { preact, Signal }   from "../../frontend/ts/dep.ts"
 import * as util            from "./util.ts"
 import { asserts }          from "./dep.ts";
@@ -9,7 +9,7 @@ Deno.test('DownloadButton.enable', async () => {
     const document:Document = await util.setup_jsdom();
 
     const file:InputFileState = new InputFileState(new File([], 'file000.jpg'))
-    const $result:Signal      = new Signal(new ResultState())
+    const $result:ResultSignal = new ResultSignal()
     const dbutton = <ContentMenu.DownloadButton inputfile={file} $result={$result} />
     
     preact.render(dbutton, document.body)
@@ -36,7 +36,7 @@ Deno.test('ViewMenu.show_results', async () => {
     const document:Document = await util.setup_jsdom();
     util.mock_jQ({checkbox:()=>{}})
 
-    const $result:Signal      = new Signal(new ResultState())
+    const $result:ResultSignal = new ResultSignal()
     preact.render(<ContentMenu.ViewMenu $result={$result}/>, document.body)
     await util.wait(1)
 
@@ -45,8 +45,7 @@ Deno.test('ViewMenu.show_results', async () => {
     asserts.assertStringIncludes(checkbox.className, 'disabled')
 
     //set a dummy result
-    const result:ResultState = new ResultState('processed')
-    $result.value = result;
+    $result.set(new Result('processed'))
     await util.wait(1)
     //the disabled class should be gone
     asserts.assertFalse(checkbox.className.includes('disabled'), 'Checkbox not enabled')
@@ -56,9 +55,9 @@ Deno.test('ViewMenu.show_results', async () => {
     asserts.assert(input.checked, 'Results should be visible initially')
     
     input.click()
-    asserts.assertFalse(result.$visible.peek())
+    asserts.assertFalse($result.$visible.peek())
 
     input.click()
-    asserts.assert(result.$visible.peek())
+    asserts.assert($result.$visible.peek())
 })
 

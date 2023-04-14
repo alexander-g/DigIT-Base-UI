@@ -106,7 +106,7 @@ export class FileTableContent extends preact.Component<FileTableItemProps> {
                         } : undefined}
                     />
                 </ImageControls>
-                <ProgressDimmer result={ props.$result }/>
+                <ProgressDimmer $result={ props.$result }/>
             </ImageContainer>
         </>
     }
