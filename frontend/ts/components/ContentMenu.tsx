@@ -1,12 +1,10 @@
 import { preact, JSX, Signal }      from "../dep.ts";
-import { Result, ResultSignal, InputFile, InputFileState }   from "../state.ts";
+import { Result, ResultSignal, InputFile, InputResultPair }   from "../state.ts";
 import { export_result_to_file }    from "../logic/download.ts";
 import { process_files }            from "./FileTableMenu.tsx";
 import * as ui_util                 from "./ui_util.ts";
 
-type ContentMenuProps = {
-    inputfile:          InputFile;
-    $result:            ResultSignal;
+type ContentMenuProps = InputResultPair & {
 
     /** Flag indicating if box drawing is activated. 
      *  If undefined no New-Box button is shown */
@@ -18,6 +16,8 @@ type ContentMenuProps = {
 
 /** A menu bar for every image, containing control buttons */
 export function ContentMenu(props: ContentMenuProps): JSX.Element {
+    const pair:InputResultPair = {input: props.input, $result:props.$result};
+
     let new_box_button: JSX.Element|null = null;
     if(props.box_drawing_mode)
         new_box_button = <NewBoxButton drawing_mode_active={props.box_drawing_mode}/>
@@ -27,10 +27,10 @@ export function ContentMenu(props: ContentMenuProps): JSX.Element {
             class = "ui bottom attached secondary icon menu"
             style = "border-top-width:0px; margin-bottom:0px;"
         >
-            <PlayButton     inputfile={props.inputfile} $result={props.$result} />
-            <ViewMenu       $result={props.$result} extra_items={props.view_menu_extras}/>
+            <PlayButton     inputresultpair={pair} />
+            <ViewMenu       $result={pair.$result} extra_items={props.view_menu_extras}/>
             { new_box_button }
-            <DownloadButton inputfile={props.inputfile} $result={props.$result} />
+            <DownloadButton inputfile={pair.input} $result={pair.$result} />
             <HelpButton />
         </div>
     );
@@ -40,21 +40,20 @@ export function ContentMenu(props: ContentMenuProps): JSX.Element {
 
 
 type PlayButtonProps = {
-    inputfile:   InputFile;
-    $result:     ResultSignal;
-    callback?:  (f: InputFile) => void;
+    inputresultpair:    InputResultPair;
+    callback?:          (f: InputFile) => void;
 };
 
 /** Button to trigger the processing of a single input file */
 function PlayButton(props: PlayButtonProps): JSX.Element {
     const callback_fn: typeof props.callback 
-        = props.callback ?? ((f:InputFile) => process_files([{input:new InputFileState(f), $result:props.$result}]))
+        = props.callback ?? ((f:InputFile) => process_files([props.inputresultpair]))
     
     //TODO: disable when processing is going on somewhere
     return (
         <a
             class           =   "process item"
-            onClick         =   {() => callback_fn(props.inputfile)}
+            onClick         =   {() => callback_fn(props.inputresultpair.input)}
             data-tooltip    =   "Process Image"
             data-position   =   "bottom left"
         >

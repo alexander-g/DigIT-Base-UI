@@ -1,15 +1,15 @@
 import { preact, JSX, signals }     from "../dep.ts";
-import { ResultSignal }             from "../state.ts";
+import { InputResultPair }          from "../state.ts";
 import { FileTableStatusIcons }     from "./StatusIcons.tsx";
-import type { InputImageProps }     from "./ImageComponents.tsx"
 import type { Instance }            from "../logic/boxes.ts";
 
 
-export type FileTableRowProps = InputImageProps & {
-    $result:        ResultSignal;
-
+export type FileTableRowProps = InputResultPair & {
     /** Add a second column that contains labels */
-    labels_column:  boolean;
+    labels_column:      boolean;
+
+    /** Which file(name) is currently displayed in this file table */
+    active_file:    signals.ReadonlySignal<string|null>;
 }
 
 
@@ -28,7 +28,7 @@ export class FileTableRow extends preact.Component<FileTableRowProps> {
                 <i class="dropdown icon"></i>
                 <FileTableStatusIcons $result={props.$result}/>
                 <label>
-                    {props.inputfile.name}
+                    {props.input.name}
                 </label>
             </td>
             { props.labels_column? 
@@ -55,12 +55,12 @@ export class FileTableRow extends preact.Component<FileTableRowProps> {
 
             //works on the first time, wont work later
             const dispose0: (() => void) = signals.effect(() => {
-                if(this.props.inputfile.$loaded.value)
+                if(this.props.input.$loaded.value)
                     scroll_to_row()
             })
             //doesnt work on the first time, will work later
             const dispose1: (() => void) = signals.effect(() => {
-                if(this.props.active_file.value == this.props.inputfile.name)
+                if(this.props.active_file.value == this.props.input.name)
                     scroll_to_row()
             })
 

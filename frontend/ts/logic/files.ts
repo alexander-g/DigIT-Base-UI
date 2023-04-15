@@ -49,6 +49,7 @@ export class Result {
         other:  Partial<Result> & {raw?:unknown} = {}
     ) {
         this.status     = status;
+        this.raw        = other.raw;
         //NOTE: not using set_instances() because of some strange error
         this.#instances = other.instances
         this.classmap   = other.classmap

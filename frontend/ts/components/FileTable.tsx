@@ -1,5 +1,6 @@
 import { preact, JSX, signals, ReadonlySignal }         from "../dep.ts"
 import { InputFileList, InputResultPair }               from "../state.ts"
+import { Constructor }                                  from "../state.ts";
 import { ContentMenu }                                  from "./ContentMenu.tsx"
 import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.tsx"
 import { ResultOverlays }                               from "./ResultOverlay.tsx";
@@ -52,9 +53,9 @@ export function SpinnerSwitch(props:SpinnerSwitchProps): JSX.Element {
 }
 
 
-type FileTableItemProps = FileTableRowProps & {
+export type FileTableItemProps = FileTableRowProps & {
     /** @virtual To be overwritten downstream */
-    FileTableContent?: typeof FileTableContent;
+    FileTableContent?: Constructor<FileTableContent>;
 };
 
 /** A table row and the corresponding content, which is initially hidden */
@@ -62,9 +63,9 @@ class FileTableItem extends preact.Component<FileTableItemProps> {
     
     render( props:FileTableItemProps ): JSX.Element {
         const loading: signals.ReadonlySignal<boolean> 
-            = signals.computed( () => !props.inputfile.$loaded.value )
+            = signals.computed( () => !props.input.$loaded.value )
 
-        const Content: typeof FileTableContent = props.FileTableContent ?? FileTableContent
+        const Content: Constructor<FileTableContent> = props.FileTableContent ?? FileTableContent
 
         const no_padding_css = { padding: 0 }
 
@@ -72,7 +73,7 @@ class FileTableItem extends preact.Component<FileTableItemProps> {
             <FileTableRow {...props} />
 
             {/* The content, shown when clicked on a row. */}
-            <tr style="display:none" {...{filename:props.inputfile.name} }>
+            <tr style="display:none" {...{filename:props.input.name} }>
                 <td class="ui content" style={no_padding_css} colSpan={10000}>
                     <SpinnerSwitch loading={loading.value}> 
                         <Content {...props}/>
@@ -84,35 +85,43 @@ class FileTableItem extends preact.Component<FileTableItemProps> {
 }
 
 /** Input image, result overlays and controls */
-export class FileTableContent extends preact.Component<FileTableItemProps> {
+export class FileTableContent<P extends FileTableItemProps = FileTableItemProps> extends preact.Component<P> {
     $box_drawing_mode?: signals.Signal<boolean> = new signals.Signal(false)
 
-    render(props: FileTableItemProps): JSX.Element {
+    render(props: P): JSX.Element {
         return <>
             <ContentMenu 
-                inputfile        = {props.inputfile} 
+                input            = {props.input} 
                 $result          = {props.$result}
                 box_drawing_mode = {this.$box_drawing_mode}
                 view_menu_extras = {this.view_menu_extras()}
             />
             <ImageContainer>
-                <ImageControls imagesize={props.inputfile.$size}>
-                    <InputImage {...props} /> 
-                    <ResultOverlays 
-                        $result             =   { props.$result } 
-                        boxoverlay_props    =   { this.$box_drawing_mode? {
-                            imagesize:            props.inputfile.$size.value,
-                            $drawing_mode_active: this.$box_drawing_mode
-                        } : undefined}
-                    />
+                <ImageControls imagesize={props.input.$size}>
+                    <InputImage inputfile={props.input} active_file={props.active_file} /> 
+                    { this.result_overlays() }
                 </ImageControls>
                 <ProgressDimmer $result={ props.$result }/>
             </ImageContainer>
         </>
     }
 
+    /** Additional menu elements to display in the "eye" view menu
+     *  @virtual Meant to be overwritten downstream */
     view_menu_extras(): JSX.Element[] {
         return []
+    }
+
+    /** The result overlays element to display on top of the input image
+     *  @virtual Can be overwritten  downstream for custom overlays */
+    result_overlays(): JSX.Element {
+        return <ResultOverlays 
+            $result             =   { this.props.$result } 
+            boxoverlay_props    =   { this.$box_drawing_mode? {
+                imagesize:            this.props.input.$size.value,
+                $drawing_mode_active: this.$box_drawing_mode
+            } : undefined}
+        />
     }
 }
 
@@ -125,7 +134,7 @@ type FileTableBodyProps = {
     /** Add a second column that contains labels */
     labels_column:  boolean;
 
-    FileTableContent?: typeof FileTableContent;
+    FileTableContent?: Constructor<FileTableContent>;
 }
 
 export function FileTableBody(props:FileTableBodyProps): JSX.Element {
@@ -133,7 +142,7 @@ export function FileTableBody(props:FileTableBodyProps): JSX.Element {
         (pair:InputResultPair) => 
             <FileTableItem 
                 key         =   {pair.input.name} 
-                inputfile   =   {pair.input}
+                input       =   {pair.input}
                 $result     =   {pair.$result}
                 active_file =   {props.active_file}
                 labels_column = {props.labels_column}
@@ -166,7 +175,7 @@ type FileTableProps = {
     labels_column:  boolean;
 
     /** Component class to show as the content of the table rows */
-    FileTableContent?: typeof FileTableContent;
+    FileTableContent?: Constructor<FileTableContent>;
 }
 
 export class FileTable extends preact.Component<FileTableProps> {

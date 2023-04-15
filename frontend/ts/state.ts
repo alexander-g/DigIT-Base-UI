@@ -26,7 +26,6 @@ export type Constructor<T, Arguments extends unknown[] = any[]>
 export function ResultSignalMixin<TBase extends Result >(BaseClass: Constructor<TBase>){
     /** Signal of a result with additional attributes for UI */
     return class ResultSignal extends Reactive<TBase> {
-    //return class ResultSignal extends Reactive<InstanceType<TBase>> {
         /** Indicates whether the result should be displayed in the UI */
         $visible:   Reactive<boolean>   =   new Reactive(true)
     
@@ -60,25 +59,36 @@ export const ResultSignal: ResultSignalConstructor = ResultSignalMixin(Result)
 
 
 
-/** InputImage with added attributes for UI */
-export class InputFileState extends InputFile {
-    /** Flag indicating whether the input image has been loaded */
-    $loaded: ReadonlySignal<boolean>       = signals.computed(
-        () => this.#$size.value != undefined
-    )
-    /** Size of the input image */
-    #$size:  Reactive<ImageSize|undefined> = new Reactive(undefined)
 
-    /** Size of the input image (getter, set via `set_loaded()`) */
-    get $size(): ReadonlySignal<ImageSize|undefined> { return this.#$size; }
+/** Mixin that adds UI-specific attributes to an InputFile */
+export function InputFileStateMixin<T extends Constructor<InputFile> >(BaseClass: T) {
+    /** InputImage with added attributes for UI */
+    return class InputFileState extends BaseClass {
+        /** Flag indicating whether the input image has been loaded */
+        $loaded: ReadonlySignal<boolean>       = signals.computed(
+            () => this.#$size.value != undefined
+        )
+        /** Size of the input image */
+        #$size:  Reactive<ImageSize|undefined> = new Reactive(undefined)
 
-    set_loaded(image:HTMLImageElement): void {
-        this.#$size.value   = {
-            width:  image.naturalWidth,
-            height: image.naturalHeight,
+        /** Size of the input image (getter, set via `set_loaded()`) */
+        get $size(): ReadonlySignal<ImageSize|undefined> { return this.#$size; }
+
+        set_loaded(image:HTMLImageElement): void {
+            this.#$size.value   = {
+                width:  image.naturalWidth,
+                height: image.naturalHeight,
+            }
         }
     }
 }
+
+
+export type  InputFileStateConstructor = ReturnType<typeof InputFileStateMixin<typeof InputFile>>
+/** InputImage with added attributes for UI */
+export type  InputFileState  = InstanceType<InputFileStateConstructor>
+export const InputFileState: InputFileStateConstructor = InputFileStateMixin(InputFile)
+
 
 /** InputImage and its corresponding Result */
 export type InputResultPair = {
