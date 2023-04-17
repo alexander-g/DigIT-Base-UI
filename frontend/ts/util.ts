@@ -25,17 +25,27 @@ export async function fetch_with_error(
     x:          Parameters<typeof fetch>, 
     error_fn:   () => void,
 ): Promise<Response> {
-    let response:Response;
+    const maybe_response: Response|Error = await fetch_no_throw(...x)
+    if('ok' in maybe_response)
+        return maybe_response;
+    
+    const error: Error = maybe_response
+    error_fn()
+    throw(error)
+}
+
+
+/** fetch() that returns an error if it doesn't succeed (also on 404) */
+export async function fetch_no_throw(...x: Parameters<typeof fetch>): Promise<Response|Error> {
+    let response: Response;
     try {
         response = await fetch(...x)
     } catch (error) {
-        error_fn()
-        throw(error)
+        return error;
     }
 
     if(!response.ok) {
-        error_fn()
-        throw( new Error(response.statusText) )
+        return new Error(response.statusText)
     }
     return response;
 }
