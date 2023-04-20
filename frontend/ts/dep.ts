@@ -19,5 +19,6 @@ export { signals, Signal, type ReadonlySignal }
 //NOTE: utif2 better at jpeg decompression, esm.sh versions hang in deno
 export { default as UTIF } from 'https://cdn.skypack.dev/utif2@4.0.1?dts'
 
+export * as fflate from "https://esm.sh/fflate@0.7.4"
 
 import "./jquery_mock.ts"
