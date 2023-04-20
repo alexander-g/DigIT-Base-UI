@@ -140,6 +140,10 @@ export function download_blob(blob: Blob, filename:string): void {
     return download_URI(URL.createObjectURL(blob), filename);
 }
 
+export function download_file(file:File): void {
+    return download_blob(file, file.name)
+}
+
 
 /** Return value for the CSS display property to show or hide an element
  * 

@@ -1,8 +1,8 @@
 import { preact, JSX, Signal }      from "../dep.ts";
 import { Result, ResultSignal, InputFile, InputResultPair }   from "../state.ts";
-import { export_result_to_file }    from "../logic/download.ts";
 import { process_files }            from "./FileTableMenu.tsx";
 import * as ui_util                 from "./ui_util.ts";
+import { zip_files }                from "../logic/zip.ts";
 
 type ContentMenuProps = InputResultPair & {
 
@@ -159,8 +159,21 @@ export function DownloadButton(props:DownloadButtonProps): JSX.Element {
 /** Format the results of a single file and download */
 export async function download_single_result(input:InputFile, result:Result): Promise<void> {
     const exportfiles:Record<string, File>|null = await result.export(input)
-    for(const exportfile of Object.values(exportfiles ?? {})) {
-        ui_util.download_blob(exportfile, exportfile.name)
+    if(!exportfiles)
+        //TODO some kind of error message maybe?
+        return;
+    
+    const exportpaths:string[] = Object.keys(exportfiles)
+    if(exportpaths.length == 1){
+        //single file, download as is
+        const exportfile:File = exportfiles[exportpaths[0]!]!
+        ui_util.download_file( exportfile )
+    } else {
+        //multiple files, zip into an archive first
+        const archivename         = `${input.name}.result.zip`
+        const zipdata:Uint8Array  = await zip_files(exportfiles)
+        ui_util.download_file( new File([zipdata], archivename) )
+
     }
 }
 
