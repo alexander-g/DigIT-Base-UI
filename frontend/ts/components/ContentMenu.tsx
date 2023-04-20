@@ -157,10 +157,11 @@ export function DownloadButton(props:DownloadButtonProps): JSX.Element {
 }
 
 /** Format the results of a single file and download */
-export function download_single_result(input:InputFile, result:Result): void {
-    const jsondata:File|null = export_result_to_file({input, result})
-    if(jsondata)
-        ui_util.download_blob(jsondata, jsondata.name)
+export async function download_single_result(input:InputFile, result:Result): Promise<void> {
+    const exportfiles:Record<string, File>|null = await result.export(input)
+    for(const exportfile of Object.values(exportfiles ?? {})) {
+        ui_util.download_blob(exportfile, exportfile.name)
+    }
 }
 
 

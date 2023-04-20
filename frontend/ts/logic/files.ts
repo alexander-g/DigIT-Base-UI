@@ -1,5 +1,6 @@
 import { Instance }         from "./boxes.ts";
 import { process_file }     from "./detection.ts";
+import { export_result_to_file }    from "./download.ts";
 
 
 export class InputFile extends File {
@@ -61,12 +62,24 @@ export class Result {
     }
 
     /** Set the instances and change status accordingly */
-    set_instances(instances: MaybeInstances) {
+    set_instances(instances: MaybeInstances): void {
         this.#instances = instances
         this.status     = instances ? 'processed' : 'unprocessed';
     }
-}
 
+    /** Export this result to files.
+     *  @param input The corresponding input file is currently required.
+     *  @virtual Overwritten by subclasses for other types of results 
+     *  @returns A mapping from filenames to exported result file objects 
+     *           or null if result is not yet processed */
+    // deno-lint-ignore require-await
+    async export(input:InputFile): Promise< Record<string,File> | null > {
+        const exportfile:File|null = export_result_to_file({input, result:this})
+        if(exportfile)
+            return {[exportfile.name]: exportfile}
+        else return null;
+    }
+}
 
 export type InputResultPair = {
     input:      InputFile;
