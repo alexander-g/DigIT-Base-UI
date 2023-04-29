@@ -7,6 +7,7 @@ import * as file_input      from "./file_input.ts"
 import { load_settings }    from "./logic/settings.ts";
 
 import * as state           from "./state.ts";
+import { Constructor }      from "./util.ts";
 
 
 export class Body extends preact.Component {
@@ -14,8 +15,15 @@ export class Body extends preact.Component {
     // deno-lint-ignore no-inferrable-types
     id:string = 'base';
 
-    /** Global application state */
+    /** Global application state 
+     *  @virtual */
     appstate: state.AppState = new state.AppState();
+
+    /** @virtual */
+    MainContainer: Constructor<MainContainer> = MainContainer
+
+    /** @virtual */
+    TopMenu: Constructor<TopMenu> = TopMenu
 
     render(): JSX.Element {
         return (
@@ -25,21 +33,27 @@ export class Body extends preact.Component {
             onDrop      =   {file_input.on_drop}
         >
             <SVGFilters />  {/* Must go first for cosmetic reasons */}
-            <TopMenu
-                $settings           = {this.appstate.settings}
-                $available_models   = {this.appstate.available_models}
-            />
+            { this.top_menu() }
             { this.main_container() }
         </body>
         )
     }
+
     componentDidMount(): void {
         state.set_global_app_state(this.appstate)
     }
 
-    /** Should be overwritten downstream */
+    /** @virtual */
     main_container(): JSX.Element {
-        return <MainContainer appstate={this.appstate}/>
+        return <this.MainContainer appstate={this.appstate}/>
+    }
+
+    /** @virtual */
+    top_menu(): JSX.Element {
+        return <this.TopMenu
+            $settings           = {this.appstate.settings}
+            $available_models   = {this.appstate.available_models}
+        />
     }
 }
 

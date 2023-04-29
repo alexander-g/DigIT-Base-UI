@@ -179,3 +179,10 @@ export function validate_string_array(x: unknown): string[]|null {
     }
     else return null;
 }
+
+
+
+/** From https://github.com/sindresorhus/type-fest/blob/5374588a88ee643893784f66367bc26b8e6509ec/source/basic.d.ts */
+// deno-lint-ignore no-explicit-any
+export type Constructor<T, Arguments extends unknown[] = any[]>
+    = new(...arguments_: Arguments) => T;

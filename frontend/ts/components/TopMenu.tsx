@@ -3,6 +3,7 @@ import { SettingsButton }   from "./Settings.tsx"
 import { page_wide_css }    from "./styles.ts";
 import * as Settings        from "./Settings.tsx"
 import * as file_input      from "../file_input.ts";
+import { Constructor }      from "../util.ts";
 
 
 function Logo(): JSX.Element {
@@ -110,6 +111,9 @@ function on_annotationfiles_selected(event:Event): void {
 export class TopMenu extends preact.Component<Settings.SettingsModalProps> {
     settings_modal: preact.RefObject<Settings.SettingsModal> = preact.createRef()
 
+    /** @virtual Overwritten downstream */
+    SettingsModal: Constructor<Settings.SettingsModal>  = Settings.SettingsModal
+
     render(): JSX.Element {
         return <>
             <div class="ui container menu page-wide" style={page_wide_css}>
@@ -118,7 +122,7 @@ export class TopMenu extends preact.Component<Settings.SettingsModalProps> {
                 <SettingsButton on_click={() => this.settings_modal.current?.show_modal()}/>
             </div>
             
-            <Settings.SettingsModal
+            <this.SettingsModal
                 ref                 = {this.settings_modal}
                 $available_models   = {this.props.$available_models} 
                 $settings           = {this.props.$settings}

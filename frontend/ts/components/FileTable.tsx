@@ -1,6 +1,6 @@
 import { preact, JSX, signals, ReadonlySignal }         from "../dep.ts"
 import { InputFileList, InputResultPair }               from "../state.ts"
-import { Constructor }                                  from "../state.ts";
+import { Constructor }                                  from "../util.ts";
 import { ContentMenu }                                  from "./ContentMenu.tsx"
 import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.tsx"
 import { ResultOverlays }                               from "./ResultOverlay.tsx";

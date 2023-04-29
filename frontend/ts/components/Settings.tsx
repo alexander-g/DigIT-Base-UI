@@ -13,28 +13,39 @@ export type SettingsModalProps = {
 
 
 /** The main settings dialog */
-export class SettingsModal extends preact.Component<SettingsModalProps> {
+export class SettingsModal<P extends SettingsModalProps = SettingsModalProps> 
+extends preact.Component<P> {
     ref: preact.RefObject<HTMLDivElement>            = preact.createRef()
     model_selection:preact.RefObject<ModelSelection> = preact.createRef()
 
-    render(props:SettingsModalProps): JSX.Element {
-        const avmodels: ModelInfo[]|undefined 
-            = props.$available_models.value?.detection
-
+    render(props:P): JSX.Element {
         return <div class="ui tiny modal" id="settings-dialog" ref={this.ref}>
             <i class="close icon"></i>
             <div class="header"> Settings </div>
 
             <div class="ui form content">
-                <ModelSelection 
-                    active_model     = {props.$settings.value?.active_models?.detection}
-                    available_models = {avmodels}
-                    ref              = {this.model_selection}
-                />
+                { this.form_content() }
                 <div class="ui divider"></div>
                 <OkCancelButtons />
             </div>
         </div>
+    }
+
+    /** @virtual */
+    form_content(): JSX.Element[] {
+        const avmodels: ModelInfo[]|undefined 
+            = this.props.$available_models.value?.detection
+        const activemodel: string|undefined 
+            = this.props.$settings.value?.active_models?.detection
+        
+        return [
+             <ModelSelection 
+                active_model     = {activemodel}
+                available_models = {avmodels}
+                ref              = {this.model_selection}
+                label            = {"Active model"}
+            />
+        ]
     }
 
     async show_modal(): Promise<void> {
@@ -44,17 +55,28 @@ export class SettingsModal extends preact.Component<SettingsModalProps> {
         }).modal('show');
     }
 
-    async save_settings(): Promise<void> {
+    /** Get all values in the modal as set by user and convert to a Settings object 
+     *  @virtual */
+    collect_settings_from_widgets(): Settings|null {
         if(!this.model_selection.current)
-            return;
-        
+            return null;
+
         const model:ModelInfo|undefined = this.model_selection.current?.get_selected()
         if(!model) {
             show_error_toast('Cannot save settings: No model selected')
-            return
+            return null;
         }
 
         const settings:Settings = {active_models:{detection : model.name}}
+        return settings
+    }
+
+    async save_settings(): Promise<void> {
+        const settings:Settings|null = this.collect_settings_from_widgets()
+        if(settings == null)
+            return;
+        
+        
         await util.fetch_with_error(
             [new Request('settings', {method:'post', body:JSON.stringify(settings)})],
             () => {show_error_toast('Cannot save settings.')}
@@ -135,12 +157,15 @@ type ModelSelectionProps = {
     available_models?: ModelInfo[];
     /** Which option is currently set in the settings (not necessarily diplayed) */
     active_model?:     string;
+
+    /** Text to display above the dropdown */
+    label:             string;
 }
 
 /**
  * Dropdown to select a model and additiona infobox with known classes for the selected model.
  */
-class ModelSelection extends preact.Component<ModelSelectionProps> {
+export class ModelSelection extends preact.Component<ModelSelectionProps> {
     private dropdown_ref:preact.RefObject<ModelDropdown> = preact.createRef()
     private selected_model: Signal<string|undefined>     = new Signal()
 
@@ -161,7 +186,7 @@ class ModelSelection extends preact.Component<ModelSelectionProps> {
 
         return (
         <div class="field">
-            <label>Active Model:</label>
+            <label>{ this.props.label }</label>
             <ModelDropdown 
                 available_models = {props.available_models}
                 selected_model   = {this.selected_model}

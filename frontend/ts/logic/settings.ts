@@ -12,19 +12,19 @@ export type ModelInfo = {
 }
 
 export type Settings = {
-    /** Currently set models by type */
+    /** Currently set model names by type */
     active_models: ActiveModels
 }
 
-export type ActiveModels = {
-    /** Currently set model name for detection */
-    detection:  string;
+
+/** Currently set model names by type */
+export type ActiveModels<MODELTYPES extends string = 'detection'> = {
+    [key in MODELTYPES] : string;
 }
 
 /** Available models and their properties by type */
-export type AvailableModels = {
-    /** Available models for detection */
-    detection : ModelInfo[]
+export type AvailableModels<MODELTYPES extends string = 'detection'> = {
+    [key in MODELTYPES] : ModelInfo[];
 }
 
 

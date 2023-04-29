@@ -1,8 +1,8 @@
-import { signals, ReadonlySignal }      from "./dep.ts"
+import { signals, ReadonlySignal }              from "./dep.ts"
 import { Settings, AvailableModels }            from "./logic/settings.ts";
 import { Result, InputFile, type MaybeInstances }    from "./logic/files.ts";
 import * as files                               from "./logic/files.ts";
-import { ImageSize }                            from "./util.ts";
+import { ImageSize, Constructor }               from "./util.ts";
 
 //for convenience
 export {Result, InputFile, type MaybeInstances};
@@ -16,10 +16,6 @@ export class Reactive<T> extends signals.Signal<T> {
     }
 }
 
-/** From https://github.com/sindresorhus/type-fest/blob/5374588a88ee643893784f66367bc26b8e6509ec/source/basic.d.ts */
-// deno-lint-ignore no-explicit-any
-export type Constructor<T, Arguments extends unknown[] = any[]>
-    = new(...arguments_: Arguments) => T;
 
 
 /** Mixin adding additional attributes for UI*/
@@ -52,12 +48,8 @@ export function ResultSignalMixin<TBase extends Result >(BaseClass: Constructor<
     }
 }
 
-export type  ResultSignalConstructor = ReturnType<typeof ResultSignalMixin<Result>>
 /** Result with additional attributes for UI */
-export type  ResultSignal  = InstanceType<ResultSignalConstructor>
-export const ResultSignal: ResultSignalConstructor = ResultSignalMixin(Result)
-
-
+export class ResultSignal extends ResultSignalMixin(Result){}
 
 
 /** Mixin that adds UI-specific attributes to an InputFile */
@@ -84,10 +76,8 @@ export function InputFileStateMixin<T extends Constructor<InputFile> >(BaseClass
 }
 
 
-export type  InputFileStateConstructor = ReturnType<typeof InputFileStateMixin<typeof InputFile>>
 /** InputImage with added attributes for UI */
-export type  InputFileState  = InstanceType<InputFileStateConstructor>
-export const InputFileState: InputFileStateConstructor = InputFileStateMixin(InputFile)
+export class InputFileState extends InputFileStateMixin(InputFile) {}
 
 
 /** InputImage and its corresponding Result */
@@ -127,24 +117,16 @@ export function InputFileListMixin<IFS extends InputFileState, RS extends Result
     }
 }
 
-export type  InputFileListConstructor 
-    = ReturnType<typeof InputFileListMixin<InputFileState, ResultSignal>>
 /** Reactive list of input-result pairs */
-export const InputFileList:InputFileListConstructor 
-    = InputFileListMixin(InputFileState, ResultSignal)
-export type  InputFileList = InstanceType<InputFileListConstructor>
+export class InputFileList extends InputFileListMixin(InputFileState, ResultSignal){}
 
-
-
-/** Reactive Settings */
-class SettingsState extends Reactive<Settings|undefined> {}
 
 /** Reactive AvailableModels */
-class AvailableModelsState extends Reactive<AvailableModels|undefined> {}
+class AvailableModelsSignal extends Reactive<AvailableModels|undefined> {}
 
 
 /** Main application state structure */
-export class AppState {
+export class AppState<SETTINGS extends Settings = Settings> {
     /** Currently loaded files and their results */
     files:InputFileList = new InputFileList([])
 
@@ -152,10 +134,10 @@ export class AppState {
     $processing: Reactive<boolean> = new Reactive<boolean>(false)
 
     /** Currently loaded settings */
-    settings: SettingsState = new SettingsState(undefined)
+    settings: Reactive<SETTINGS|undefined> = new Reactive(undefined)
 
     /** Which models can be selected in the settings */
-    available_models: AvailableModelsState = new AvailableModelsState(undefined)
+    available_models: AvailableModelsSignal = new AvailableModelsSignal(undefined)
 }
 
 
