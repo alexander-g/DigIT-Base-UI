@@ -138,12 +138,33 @@ export function validate_number(x: unknown): number|null {
     return (typeof x == "number") ? x : null;
 }
 
+/** Validate if the input is a boolean. @returns either the number or null */
+export function validate_boolean(x: unknown): boolean|null {
+    return (typeof x == 'boolean') ? x : null;
+}
+
 /** Check if the input has a property with name @param `key` and it is a string */
 export function has_string_property<K extends string, T extends Record<never, unknown>>(
     x:      T, 
     key:    K
 ): x is T & Record<K, string>  {
     return has_property_of_type(x, key, validate_string)
+}
+
+/** Check if the input has a property with name @param `key` and it is a number */
+export function has_number_property<K extends string, T extends Record<never, unknown>>(
+    x:      T, 
+    key:    K
+): x is T & Record<K, number>  {
+    return has_property_of_type(x, key, validate_number)
+}
+
+/** Check if the input has a property with name @param `key` and it is a boolean */
+export function has_boolean_property<K extends string, T extends Record<never, unknown>>(
+    x:      T,
+    key:    K,
+): x is T & Record<K, boolean> {
+    return has_property_of_type(x, key, validate_boolean)
 }
 
 /** Type guard converting to an empty object.

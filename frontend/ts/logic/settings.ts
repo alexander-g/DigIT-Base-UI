@@ -33,17 +33,21 @@ export type AvailableModels<MODELTYPES extends string = 'detection'> = {
 /** Request current settings from backend */
 export async function load_settings(
     on_error:errors.error_fn = errors.show_error_toast
-): Promise<void> {
+): Promise<SettingsResponse> {
+    //TODO: use util.fetch_no_throw()
     const response: Response = await util.fetch_with_error(
         ['settings'], () => on_error('Loading settings failed.')
     )
-    try {
-        set_settings_from_response_default(await response.text())
-    } catch (error) {
+
+    const settingsresponse:SettingsResponse|Error
+        = validate_settings_response(await response.text())
+
+    if(settingsresponse instanceof Error){
         on_error('Loading settings failed. Invalid response data.')
-        throw(error)
+        throw(settingsresponse)
     }
     
+    return settingsresponse;
 }
 
 /** Search for a model name in a list of modelinfos */
@@ -97,38 +101,32 @@ export function validate_settings(x:unknown): Settings|null {
 
 
 
-type SettingsResponse = {
-    settings:           Settings, 
-    available_models:   AvailableModels
-}
-
-export function validate_settings_response(raw_data: string): SettingsResponse {
-    const parsed_data: unknown = JSON.parse(raw_data)
-    if(!util.is_object(parsed_data))
-        throw new Error(`Unexpected settings format: ${parsed_data}`)
-
-    let settings:Settings|null = null;
-    if(util.has_property_of_type(parsed_data, 'settings', validate_settings))
-        settings = parsed_data.settings;
-    else
-        throw new Error('Cannot parse settings')
-
-    let available_models:AvailableModels|null = null;
-    if(util.has_property_of_type(parsed_data, 'available_models', validate_available_models))
-        available_models = parsed_data.available_models
-    else
-        throw new Error('Cannot parse available models')
-    
-    return {settings, available_models}
+export type SettingsResponse<
+    S  extends Settings        = Settings, 
+    AM extends AvailableModels = AvailableModels
+> = {
+    settings:           S;
+    available_models:   AM;
 }
 
 
-/** Update global STATE with new settings from backend */
-export function set_settings_from_response_default(raw_data:string): void {
-    const response:SettingsResponse         = validate_settings_response(raw_data)
-    if(globalThis.STATE){
-        //TODO: hard-coded
-        globalThis.STATE.settings.value         = response.settings;
-        globalThis.STATE.available_models.value = response.available_models;
+
+export function validate_settings_response(raw_data:string): SettingsResponse|Error {
+    let parsed_data: unknown;
+    try {
+        parsed_data = JSON.parse(raw_data)
+    } catch {
+        return new Error(`Response is not in JSON format`)
     }
+
+    if(!util.is_object(parsed_data))
+        return new Error(`Unexpected settings format: ${parsed_data}`)
+    
+    if(util.has_property_of_type(parsed_data, 'settings', validate_settings)
+    && util.has_property_of_type(parsed_data, 'available_models', validate_available_models)){
+        return parsed_data;
+    }
+    else return new Error(`Unexpected settings format: ${parsed_data}`)
 }
+
+

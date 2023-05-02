@@ -4,58 +4,80 @@ import { MainContainer }    from "./components/MainContainer.tsx"
 import { SVGFilters }       from "./components/SVGFilters.tsx";
 
 import * as file_input      from "./file_input.ts"
-import { load_settings }    from "./logic/settings.ts";
+import * as settings        from "./logic/settings.ts";
 
 import * as state           from "./state.ts";
 import { Constructor }      from "./util.ts";
 
 
-export class Body extends preact.Component {
-    /** The `id` attribute of `<body>`. Should be overwritten downstream. */
-    // deno-lint-ignore no-inferrable-types
-    id:string = 'base';
-
-    /** Global application state 
-     *  @virtual */
-    appstate: state.AppState = new state.AppState();
-
-    /** @virtual */
-    MainContainer: Constructor<MainContainer> = MainContainer
-
-    /** @virtual */
-    TopMenu: Constructor<TopMenu> = TopMenu
-
-    render(): JSX.Element {
-        return (
-        <body 
-            id          =   {this.id}
-            onDragOver  =   {file_input.on_drag}
-            onDrop      =   {file_input.on_drop}
-        >
-            <SVGFilters />  {/* Must go first for cosmetic reasons */}
-            { this.top_menu() }
-            { this.main_container() }
-        </body>
-        )
+/** Factory function creating the main component and app state.
+ * @param id - HTML id for the body element
+ * @param AppState - Class containing all required app variables 
+ * @param load_settings - Function that loads and verifies settings
+ * @param MainContainer - JSX component containing the main content
+ * @param TopMenu       - JSX component on top of the main content */
+export function create_App<
+MAINCONTAINER   extends MainContainer,
+TOPMENU         extends TopMenu,
+APPSTATE        extends state.AppState,
+SETTINGS        extends NonNullable<APPSTATE['settings']['value']>,
+>(
+    options: {
+    id:             string, 
+    AppState:       Constructor<APPSTATE>,
+    load_settings:  () => Promise<settings.SettingsResponse<SETTINGS>|null>,
+    MainContainer:  Constructor<MAINCONTAINER>,
+    TopMenu:        Constructor<TOPMENU>,
     }
+){
+    return class App extends preact.Component {
+        appstate: APPSTATE = new options.AppState()
 
-    componentDidMount(): void {
-        state.set_global_app_state(this.appstate)
-    }
+        render(): JSX.Element {
+            return (
+            <body
+                id          =   {options.id}
+                onDragOver  =   {file_input.on_drag}
+                onDrop      =   {file_input.on_drop}
+            >
+                <SVGFilters />  {/* Must go first for cosmetic reasons */}
+                <options.TopMenu
+                    $settings           = {this.appstate.settings}
+                    $available_models   = {this.appstate.available_models}
+                    load_settings_fn    = {options.load_settings}
+                />
+                <options.MainContainer appstate={this.appstate}/>
+            </body>
+            )
+        }
 
-    /** @virtual */
-    main_container(): JSX.Element {
-        return <this.MainContainer appstate={this.appstate}/>
-    }
-
-    /** @virtual */
-    top_menu(): JSX.Element {
-        return <this.TopMenu
-            $settings           = {this.appstate.settings}
-            $available_models   = {this.appstate.available_models}
-        />
+        async componentDidMount(): Promise<void> {
+            state.set_global_app_state(this.appstate)
+            
+            //TODO: refactor out
+            const settingsresponse:settings.SettingsResponse<SETTINGS>|null 
+                = await options.load_settings()
+            if(settingsresponse == null){
+                //TODO: show an error message
+                return;
+            }
+            this.appstate.settings.value = settingsresponse.settings
+            this.appstate.available_models.value = settingsresponse.available_models;
+        }
     }
 }
+
+/** Main component for the base project */
+class App extends create_App({
+    id:             'base', 
+    AppState:       state.AppState, 
+    load_settings:  settings.load_settings, 
+    MainContainer:  MainContainer, 
+    TopMenu:        TopMenu
+}){}
+
+
+
 
 /** CSS that does not seem to work adding via JSX */
 function ExtraStyles(): JSX.Element {
@@ -105,7 +127,7 @@ export function Head(props:HeadProps): JSX.Element {
 export function Index(): JSX.Element {
     return <html>
         <Head title={"Base UI"} import_src={"ts/index.tsx"} />
-        <Body />
+        <App />
     </html>
 }
 
@@ -117,7 +139,5 @@ export function hydrate_body(body_jsx:JSX.Element, id:string): void {
 }
 
 if(!globalThis.Deno){
-    hydrate_body(<Body />, 'base')
-    //body onload callback doesnt work for some reason
-    await load_settings()
+    hydrate_body(<App />, 'base')
 }

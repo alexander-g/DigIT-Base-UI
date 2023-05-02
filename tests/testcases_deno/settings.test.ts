@@ -6,7 +6,7 @@ import { asserts }      from "./dep.ts";
 
 Deno.test('load_settings.errorhandling', async (t: Deno.TestContext) => {
 
-    await t.step('dont-catch-errors', async () => {
+    await t.step('do-catch-errors', async () => {
         // fetch that throws an error
         util.mock_fetch_connection_error('Should not be caught')
         const error_spy: mock.Spy<any, [string], void> = mock.spy()
@@ -65,5 +65,6 @@ Deno.test('validate.basic', () => {
       }`
 
     //assert no error is thrown
-    settings.validate_settings_response(test_string0)
+    const result = settings.validate_settings_response(test_string0)
+    asserts.assertFalse(result instanceof Error)
 })

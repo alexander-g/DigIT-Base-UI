@@ -126,6 +126,7 @@ export class TopMenu extends preact.Component<Settings.SettingsModalProps> {
                 ref                 = {this.settings_modal}
                 $available_models   = {this.props.$available_models} 
                 $settings           = {this.props.$settings}
+                load_settings_fn    = {this.props.load_settings_fn}
             />
         </>
     }

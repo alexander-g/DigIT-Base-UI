@@ -1,20 +1,31 @@
 import { JSX, preact, Signal }              from "../dep.ts"
 import * as util                            from "../util.ts";
 import * as settings                        from "../logic/settings.ts";
-import type { ModelInfo, Settings, AvailableModels }         from "../logic/settings.ts";
+import type { 
+    ModelInfo, 
+    Settings, 
+    AvailableModels,
+    SettingsResponse,
+}         from "../logic/settings.ts";
 import { show_error_toast }                 from "./errors.ts";
 
 
 
-export type SettingsModalProps = {
-    $settings:          Signal<Settings|undefined>;
-    $available_models:  Signal<AvailableModels|undefined>;
+export type SettingsModalProps<S extends Settings = Settings, AM = AvailableModels> = {
+    $settings:          Signal<S|undefined>;
+    $available_models:  Signal<AM|undefined>;
+
+    load_settings_fn:   () => Promise<SettingsResponse<S>|null>;
 }
 
 
 /** The main settings dialog */
-export class SettingsModal<P extends SettingsModalProps = SettingsModalProps> 
+export class SettingsModal<
+    S  extends Settings = Settings, 
+    //AM extends AvailableModels = AvailableModels, 
+    P  extends SettingsModalProps<S> = SettingsModalProps<S> > 
 extends preact.Component<P> {
+    
     ref: preact.RefObject<HTMLDivElement>            = preact.createRef()
     model_selection:preact.RefObject<ModelSelection> = preact.createRef()
 
@@ -49,7 +60,15 @@ extends preact.Component<P> {
     }
 
     async show_modal(): Promise<void> {
-        await settings.load_settings() //might fail
+        //TODO: refactor
+        const settingsresponse:SettingsResponse<S>|null = await this.props.load_settings_fn()
+        if(settingsresponse == null){
+            show_error_toast('Could not load settings')
+            return;
+        }
+        this.props.$settings.value = settingsresponse.settings;
+        this.props.$available_models.value = settingsresponse.available_models;
+
         $(this.ref.current).modal({
             onApprove: this.save_settings.bind(this)
         }).modal('show');
@@ -63,6 +82,7 @@ extends preact.Component<P> {
 
         const model:ModelInfo|undefined = this.model_selection.current?.get_selected()
         if(!model) {
+            //TODO: return new Error() instead
             show_error_toast('Cannot save settings: No model selected')
             return null;
         }
@@ -73,8 +93,10 @@ extends preact.Component<P> {
 
     async save_settings(): Promise<void> {
         const settings:Settings|null = this.collect_settings_from_widgets()
-        if(settings == null)
+        if(settings == null){
+            console.error('Failed to collect settings from modal')
             return;
+        }
         
         
         await util.fetch_with_error(
