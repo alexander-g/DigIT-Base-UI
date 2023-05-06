@@ -76,7 +76,7 @@ class FileTableItem extends preact.Component<FileTableItemProps> {
             <tr style="display:none" {...{filename:props.input.name} }>
                 <td class="ui content" style={no_padding_css} colSpan={10000}>
                     <SpinnerSwitch loading={loading.value}> 
-                        <Content {...props}/>
+                        <Content {...props} />
                     </SpinnerSwitch>
                 </td>
             </tr>
@@ -85,7 +85,7 @@ class FileTableItem extends preact.Component<FileTableItemProps> {
 }
 
 /** Input image, result overlays and controls */
-export class FileTableContent<P extends FileTableItemProps = FileTableItemProps> extends preact.Component<P> {
+export class FileTableContent<P extends FileTableRowProps = FileTableRowProps> extends preact.Component<P> {
     $box_drawing_mode?: signals.Signal<boolean> = new signals.Signal(false)
 
     render(props: P): JSX.Element {
@@ -180,13 +180,19 @@ type FileTableProps = {
 
 export class FileTable extends preact.Component<FileTableProps> {
     /** The currently displayed filename. null if all closed. */
-    #$active_file:signals.Signal<string|null> = new signals.Signal(null);  //TODO: reset to null when props.files changes
+    #$active_file:signals.Signal<string|null> = new signals.Signal(null);
+
+    ref: preact.RefObject<HTMLTableElement> = preact.createRef()
 
     render(props: FileTableProps): JSX.Element {
         const sort_class: string = props.sortable ? 'sortable' : '';         //TODO fix classes
         return  <>
         <FileTableMenu displayed_files={props.files.value} $processing={props.processing}/>
-        <table class="ui fixed celled unstackable table accordion filetable" style="border:0px; margin-top:0px;" >
+        <table 
+            class = "ui fixed celled unstackable table accordion filetable" 
+            style = "border:0px; margin-top:0px;" 
+            ref   = { this.ref }
+        >
             <FileTableHead 
                 labels_column   =   {props.labels_column}
             />
@@ -204,7 +210,7 @@ export class FileTable extends preact.Component<FileTableProps> {
         // deno-lint-ignore no-this-alias
         const _this:FileTable = this;
 
-        $('.filetable.accordion').accordion({
+        $(this.ref.current).accordion({
             duration:  0, 
             onOpening: function(){ _this.on_accordion_open(this[0]) },
             onClose:   function(){ _this.#$active_file.value = null },

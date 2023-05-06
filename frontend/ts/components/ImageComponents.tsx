@@ -16,17 +16,23 @@ export type InputImageProps = {
 export class InputImage extends preact.Component<InputImageProps> {
     ref: preact.RefObject<HTMLImageElement> = preact.createRef()
 
+    $loaded: signals.Signal<boolean>        = new signals.Signal(false)
+
     /** Load image as soon as it is beeing displayed in the file table, once */
-    #init?: () => void;
+    #dispose_init?: () => void;
 
     componentDidMount(): void {
-        this.#init = signals.effect( () => {
+        this.#dispose_init = signals.effect( () => {
             if(this.props.active_file.value == this.props.inputfile.name 
                 && !this.props.inputfile.$loaded.value
                 && this.ref.current) {
                     set_image_src(this.ref.current, this.props.inputfile)
             }
         })
+    }
+
+    componentWillUnmount(): void {
+        this.#dispose_init?.()
     }
 
     render(): JSX.Element {

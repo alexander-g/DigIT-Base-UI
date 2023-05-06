@@ -90,9 +90,10 @@ function FileMenu(): JSX.Element {
 }
 
 function on_inputfiles_selected(event:Event): void {
-    file_input.load_list_of_files_default(
-        (event.target as HTMLInputElement|null)?.files ?? []
-    )
+    throw new Error('TODO')
+    // file_input.load_list_of_files_default(
+    //     (event.target as HTMLInputElement|null)?.files ?? []
+    // )
 }
 
 function on_inputfolder_selected(event:Event): void {

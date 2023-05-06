@@ -42,31 +42,53 @@ export class FileTableRow extends preact.Component<FileTableRowProps> {
 
     /** Setup of auto-scrolling behaviour when a table row is opened */
     componentDidMount(): void {
-        if(this.tr_ref.current) {
-            /** The position of the row from top of the document */
-            const top:number = this.tr_ref.current.getBoundingClientRect().top 
-                             + document.documentElement.scrollTop
-            
-            /** Called when an accordion opens, scrolls to this row */
-            const scroll_to_row: () => void
-                = () => setTimeout(() => {
-                    window.scrollTo( {top:top, behavior:'smooth'} )
-                }, 10)
+        this.#maybe_init_top()
 
-            //works on the first time, wont work later
-            const dispose0: (() => void) = signals.effect(() => {
-                if(this.props.input.$loaded.value)
-                    scroll_to_row()
-            })
-            //doesnt work on the first time, will work later
-            const dispose1: (() => void) = signals.effect(() => {
-                if(this.props.active_file.value == this.props.input.name)
-                    scroll_to_row()
-            })
+        //works on the first time, wont work later
+        const dispose0: (() => void) = signals.effect(() => {
+            if(this.props.input.$loaded.value)
+                this.#scroll_to_row()
+        })
+        //doesnt work on the first time, will work later
+        const dispose1: (() => void) = signals.effect(() => {
+            //initializing #top inside the callback because it might 
+            //not have been initialized correctly if the tab was not active
+            this.#maybe_init_top()
+            if(this.props.active_file.value == this.props.input.name)
+                this.#scroll_to_row()
+        })
 
-            this.#scroll_effects.push(dispose0)
-            this.#scroll_effects.push(dispose1)
-        }
+        this.#scroll_effects.push(dispose0)
+        this.#scroll_effects.push(dispose1)
+    }
+
+
+    /** y coordinate of this row */
+    #top: number|undefined = undefined;
+
+    #maybe_init_top(): void {
+        //only init once
+        if(this.#top != undefined)
+            return;
+        
+        const tr:HTMLTableRowElement|null = this.tr_ref.current;
+        if(tr == null)
+            return;
+        
+        const is_visible:boolean = (tr.offsetParent != null)
+        if(!is_visible)
+            return;
+
+        this.#top = tr.getBoundingClientRect().top + document.documentElement.scrollTop
+    }
+
+
+    /** Called when an accordion opens, scrolls to this row */
+    #scroll_to_row(): void {
+        console.log('scrolling to ', this.#top)
+        setTimeout(() => {
+            window.scrollTo( {top:this.#top, behavior:'smooth'} )
+        }, 10)
     }
 
     /** Clean up effects */

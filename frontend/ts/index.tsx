@@ -7,7 +7,7 @@ import * as file_input      from "./file_input.ts"
 import * as settings        from "./logic/settings.ts";
 
 import * as state           from "./state.ts";
-import { Constructor }      from "./util.ts";
+import { Constructor, wait } from "./util.ts";
 
 
 /** Factory function creating the main component and app state.
@@ -38,7 +38,7 @@ SETTINGS        extends NonNullable<APPSTATE['settings']['value']>,
             <body
                 id          =   {options.id}
                 onDragOver  =   {file_input.on_drag}
-                onDrop      =   {file_input.on_drop}
+                onDrop      =   {this.on_drop.bind(this)}
             >
                 <SVGFilters />  {/* Must go first for cosmetic reasons */}
                 <options.TopMenu
@@ -63,6 +63,24 @@ SETTINGS        extends NonNullable<APPSTATE['settings']['value']>,
             }
             this.appstate.settings.value = settingsresponse.settings
             this.appstate.available_models.value = settingsresponse.available_models;
+        }
+
+        /** File drop event handler.
+         *  @virtual Can be customized downstream */
+        async on_drop(event:preact.JSX.TargetedDragEvent<HTMLElement>): Promise<FileList|undefined> {
+            event.preventDefault()
+            
+            //reset state  //TODO: should not be done here, but when setting the input files
+            this.appstate.files.set_from_files([])
+            //get file list from event, otherwise its gone after the wait
+            const files: FileList | undefined = event.dataTransfer?.files
+            //refresh ui
+            await wait(1)
+
+            this.appstate.files.set_from_pairs( 
+                await file_input.load_list_of_files(files ?? [])
+            )
+            return files;
         }
     }
 }

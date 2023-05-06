@@ -28,7 +28,8 @@ export class Tabs extends preact.Component<TabsProps> {
 }
 
 
-export class MainContainer extends preact.Component<{appstate:AppState}> {
+export class MainContainer<APPSTATE extends AppState = AppState> 
+extends preact.Component<{appstate:APPSTATE}> {
     /** @virtual */
     tab_names: string[] = ['Detection', 'Training']
 

@@ -8,20 +8,6 @@ export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
     event.preventDefault()
 }
 
-/** Event handler for file drop events */
-export async function on_drop(event:preact.JSX.TargetedDragEvent<HTMLElement>): Promise<void> {
-    event.preventDefault()
-    //reset state  //TODO: should not be done here, but when setting the input files
-    globalThis.STATE?.files.set_from_files([])                       //TODO: hard-coded
-    //get file list from event, otherwise its gone after the wait
-    const files: FileList | undefined = event.dataTransfer?.files
-    //refresh ui
-    await util.wait(1)
-    //now set the state with the actual files
-    load_list_of_files_default(files ?? [])
-}
-
-
 
 /** Two sets of files, in no well-defined order. 
  *  First one to be interpreted as inputfiles, second one might be results */
@@ -47,22 +33,14 @@ export function categorize_files(
 }
 
 
-const MIMETYPES: string[] = ["image/jpeg", "image/tiff"]          //NOTE: no png
-// const set_inputfiles: (_:File[]) => void 
-//     = (inputfiles:File[]) => globalThis.STATE.files.set_from_files(inputfiles)
-// const set_resultfiles: (_:File[]) => void
-//     = (maybe_resultfiles:File[]) => load_result_files(
-//         maybe_resultfiles, globalThis.STATE.files.peek().map(pair => pair.input)
-//     )
+export const MIMETYPES: string[] = ["image/jpeg", "image/tiff"]          //NOTE: no png
 
-/** Load input or result files @see {@link load_list_of_files}, uses global state */
-export async function load_list_of_files_default(file_list:FileList|File[]): Promise<void> {
+/** Load input and corresponding result files */
+export async function load_list_of_files(file_list:FileList|File[]): Promise<InputResultPair[]>{
     const {inputfiles, resultfiles:mayberesults} = categorize_files(file_list, MIMETYPES)
-
-    globalThis.STATE?.files.set_from_pairs(                             //TODO: hard-coded
-        await load_result_files(inputfiles, mayberesults)
-    )
+    return await load_result_files(inputfiles, mayberesults);
 }
+
 
 /** Load input files only (filtering file types), uses global state */
 export function load_inputfiles(file_list:FileList|File[]): void {
