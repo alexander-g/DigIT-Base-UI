@@ -32,13 +32,17 @@ extends preact.Component<DetectionTabProps<S>>{
         )
     }
 
+    /** @virtual */
     file_table(): JSX.Element {
         const appstate: AppState = this.props.appstate;
         return <FileTable 
             sortable        =   {false} 
             files           =   {appstate.files}
             processing      =   {appstate.$processing}
-            labels_column   =   {true}
+            columns         =   {[
+                {label:'Files',      width_css_class:'six'}, 
+                {label:'Detections', width_css_class:'ten'}
+            ]}
         />; 
     }
 }

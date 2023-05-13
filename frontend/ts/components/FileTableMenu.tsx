@@ -34,6 +34,7 @@ export function FileTableMenu(props:FileTableMenuProps): JSX.Element {
 
 export async function process_files(pairs:readonly state.InputResultPair[]): Promise<void> {
     for(const pair of pairs){
+        //TODO: cancel
         pair.$result.set('processing')
         const result:state.Result = await pair.input.process()
         pair.$result.set(result)

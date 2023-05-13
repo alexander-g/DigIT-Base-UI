@@ -1,5 +1,5 @@
 import { preact, JSX, signals, ReadonlySignal }         from "../dep.ts"
-import { InputFileList, InputResultPair }               from "../state.ts"
+import { GenericInputFileList, InputFileList, InputResultPair }               from "../state.ts"
 import { Constructor }                                  from "../util.ts";
 import { ContentMenu }                                  from "./ContentMenu.tsx"
 import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.tsx"
@@ -8,18 +8,26 @@ import { FileTableMenu }                                from "./FileTableMenu.ts
 import { FileTableRow, FileTableRowProps }              from "./FileTableRow.tsx";
 import { ProgressDimmer }                               from "./ProgressDimmer.tsx";
 
+import type { TypeConfig, BaseConfig } from "../typeconfig.ts";
 
 
-export function FileTableHead(props:{labels_column:boolean}): JSX.Element {
-    const first_col_width:string  = props.labels_column? 'six' : 'sixteen'
-    const second_col_width:string = props.labels_column? 'ten' : ''
-    const second_col: JSX.Element =
-        props.labels_column? <th class={second_col_width + ' wide'}>Detections</th> : <></>
+type FomanticWidth = (
+    'one'|'two'|'three'|'four'|'five'|'six'|'seven'|'eight'|'nine'|'ten'
+    |'eleven'|'twelve'|'thirteen'|'fourteen'|'fifteen'|'sixteen'
+)
+
+type FileTableColumn = {label:string, width_css_class:FomanticWidth}
+
+export function FileTableHead(props:{columns: FileTableColumn[]}): JSX.Element {
+    const columns_jsx: JSX.Element[] = props.columns.map(
+        (c: FileTableColumn) => <th class={c.width_css_class+' wide'}>
+            { c.label }
+        </th>
+    )
 
     return <thead>
         <tr>
-            <th class={first_col_width+" wide"}>Files</th>
-            { second_col }
+            { columns_jsx }
         </tr>
     </thead>
 }
@@ -54,7 +62,12 @@ export function SpinnerSwitch(props:SpinnerSwitchProps): JSX.Element {
 
 
 export type FileTableItemProps = FileTableRowProps & {
-    /** @virtual To be overwritten downstream */
+    /** @virtual To be overwritten downstream 
+     *  @default {@link FileTableRow} */
+    FileTableRow?:     Constructor<FileTableRow>
+
+    /** @virtual To be overwritten downstream 
+     *  @default {@link FileTableContent} */
     FileTableContent?: Constructor<FileTableContent>;
 };
 
@@ -66,11 +79,16 @@ class FileTableItem extends preact.Component<FileTableItemProps> {
             = signals.computed( () => !props.input.$loaded.value )
 
         const Content: Constructor<FileTableContent> = props.FileTableContent ?? FileTableContent
+        const Row:     Constructor<FileTableRow>     = props.FileTableRow     ?? FileTableRow
 
         const no_padding_css = { padding: 0 }
 
         return <>
-            <FileTableRow {...props} />
+            <Row 
+                input         = {props.input}
+                $result       = {props.$result}
+                active_file   = {props.active_file}
+            />
 
             {/* The content, shown when clicked on a row. */}
             <tr style="display:none" {...{filename:props.input.name} }>
@@ -127,41 +145,10 @@ export class FileTableContent<P extends FileTableRowProps = FileTableRowProps> e
 
 
 
-type FileTableBodyProps = {
-    files:          InputFileList;
-    active_file:    signals.ReadonlySignal<string|null>;
-    
-    /** Add a second column that contains labels */
-    labels_column:  boolean;
 
-    FileTableContent?: Constructor<FileTableContent>;
-}
-
-export function FileTableBody(props:FileTableBodyProps): JSX.Element {
-    const rows: JSX.Element[] = props.files.value.map( 
-        (pair:InputResultPair) => 
-            <FileTableItem 
-                key         =   {pair.input.name} 
-                input       =   {pair.input}
-                $result     =   {pair.$result}
-                active_file =   {props.active_file}
-                labels_column = {props.labels_column}
-                FileTableContent = {props.FileTableContent}
-            />
-    )
-    
-    return <tbody>
-        { rows }
-    </tbody>
-}
-
-
-
-
-
-type FileTableProps = {
+type FileTableProps<TC extends TypeConfig> = {
     /** The list of files that this file table should display */
-    files:      InputFileList;
+    files:      GenericInputFileList<TC['InputFile'], TC['Result']>
     
     /** Whether or not a processing is operation is running somewehere in the app.
      *  Some UI elements might be disabled.
@@ -172,20 +159,41 @@ type FileTableProps = {
     sortable:   boolean;
 
     /** Add a second column that contains labels */
-    labels_column:  boolean;
+    columns:    FileTableColumn[];
+
+    /** Component class to show as the row title
+     * @default {@link FileTableRow} */
+    FileTableRow?:     Constructor<FileTableRow<FileTableRowProps<TC['InputFile'], TC['Result']>>>;
 
     /** Component class to show as the content of the table rows */
     FileTableContent?: Constructor<FileTableContent>;
 }
 
-export class FileTable extends preact.Component<FileTableProps> {
+export class FileTable<TC extends TypeConfig = BaseConfig> extends preact.Component<FileTableProps<TC>> {
+    static defaultProps: Pick<FileTableProps<BaseConfig>, 'columns'> = {
+        columns: [{label:'Files', width_css_class:'sixteen'}]
+    }
+
     /** The currently displayed filename. null if all closed. */
     #$active_file:signals.Signal<string|null> = new signals.Signal(null);
 
     ref: preact.RefObject<HTMLTableElement> = preact.createRef()
 
-    render(props: FileTableProps): JSX.Element {
+    render(props: FileTableProps<TC>): JSX.Element {
         const sort_class: string = props.sortable ? 'sortable' : '';         //TODO fix classes
+
+        const rows: JSX.Element[] = props.files.value.map(
+            (pair: InputResultPair) => 
+                <FileTableItem 
+                    key         =   {pair.input.name} 
+                    input       =   {pair.input}
+                    $result     =   {pair.$result}
+                    active_file =   {this.#$active_file}
+                    FileTableRow     = {props.FileTableRow}
+                    FileTableContent = {props.FileTableContent}
+                />
+        )
+
         return  <>
         <FileTableMenu displayed_files={props.files.value} $processing={props.processing}/>
         <table 
@@ -193,22 +201,17 @@ export class FileTable extends preact.Component<FileTableProps> {
             style = "border:0px; margin-top:0px;" 
             ref   = { this.ref }
         >
-            <FileTableHead 
-                labels_column   =   {props.labels_column}
-            />
-            <FileTableBody 
-                files           =   {props.files} 
-                active_file     =   {this.#$active_file}
-                labels_column   =   {props.labels_column}
-                FileTableContent =  {props.FileTableContent}
-            />
+            <FileTableHead columns = {props.columns} />
+            <tbody>
+                { rows }
+            </tbody>
         </table>
         </>
     }
 
     componentDidMount(): void {
         // deno-lint-ignore no-this-alias
-        const _this:FileTable = this;
+        const _this:FileTable<TC> = this;
 
         $(this.ref.current).accordion({
             duration:  0, 

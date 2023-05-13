@@ -1,13 +1,12 @@
 import { preact, JSX, signals }     from "../dep.ts";
+import { InputFile, Result }        from "../logic/files.ts";
 import { InputResultPair }          from "../state.ts";
 import { FileTableStatusIcons }     from "./StatusIcons.tsx";
 import type { Instance }            from "../logic/boxes.ts";
 
 
-export type FileTableRowProps = InputResultPair & {
-    /** Add a second column that contains labels */
-    labels_column:      boolean;
-
+export type FileTableRowProps<IF extends InputFile = InputFile, R extends Result = Result> 
+= InputResultPair<IF, R> & {
     /** Which file(name) is currently displayed in this file table */
     active_file:    signals.ReadonlySignal<string|null>;
 }
@@ -15,10 +14,10 @@ export type FileTableRowProps = InputResultPair & {
 
 
 /** The row of the file table, conains image name and optionally more */
-export class FileTableRow extends preact.Component<FileTableRowProps> {
+export class FileTableRow<P extends FileTableRowProps = FileTableRowProps> extends preact.Component<P> {
     tr_ref: preact.RefObject<HTMLTableRowElement> = preact.createRef()
 
-    render(props: FileTableRowProps): JSX.Element {
+    render(props: P): JSX.Element {
         const processed: boolean = (props.$result.value.status == 'processed')
         const css = {
             fontWeight:     processed? 'bold' : 'normal'
@@ -31,9 +30,10 @@ export class FileTableRow extends preact.Component<FileTableRowProps> {
                     {props.input.name}
                 </label>
             </td>
-            { props.labels_column? 
-                <LabelsColumn $instances={props.$result.$instances} /> : []
-            }
+
+            {/* TODO: this should be optional  */}
+            <LabelsColumn $instances={props.$result.$instances} /> : []
+            
         </tr>
     }
 

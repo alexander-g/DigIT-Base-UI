@@ -51,6 +51,15 @@ export function ResultSignalMixin<TBase extends Result >(BaseClass: Constructor<
 /** Result with additional attributes for UI */
 export class ResultSignal extends ResultSignalMixin(Result){}
 
+/** Parameterizable input file list type.
+ * @example let file_list:GenericResultSignal<Result> = new ResultSignal(...) */
+type GenericResultSignal<R extends Result> = InstanceType<
+    ReturnType< 
+        typeof ResultSignalMixin<R> 
+    >
+>
+
+
 
 /** Mixin that adds UI-specific attributes to an InputFile */
 export function InputFileStateMixin<T extends Constructor<InputFile> >(BaseClass: T) {
@@ -79,11 +88,19 @@ export function InputFileStateMixin<T extends Constructor<InputFile> >(BaseClass
 /** InputImage with added attributes for UI */
 export class InputFileState extends InputFileStateMixin(InputFile) {}
 
+/** Parameterizable input file list type.
+ * @example let file_list:GenericInputFileState<InputFile> = new InputFileState(...) */
+type GenericInputFileState<IF extends InputFile> = InstanceType<
+    ReturnType<
+        typeof InputFileStateMixin< Constructor<IF> >
+    >
+>
+
 
 /** InputImage and its corresponding Result */
-export type InputResultPair = {
-    input:   InputFileState;
-    $result: ResultSignal;
+export type InputResultPair<IF extends InputFile = InputFile, R extends Result = Result> = {
+    input:   GenericInputFileState<IF>;
+    $result: GenericResultSignal<R>;
 }
 
 
@@ -119,6 +136,19 @@ export function InputFileListMixin<IFS extends InputFileState, RS extends Result
 
 /** Reactive list of input-result pairs */
 export class InputFileList extends InputFileListMixin(InputFileState, ResultSignal){}
+
+
+/** Parameterizable input file list type.
+ * @example let file_list:GenericInputFileList<InputFile, Result> = new InputFileList([]) */
+export type GenericInputFileList<IF extends InputFile, R extends Result >
+    = InstanceType< 
+        ReturnType< 
+            typeof InputFileListMixin<
+                GenericInputFileState<IF>, 
+                GenericResultSignal<R>
+            > 
+        > 
+    >
 
 
 /** Reactive AvailableModels */
