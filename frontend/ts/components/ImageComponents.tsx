@@ -1,5 +1,5 @@
 import { preact, JSX, signals }             from "../dep.ts"
-import type { InputFileState }              from "../state.ts"
+//import type { GenericInputFileState }       from "./state.ts"
 import type { ImageSize, Point }            from "../util.ts"
 import { set_image_src }                    from "../file_input.ts"
 import * as styles                          from "./styles.ts"
@@ -7,24 +7,33 @@ import { start_drag }                       from "./ui_util.ts";
 
 export type InputImageProps = {
     /** Which file to display */
-    inputfile:      InputFileState;
+    inputfile:      File;
     /** Which file(name) is currently displayed in this file table */
-    active_file:    signals.ReadonlySignal<string|null>;
+    $active_file:   signals.ReadonlySignal<string|null>;
+
+    /** Flag indicating that the image has been loaded. 
+     *  @output To be used by parent components */
+    $loaded: signals.Signal<boolean>;
+
+    /** The original size of the image or null if not yet loaded 
+     * @output To be used by parent components*/
+    $size:   signals.Signal<ImageSize|null>;
 }
 
 
 export class InputImage extends preact.Component<InputImageProps> {
-    ref: preact.RefObject<HTMLImageElement> = preact.createRef()
 
-    $loaded: signals.Signal<boolean>        = new signals.Signal(false)
+    /** Ref to the HTML image element */
+    ref: preact.RefObject<HTMLImageElement> = preact.createRef()
 
     /** Load image as soon as it is beeing displayed in the file table, once */
     #dispose_init?: () => void;
 
+    /** Initate image loading only when needed */
     componentDidMount(): void {
         this.#dispose_init = signals.effect( () => {
-            if(this.props.active_file.value == this.props.inputfile.name 
-                && !this.props.inputfile.$loaded.value
+            if(this.props.$active_file.value == this.props.inputfile.name 
+                && !this.props.$loaded.value
                 && this.ref.current) {
                     set_image_src(this.ref.current, this.props.inputfile)
             }
@@ -46,11 +55,15 @@ export class InputImage extends preact.Component<InputImageProps> {
         />
     }
 
-    /** Image loading callback. Update the state. */
+    /** Image loading callback. Update outputs for parent components. */
     on_load(): void {
         if(this.ref.current) {
             //TODO: resize if too large
-            this.props.inputfile.set_loaded(this.ref.current)
+            this.props.$loaded.value = true;
+            this.props.$size.value   = {
+                width:  this.ref.current.naturalWidth,
+                height: this.ref.current.naturalHeight,
+            }
         }
     }
 }
@@ -59,7 +72,7 @@ export class InputImage extends preact.Component<InputImageProps> {
 type ImageControlsProps = {
     children:       preact.ComponentChildren;
     /** The natural/original size of the displayed image */
-    imagesize:      signals.ReadonlySignal<ImageSize|undefined>;
+    $imagesize:     signals.ReadonlySignal<ImageSize|null>;
 }
 
 /** Responsible for panning and zooming of images and important for layout */
@@ -93,8 +106,8 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
             /* keep aspect ratio; --imagewidth & --imageheight are set on image load */
             maxWidth:       'calc( (100vh - 120px) * var(--imagewidth) / var(--imageheight) )',
             width:          '100%',
-            '--imagewidth':  props.imagesize.value?.width,
-            '--imageheight': props.imagesize.value?.height,
+            '--imagewidth':  props.$imagesize.value?.width,
+            '--imageheight': props.$imagesize.value?.height,
         }
         const unselectable_css = {/* TODO */}
 

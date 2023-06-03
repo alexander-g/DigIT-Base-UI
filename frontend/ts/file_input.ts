@@ -1,7 +1,7 @@
 import { JSX, UTIF }    from "./dep.ts"
 import * as util        from "./util.ts"
-import { import_result_from_file }      from "./logic/download.ts";
-import { InputFile, Result, InputResultPair } from "./logic/files.ts"
+//import { import_result_from_file }      from "./logic/download.ts";
+import { Input, Result, InputResultPair } from "./logic/files.ts"
 
 /** Event handler for file drag events */
 export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
@@ -63,7 +63,8 @@ export async function load_result_files(
 ): Promise<InputResultPair[]> {
     const pairs: InputResultPair[] = inputfiles.map(
         (input: File) => ({
-            input:  new InputFile(input), 
+            //input:  new Input(input), 
+            input:  input, 
             result: new Result('unprocessed'),
         })
     )
@@ -71,24 +72,25 @@ export async function load_result_files(
         = collect_result_files(inputfiles, Array.from(maybe_resultfiles))
     
     for(const pair of pairs){
-        const inputfile:File = pair.input;
+        const input:Input = pair.input;
         const result_candidates:File[]|undefined = input_result_map[pair.input.name]?.resultfiles
         if(!result_candidates)
             continue;
         
         if(result_candidates.length > 1) {
-            console.error(`Unexpected number of result files for ${inputfile}`)
+            console.error(`Unexpected number of result files for ${input}`)
             continue
         }
         
-        console.log('Loading result of ', inputfile.name)
-        const result: Result|null = await import_result_from_file(result_candidates[0]!)
+        console.log('Loading result of ', input.name)
+        console.log('TODO: Not implemented')
+        /*const result: Result|null = await import_result_from_file(result_candidates[0]!)
         if(result == null){
             console.error('Failed to parse result.')
             continue;
         }
 
-        pair.result = result;
+        pair.result = result;*/
     }
     return pairs;
 }

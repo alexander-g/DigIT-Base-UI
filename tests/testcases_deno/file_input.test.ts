@@ -1,5 +1,4 @@
 import * as file_input          from "../../frontend/ts/file_input.ts"
-import { InputFile }            from "../../frontend/ts/state.ts";
 import { asserts, path }        from "./dep.ts"
 
 const IMAGE_ASSET1_PATH: string 
@@ -49,10 +48,10 @@ Deno.test('categorize_files', () => {
 
 Deno.test("collect_result_files filters result files for input files", () => {
     // Define some input and result files
-    const input_files: InputFile[] = [
-        new InputFile(new File([], "input1.jpg")),
-        new InputFile(new File([], "input2.tiff")),
-        new InputFile(new File([], "input3.tiff")),
+    const input_files: File[] = [
+        new File([], "input1.jpg"),
+        new File([], "input2.tiff"),
+        new File([], "input3.tiff"),
     ];
     const result_files: File[] = [
         new File([], "input1.json"),
@@ -77,10 +76,10 @@ Deno.test("collect_result_files filters result files for input files", () => {
 
 
 Deno.test('load_result_files', async () => {
-    const input_files: InputFile[] = [
-        new InputFile(new File([], "input1.jpg")),
-        new InputFile(new File([], "input2.tiff")),
-        new InputFile(new File([], "input3.tiff")),
+    const input_files: File[] = [
+        new File([], "input1.jpg"),
+        new File([], "input2.tiff"),
+        new File([], "input3.tiff"),
     ];
     const result_files:File[] = []
     //just dont throw

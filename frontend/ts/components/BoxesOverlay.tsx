@@ -1,22 +1,61 @@
-import { preact, JSX, Signal, ReadonlySignal }      from "../dep.ts";
+import { preact, JSX, Signal, ReadonlySignal, signals }      from "../dep.ts";
 import { Instance, Box }                    from "../logic/boxes.ts";
-import { MaybeInstances }                   from "../state.ts";
+import { MaybeInstances }                   from "../logic/files.ts";
 import { Size, Point, ImageSize }           from "../util.ts";
 import * as styles                          from "./styles.ts";
 import * as ui_util                         from "./ui_util.ts";
+import * as util                            from "../util.ts";
 
-type BoxesOverlayProps = {
+import { ObjectdetectionResult }            from "../logic/objectdetection.ts";
+import { SingleFileContent }                from "./FileTable.tsx";
+import { NewBoxButton }                     from "./ContentMenu.tsx";
+
+
+export class ObjectdetectionContent extends SingleFileContent<ObjectdetectionResult> {
+    /** Flag indicating if box drawing is activated. 
+     *  If undefined no New-Box button is shown */
+    $box_drawing_mode: signals.Signal<boolean> = new signals.Signal(false)
+
+    /** Boxes overlays */
+    result_overlays(): JSX.Element {
+        const $instances: ReadonlySignal<MaybeInstances> = signals.computed(
+            () => this.props.$result.value.instances
+        )
+
+        return <BoxesOverlay
+            $instances          =   { $instances }
+            imagesize           =   { this.$imagesize.value }
+            $drawing_mode_active =  { this.$box_drawing_mode }
+            $visible             =  { this.$result_visible }
+            on_new_instances     =  { this.on_new_instances.bind(this) }
+        />
+    }
+
+    on_new_instances(new_instances:Instance[]): void {
+        const new_result: ObjectdetectionResult 
+            = util.deepcopy({...this.props.$result.value})
+        new_result.instances = new_instances;
+        this.props.$result.value = new_result;
+    }
+
+    /** Add a New-Box button to the content menu */
+    content_menu_extras(): preact.JSX.Element[] {
+        return [<NewBoxButton drawing_mode_active={this.$box_drawing_mode}/>]
+    }
+}
+
+
+
+type BoxesOverlayProps = ui_util.MaybeHiddenProps & {
     $instances:      ReadonlySignal<MaybeInstances>;
-    imagesize?:      Size;
+    imagesize:       Size|null;
 
     /** When on, user can add new boxes. Overlay may disable it */
     $drawing_mode_active: Signal<boolean>;
 
     /** Called when the user requested some changes to the boxes */
     on_new_instances: (x:Instance[]) => void;
-
-    //TODO: $visible (but with code re-use)
-} & ui_util.MaybeHiddenProps
+}
 
 /** A result overlay that displays boxes */
 export class BoxesOverlay extends ui_util.MaybeHidden<BoxesOverlayProps> {
@@ -37,8 +76,8 @@ export class BoxesOverlay extends ui_util.MaybeHidden<BoxesOverlayProps> {
         }
 
         let boxes: JSX.Element[] = []
-        //imagesize undefined means the image has not been opened yet, so dont show
-        if(props.imagesize != undefined)
+        //imagesize null means the image has not been opened yet, so dont show
+        if(props.imagesize != null)
             boxes = instances.map(
                 (inst:Instance, index:number) => 
                     <BoxOverlay 
@@ -91,7 +130,7 @@ export class BoxesOverlay extends ui_util.MaybeHidden<BoxesOverlayProps> {
         ui_util.start_drag(
             mousedown_event,
             this.ref.current,
-            this.props.imagesize,
+            this.props.imagesize ?? undefined,
             (start:Point, end:Point) => {         //on_mousemove
                 _this.drawing_box_ref.current?.set_coordinates(start, end)
             },

@@ -5,7 +5,7 @@ import { Box, Instance }    from "../../frontend/ts/logic/boxes.ts";
 
 import * as util            from "./util.ts";
 import { asserts, mock }    from "./dep.ts";
-import { MaybeInstances } from "../../frontend/ts/state.ts";
+import { MaybeInstances } from "../../frontend/ts/logic/files.ts";
 
 
 
@@ -62,13 +62,14 @@ Deno.test('BoxesOverlay.basic', async (t:Deno.TestContext) => {
 
 
 Deno.test('BoxesOverlay.add_boxes', () => {
-    const $instances: signals.Signal<MaybeInstances> = new signals.Signal(undefined)
+    const $instances: signals.Signal<MaybeInstances> = new signals.Signal(null)
     const spy:mock.Spy<Instance[]> = mock.spy()
     const overlay = new BoxesOverlay({
         $instances           : $instances,
         $drawing_mode_active : new signals.Signal(false),
         on_new_instances     : spy,
-        $visible             : new signals.Signal(true)
+        $visible             : new signals.Signal(true),
+        imagesize            : null,
     })
 
     overlay.add_new_box(Box.from_array([50,50,100,100]))

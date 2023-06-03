@@ -1,19 +1,25 @@
 import { preact, JSX, signals }     from "../dep.ts";
-import { InputFile, Result }        from "../logic/files.ts";
-import { InputResultPair }          from "../state.ts";
+import { Input, Result }            from "../logic/files.ts";
+import { InputResultPair }          from "./state.ts";
 import { FileTableStatusIcons }     from "./StatusIcons.tsx";
 import type { Instance }            from "../logic/boxes.ts";
 
+import { ObjectdetectionResult }    from "../logic/objectdetection.ts";
 
-export type FileTableRowProps<IF extends InputFile = InputFile, R extends Result = Result> 
+
+export type FileTableRowProps<IF extends Input = Input, R extends Result = Result> 
 = InputResultPair<IF, R> & {
     /** Which file(name) is currently displayed in this file table */
     active_file:    signals.ReadonlySignal<string|null>;
+
+    /** Flag indicating that the content is loaded. */
+    $loaded?:        signals.ReadonlySignal<boolean>;
 }
 
 
 
-/** The row of the file table, conains image name and optionally more */
+/** The row of the file table, conains image name and optionally more.
+ *  Scrolls window on opening. */
 export class FileTableRow<P extends FileTableRowProps = FileTableRowProps> extends preact.Component<P> {
     tr_ref: preact.RefObject<HTMLTableRowElement> = preact.createRef()
 
@@ -31,10 +37,17 @@ export class FileTableRow<P extends FileTableRowProps = FileTableRowProps> exten
                 </label>
             </td>
 
+            { this.extra_columns() }
+
             {/* TODO: this should be optional  */}
-            <LabelsColumn $instances={props.$result.$instances} /> : []
+            {/* <LabelsColumn $instances={props.$result.$instances} /> : [] */}
             
         </tr>
+    }
+
+    /** @virtual Additional columns added by child classes.s */
+    extra_columns(): JSX.Element {
+        return <></>
     }
 
     // dispose callbacks
@@ -46,7 +59,7 @@ export class FileTableRow<P extends FileTableRowProps = FileTableRowProps> exten
 
         //works on the first time, wont work later
         const dispose0: (() => void) = signals.effect(() => {
-            if(this.props.input.$loaded.value)
+            if(this.props.$loaded?.value)
                 this.#scroll_to_row()
         })
         //doesnt work on the first time, will work later
@@ -100,13 +113,23 @@ export class FileTableRow<P extends FileTableRowProps = FileTableRowProps> exten
 }
 
 
+
+type ObjectdetectionRowProps = FileTableRowProps<Input, ObjectdetectionResult>
+
+export class ObjectdetectionRow extends FileTableRow<ObjectdetectionRowProps> {
+    extra_columns(): preact.JSX.Element {
+        return <LabelsColumn instances={this.props.$result.value.instances}/>
+    }
+}
+
+
 type LabelsColumnProps = {
-    $instances:      signals.ReadonlySignal<readonly Instance[]|undefined>
+    instances:      readonly Instance[]|null
 }
 
 /** Column in the FileTable that displays which and how many labels were detected */
 export function LabelsColumn(props:LabelsColumnProps): JSX.Element {
-    const labels:string[] = props.$instances.value?.map( (i:Instance) => i.label ) ?? []
+    const labels:string[] = props.instances?.map( (i:Instance) => i.label ) ?? []
     const text:  string   = labels.join(', ')
     return (
         <td>

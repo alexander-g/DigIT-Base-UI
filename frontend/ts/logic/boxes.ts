@@ -29,9 +29,25 @@ export type Instance = {
 
 
 
+export type FourNumbers = [number, number, number, number];
 
-export function is_4_number_array(x: unknown): x is [number, number, number, number] {
-    return util.is_number_array(x) && (x.length == 4)
+export function validate_4_number_array(x: unknown): FourNumbers|null {
+    if(util.is_number_array(x)
+    && x.length == 4){
+        return x as FourNumbers
+    }
+    else return null;
+}
+
+export function is_4_number_array(x: unknown): x is FourNumbers {
+    return validate_4_number_array(x) == x;
+}
+
+export function validate_4_number_arrays(x: unknown): FourNumbers[]|null {
+    if(util.is_array_of_type(x, validate_4_number_array)) {
+        return x
+    }
+    else return null;
 }
 
 

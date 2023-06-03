@@ -6,7 +6,7 @@ import { SVGFilters }       from "./components/SVGFilters.tsx";
 import * as file_input      from "./file_input.ts"
 import * as settings        from "./logic/settings.ts";
 
-import * as state           from "./state.ts";
+import * as state           from "./components/state.ts";
 import { Constructor, wait } from "./util.ts";
 
 
@@ -20,7 +20,7 @@ export function create_App<
 MAINCONTAINER   extends MainContainer,
 TOPMENU         extends TopMenu,
 APPSTATE        extends state.AppState,
-SETTINGS        extends NonNullable<APPSTATE['settings']['value']>,
+SETTINGS        extends NonNullable<APPSTATE['$settings']['value']>,
 >(
     options: {
     id:             string, 
@@ -42,8 +42,8 @@ SETTINGS        extends NonNullable<APPSTATE['settings']['value']>,
             >
                 <SVGFilters />  {/* Must go first for cosmetic reasons */}
                 <options.TopMenu
-                    $settings           = {this.appstate.settings}
-                    $available_models   = {this.appstate.available_models}
+                    $settings           = {this.appstate.$settings}
+                    $available_models   = {this.appstate.$available_models}
                     load_settings_fn    = {options.load_settings}
                 />
                 <options.MainContainer appstate={this.appstate}/>
@@ -61,25 +61,26 @@ SETTINGS        extends NonNullable<APPSTATE['settings']['value']>,
                 //TODO: show an error message
                 return;
             }
-            this.appstate.settings.value = settingsresponse.settings
-            this.appstate.available_models.value = settingsresponse.available_models;
+            this.appstate.$settings.value = settingsresponse.settings
+            this.appstate.$available_models.value = settingsresponse.available_models;
         }
 
         /** File drop event handler.
          *  @virtual Can be customized downstream */
-        async on_drop(event:preact.JSX.TargetedDragEvent<HTMLElement>): Promise<FileList|undefined> {
+        async on_drop(event:JSX.TargetedDragEvent<HTMLElement>): Promise<FileList|undefined> {
             event.preventDefault()
             
             //reset state  //TODO: should not be done here, but when setting the input files
-            this.appstate.files.set_from_files([])
+            this.appstate.$files.value = []
             //get file list from event, otherwise its gone after the wait
             const files: FileList | undefined = event.dataTransfer?.files
             //refresh ui
             await wait(1)
 
-            this.appstate.files.set_from_pairs( 
+            this.appstate.$files.value = state.input_result_signal_pairs_from_simple(
                 await file_input.load_list_of_files(files ?? [])
             )
+            
             return files;
         }
     }

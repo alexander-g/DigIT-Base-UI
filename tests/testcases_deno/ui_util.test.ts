@@ -2,7 +2,7 @@ import * as ui_util         from "../../frontend/ts/components/ui_util.ts";
 import * as testutil        from "./util.ts";
 import { asserts, mock }    from "./dep.ts";
 import { ModelInfo }        from "../../frontend/ts/logic/settings.ts";
-import { Result }           from "../../frontend/ts/state.ts";
+import { ObjectdetectionResult } from "../../frontend/ts/logic/objectdetection.ts";
 
 
 //mostly just to run through once
@@ -47,17 +47,20 @@ Deno.test('collect_all_labels', () => {
             known_classes: ['background', 'potato', 'pineapple', 'banana']
         }
     }
-    const all_results: Result[] = [
-        new Result('unprocessed'),
-        new Result('processed'),
-        new Result('failed'),
-    ]
-    all_results[1]?.set_instances([ 
-        {label: 'tomato'}  as any,
-        {label: 'tomato'}  as any,
-        {label: 'kumquat'} as any,
-    ])
 
+    const raw:any = {
+        labels: ['tomato', 'tomato', 'kumquat'],
+        boxes: [ [0,0,0,0], [0,0,0,0], [0,0,0,0], ]
+    }
+    const all_results: ObjectdetectionResult[] = [
+        new ObjectdetectionResult('unprocessed'),
+        new ObjectdetectionResult('processed', raw),
+        new ObjectdetectionResult('failed'),
+    ]
+
+    //testing ObjectdetectionResult constructor
+    asserts.assertEquals(all_results[1]?.instances?.length, 3)
+    
     const collected_labels: string[] = ui_util.collect_all_classes(
         all_results, active_model
     )

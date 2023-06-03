@@ -1,12 +1,12 @@
 import { JSX, ReadonlySignal }          from "../dep.ts";
-import { ResultSignal }                  from "../state.ts";
+import { Result }                       from "./state.ts";
 import { ResultStatus }                 from "../logic/files.ts";
 import { boolean_to_display_css }       from "./ui_util.ts";
 
 
 
 type StatusIconProps = {
-    $result: Readonly<ResultSignal>;
+    $result: ReadonlySignal<Result>;
 }
 
 

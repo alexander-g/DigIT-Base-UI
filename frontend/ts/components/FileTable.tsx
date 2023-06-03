@@ -1,14 +1,14 @@
 import { preact, JSX, signals, ReadonlySignal }         from "../dep.ts"
-import { GenericInputFileList, InputFileList, InputResultPair }               from "../state.ts"
-import { Constructor }                                  from "../util.ts";
+import { Input, Result, ProcessingModule }              from "../logic/files.ts"
+import { InputFileList, InputResultPair }               from "./state.ts"
+import { Constructor, ImageSize }                       from "../util.ts";
 import { ContentMenu }                                  from "./ContentMenu.tsx"
 import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.tsx"
-import { ResultOverlays }                               from "./ResultOverlay.tsx";
 import { FileTableMenu }                                from "./FileTableMenu.tsx";
 import { FileTableRow, FileTableRowProps }              from "./FileTableRow.tsx";
 import { ProgressDimmer }                               from "./ProgressDimmer.tsx";
 
-import type { TypeConfig, BaseConfig } from "../typeconfig.ts";
+import type { TypeConfig, BaseConfig }  from "../typeconfig.ts";
 
 
 type FomanticWidth = (
@@ -43,58 +43,144 @@ export function LoadingSpinner(): JSX.Element {
 }
 
 type SpinnerSwitchProps = {
-    loading:    boolean,
+    $loading:    boolean,
     children:   preact.ComponentChildren,
 }
 
 /** Display either a spinner or the children components */
 export function SpinnerSwitch(props:SpinnerSwitchProps): JSX.Element {
     const maybe_spinner: JSX.Element | []
-        = props.loading ? <LoadingSpinner /> : [];
+        = props.$loading ? <LoadingSpinner /> : [];
 
     return <>
         { maybe_spinner }
-        <div style={{display: props.loading? 'none' : null}}>
+        <div style={{display: props.$loading? 'none' : null}}>
             { props.children }
         </div>
     </>
 }
 
 
-export type FileTableItemProps = FileTableRowProps & {
-    /** @virtual To be overwritten downstream 
-     *  @default {@link FileTableRow} */
-    FileTableRow?:     Constructor<FileTableRow>
+type FileTableContentProps<I extends Input = Input, R extends Result = Result> 
+= FileTableRowProps<I,R> & {
+    /** Flag indicating that the content is loaded and ready to be displayed */
+    $loaded:           signals.Signal<boolean>
+    processingmodule:  ProcessingModule<I, R>
+}
+
+/** Input image, result overlays and controls */
+export abstract class FileTableContent<P extends FileTableContentProps = FileTableContentProps> 
+extends preact.Component<P> {
+    $result_visible: signals.Signal<boolean> = new signals.Signal(true)
+
+    render(props: P): JSX.Element {
+        return <>
+            <ContentMenu 
+                input            = {props.input} 
+                $result          = {props.$result}
+                $result_visible  = {this.$result_visible}
+                view_menu_extras = {this.view_menu_extras()}
+                processingmodule = {props.processingmodule}
+            >
+                { this.content_menu_extras() } 
+            </ContentMenu>
+            
+            { this.contentview() }
+        </>
+    }
+
+    /** Additional menu elements to display in the "eye" view menu
+     *  @virtual Overwritten by subclasses if needed */
+    view_menu_extras(): JSX.Element[] {
+        return []
+    }
+
+    /** Additional menu buttons to display in the content menu
+     *  @virtual Overwritten by subclasses if needed */
+    content_menu_extras(): JSX.Element[] {
+        return []
+    }
+
+    /** @virtual The actual content */
+    abstract contentview(): JSX.Element;
+}
+
+
+export class SingleFileContent<R extends Result = Result> 
+extends FileTableContent< FileTableContentProps<File, R> > {
+
+    /** Size of the displayed image or null if image not yet loaded. 
+     *  Forwarded from InputImage. */
+    $imagesize: signals.Signal<ImageSize|null> = new signals.Signal(null)
+
+    /** The actual content */
+    contentview(): JSX.Element {
+        return <ImageContainer>
+            <ImageControls $imagesize={this.$imagesize}>
+                <InputImage 
+                    inputfile    = {this.props.input} 
+                    $active_file = {this.props.active_file}
+                    $loaded      = {this.props.$loaded}
+                    $size        = {this.$imagesize}
+                /> 
+                { this.result_overlays() }
+            </ImageControls>
+            <ProgressDimmer $result={ this.props.$result }/>
+        </ImageContainer>
+    }
+
+    /** The result overlays element to display on top of the input image
+     *  @virtual Can be overwritten  downstream for custom overlays */
+    result_overlays(): JSX.Element {
+        return <></>
+    }
+}
+
+
+
+
+
+export type FileTableItemProps<TC extends TypeConfig> = FileTableRowProps & {
+    /** A module handling input processing requests */
+    processingmodule:  ProcessingModule<TC['Input'], TC['Result']>
 
     /** @virtual To be overwritten downstream 
-     *  @default {@link FileTableContent} */
-    FileTableContent?: Constructor<FileTableContent>;
+     *  @default {@link FileTableRow} */
+    FileTableRow:     Constructor<FileTableRow>
+
+    /** @virtual To be overwritten downstream 
+     *  @default {@link SingleFileContent} */
+    FileTableContent: Constructor<FileTableContent>;
 };
 
 /** A table row and the corresponding content, which is initially hidden */
-class FileTableItem extends preact.Component<FileTableItemProps> {
+class FileTableItem<TC extends TypeConfig> extends preact.Component<FileTableItemProps<TC>> {
+    static defaultProps: Pick<FileTableItemProps<never>, 'FileTableContent'|'FileTableRow'> = {
+        'FileTableContent' : SingleFileContent,
+        'FileTableRow'     : FileTableRow,
+    }
+
+
+    $loaded:  signals.Signal<boolean> = new signals.Signal(false);
+    $loading: signals.ReadonlySignal<boolean> 
+        = signals.computed( () => !this.$loaded.value )
     
-    render( props:FileTableItemProps ): JSX.Element {
-        const loading: signals.ReadonlySignal<boolean> 
-            = signals.computed( () => !props.input.$loaded.value )
-
-        const Content: Constructor<FileTableContent> = props.FileTableContent ?? FileTableContent
-        const Row:     Constructor<FileTableRow>     = props.FileTableRow     ?? FileTableRow
-
+    render( props:FileTableItemProps<TC> ): JSX.Element {
         const no_padding_css = { padding: 0 }
 
         return <>
-            <Row 
+            <props.FileTableRow 
                 input         = {props.input}
                 $result       = {props.$result}
                 active_file   = {props.active_file}
+                $loaded       = {this.$loaded}
             />
 
             {/* The content, shown when clicked on a row. */}
             <tr style="display:none" {...{filename:props.input.name} }>
                 <td class="ui content" style={no_padding_css} colSpan={10000}>
-                    <SpinnerSwitch loading={loading.value}> 
-                        <Content {...props} />
+                    <SpinnerSwitch $loading={this.$loading.value}> 
+                        <props.FileTableContent {...props} $loaded={this.$loaded} />
                     </SpinnerSwitch>
                 </td>
             </tr>
@@ -102,68 +188,31 @@ class FileTableItem extends preact.Component<FileTableItemProps> {
     }
 }
 
-/** Input image, result overlays and controls */
-export class FileTableContent<P extends FileTableRowProps = FileTableRowProps> extends preact.Component<P> {
-    $box_drawing_mode?: signals.Signal<boolean> = new signals.Signal(false)
-
-    render(props: P): JSX.Element {
-        return <>
-            <ContentMenu 
-                input            = {props.input} 
-                $result          = {props.$result}
-                box_drawing_mode = {this.$box_drawing_mode}
-                view_menu_extras = {this.view_menu_extras()}
-            />
-            <ImageContainer>
-                <ImageControls imagesize={props.input.$size}>
-                    <InputImage inputfile={props.input} active_file={props.active_file} /> 
-                    { this.result_overlays() }
-                </ImageControls>
-                <ProgressDimmer $result={ props.$result }/>
-            </ImageContainer>
-        </>
-    }
-
-    /** Additional menu elements to display in the "eye" view menu
-     *  @virtual Meant to be overwritten downstream */
-    view_menu_extras(): JSX.Element[] {
-        return []
-    }
-
-    /** The result overlays element to display on top of the input image
-     *  @virtual Can be overwritten  downstream for custom overlays */
-    result_overlays(): JSX.Element {
-        return <ResultOverlays 
-            $result             =   { this.props.$result } 
-            boxoverlay_props    =   { this.$box_drawing_mode? {
-                imagesize:            this.props.input.$size.value,
-                $drawing_mode_active: this.$box_drawing_mode
-            } : undefined}
-        />
-    }
-}
 
 
 
 
 type FileTableProps<TC extends TypeConfig> = {
     /** The list of files that this file table should display */
-    files:      GenericInputFileList<TC['InputFile'], TC['Result']>
+    $files:     InputFileList<TC['Input'], TC['Result']>
     
     /** Whether or not a processing is operation is running somewehere in the app.
-     *  Some UI elements might be disabled.
-     */
-    processing: signals.Signal<boolean>;
+     *  Some UI elements might be disabled. */
+    $processing:signals.Signal<boolean>;
     
     /** Whether or not the table should be sortable **(TODO: not implemented)** */
     sortable:   boolean;
 
-    /** Add a second column that contains labels */
+    /** Column names and widths.
+     * @default ```'Files'``` */
     columns:    FileTableColumn[];
+
+    /** A module handling input processing requests */
+    processingmodule:  ProcessingModule<TC['Input'], TC['Result']>
 
     /** Component class to show as the row title
      * @default {@link FileTableRow} */
-    FileTableRow?:     Constructor<FileTableRow<FileTableRowProps<TC['InputFile'], TC['Result']>>>;
+    FileTableRow?:     Constructor<FileTableRow<FileTableRowProps<TC['Input'], TC['Result']>>>;
 
     /** Component class to show as the content of the table rows */
     FileTableContent?: Constructor<FileTableContent>;
@@ -177,25 +226,31 @@ export class FileTable<TC extends TypeConfig = BaseConfig> extends preact.Compon
     /** The currently displayed filename. null if all closed. */
     #$active_file:signals.Signal<string|null> = new signals.Signal(null);
 
+    /** Ref to the main <table> element */
     ref: preact.RefObject<HTMLTableElement> = preact.createRef()
 
     render(props: FileTableProps<TC>): JSX.Element {
         const sort_class: string = props.sortable ? 'sortable' : '';         //TODO fix classes
 
-        const rows: JSX.Element[] = props.files.value.map(
-            (pair: InputResultPair) => 
-                <FileTableItem 
+        const rows: JSX.Element[] = props.$files.value.map(
+            (pair: InputResultPair<TC['Input'], TC['Result']>) => 
+                <FileTableItem<TC> 
                     key         =   {pair.input.name} 
                     input       =   {pair.input}
                     $result     =   {pair.$result}
                     active_file =   {this.#$active_file}
+                    processingmodule = {props.processingmodule}
                     FileTableRow     = {props.FileTableRow}
                     FileTableContent = {props.FileTableContent}
                 />
         )
 
         return  <>
-        <FileTableMenu displayed_files={props.files.value} $processing={props.processing}/>
+        <FileTableMenu 
+            displayed_items     =   {props.$files.value} 
+            $processing         =   {props.$processing}
+            processingmodule    =   {props.processingmodule}
+        />
         <table 
             class = "ui fixed celled unstackable table accordion filetable" 
             style = "border:0px; margin-top:0px;" 
@@ -220,7 +275,7 @@ export class FileTable<TC extends TypeConfig = BaseConfig> extends preact.Compon
         })
 
         /** Reset #$active_file if input files changed */
-        this.props.files.subscribe(
+        this.props.$files.subscribe(
             () => {this.#$active_file.value = null;}
         )
     }

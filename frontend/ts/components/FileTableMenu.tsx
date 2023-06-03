@@ -1,24 +1,31 @@
 import { JSX, signals }             from "../dep.ts";
-import * as detection               from "../logic/detection.ts";
-import * as state                   from "../state.ts";
+import {Input, Result, ProcessingModule} from "../logic/files.ts"
+import { process_inputs }           from "./ui_util.ts";
+import * as state                   from "./state.ts";
 
 
 
 
-type FileTableMenuProps = {
-    displayed_files:    readonly state.InputResultPair[];
+type FileTableMenuProps<I extends Input, R extends Result> = {
+    /** Which items are currently displayed in the corresponding file table.
+     *  These items will be processed on user request. */
+    displayed_items:    readonly state.InputResultPair<I,R>[];
+
+    /** Flag indicating that a processing operation is running somewhere. Set here. */
     $processing:        signals.Signal<boolean>;
+
+    processingmodule:   ProcessingModule<I,R>;
 }
 
 /** A menu on top of a file table containing buttons such as "Process all" */
-export function FileTableMenu(props:FileTableMenuProps): JSX.Element {
+export function FileTableMenu<I extends Input, R extends Result>(props:FileTableMenuProps<I,R>): JSX.Element {
     const on_process_all: () => Promise<void> = async () => {
         //TODO: this should be handled somewhere else
         if(props.$processing.value)
             return;
         
         props.$processing.value = true;
-        await process_files(props.displayed_files)
+        await process_inputs(props.displayed_items, props.processingmodule)
         props.$processing.value = false;
     }
 
@@ -32,20 +39,13 @@ export function FileTableMenu(props:FileTableMenuProps): JSX.Element {
     )
 }
 
-export async function process_files(pairs:readonly state.InputResultPair[]): Promise<void> {
-    for(const pair of pairs){
-        //TODO: cancel
-        pair.$result.set('processing')
-        const result:state.Result = await pair.input.process()
-        pair.$result.set(result)
-    }
-}
+
 
 
 class ProcessAllButtonProps {
     $processing:    signals.ReadonlySignal<boolean>;
     on_process_all: () => void      =   () => { throw new Error('on_process_all() not set') };
-    on_cancel:      () => void      =   detection.cancel_processing_all_files;
+    on_cancel:      () => void      =   () => {} //TODO: detection.cancel_processing_all_files;
 
     constructor(processing: signals.ReadonlySignal<boolean>) {
         this.$processing = processing;

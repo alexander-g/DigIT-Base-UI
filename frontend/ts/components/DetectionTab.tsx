@@ -1,6 +1,9 @@
 import { preact, JSX }  from "../dep.ts"
 import { FileTable }    from "./FileTable.tsx"
-import { AppState }     from "../state.ts"
+import { AppState }     from "./state.ts"
+import { ObjectdetectionFlaskProcessing }   from "../logic/objectdetection.ts";
+import { ObjectdetectionRow }               from "./FileTableRow.tsx";
+import { ObjectdetectionContent }           from "./BoxesOverlay.tsx";
 
 
 export type DetectionTabProps<APPSTATE extends AppState> = {
@@ -37,12 +40,15 @@ extends preact.Component<DetectionTabProps<S>>{
         const appstate: AppState = this.props.appstate;
         return <FileTable 
             sortable        =   {false} 
-            files           =   {appstate.files}
-            processing      =   {appstate.$processing}
+            $files          =   {appstate.$files}
+            $processing     =   {appstate.$processing}
             columns         =   {[
                 {label:'Files',      width_css_class:'six'}, 
                 {label:'Detections', width_css_class:'ten'}
             ]}
+            processingmodule =  { new ObjectdetectionFlaskProcessing() }
+            FileTableRow     =  { ObjectdetectionRow }
+            FileTableContent =  { ObjectdetectionContent }
         />; 
     }
 }

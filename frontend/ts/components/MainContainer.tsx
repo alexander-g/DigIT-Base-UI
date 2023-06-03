@@ -1,5 +1,5 @@
 import { preact, JSX }      from "../dep.ts"
-import { AppState }         from "../state.ts";
+import { AppState }         from "./state.ts";
 import { DetectionTab }     from "./DetectionTab.tsx";
 import { page_wide_css }    from "./styles.ts";
 

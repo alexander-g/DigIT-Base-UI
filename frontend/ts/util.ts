@@ -35,6 +35,17 @@ export async function fetch_with_error(
 }
 
 
+/** Send a file to the flask backend */  //TODO: make this the default function
+export function upload_file_no_throw(
+    file        :   File, 
+    // deno-lint-ignore no-inferrable-types
+    url         :   string  = 'file_upload',
+): Promise<Response|Error> {
+    const data = new FormData()
+    data.append('files', file);
+    return fetch_no_throw(url, {method: 'POST', body: data})
+}
+
 /** fetch() that returns an error if it doesn't succeed (also on 404) */
 export async function fetch_no_throw(...x: Parameters<typeof fetch>): Promise<Response|Error> {
     let response: Response;
@@ -203,7 +214,19 @@ export function validate_string_array(x: unknown): string[]|null {
 
 
 
-/** From https://github.com/sindresorhus/type-fest/blob/5374588a88ee643893784f66367bc26b8e6509ec/source/basic.d.ts */
+
+/** From https://github.com/sindresorhus/type-fest/blob/5374588a88ee643893784f66367bc26b8e6509ec/source/basic.d.ts (Importing doesnt work for some reason) */
 // deno-lint-ignore no-explicit-any
 export type Constructor<T, Arguments extends unknown[] = any[]>
     = new(...arguments_: Arguments) => T;
+
+// deno-lint-ignore no-explicit-any
+export type Class<T, Arguments extends unknown[] = any[]> = Constructor<T, Arguments> & {prototype: T};
+
+
+export type HasValidate<R> = {validate: (raw:unknown) => R|null}
+
+// deno-lint-ignore no-explicit-any
+export type ClassWithValidate<R, Arguments extends unknown[] = any[]> 
+    = Class<R, Arguments> & HasValidate<R>
+

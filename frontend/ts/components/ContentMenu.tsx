@@ -1,36 +1,40 @@
 import { preact, JSX, Signal }      from "../dep.ts";
-import { Result, ResultSignal, InputFile, InputResultPair }   from "../state.ts";
-import { process_files }            from "./FileTableMenu.tsx";
+import { Result, Input, InputResultPair }   from "./state.ts";
+import { process_inputs }           from "./ui_util.ts";
 import * as ui_util                 from "./ui_util.ts";
 import { zip_files }                from "../logic/zip.ts";
+import { ProcessingModule }         from "../logic/files.ts";
 
-type ContentMenuProps = InputResultPair & {
+type ContentMenuProps<I extends Input, R extends Result> = InputResultPair<I,R> & {
+    processingmodule:   ProcessingModule<I,R>
 
-    /** Flag indicating if box drawing is activated. 
-     *  If undefined no New-Box button is shown */
-    box_drawing_mode?: Signal<boolean>;
+    /** Flag indicating whether to show the result or not. Set here. */
+    $result_visible:    Signal<boolean>
+
+    /** Additional buttons to display in the content menu */
+    children?:          preact.ComponentChildren
 
     /** Additional menu items to pass to the view menu */
-    view_menu_extras?: JSX.Element[];
+    view_menu_extras?:  JSX.Element[];
 };
 
 /** A menu bar for every image, containing control buttons */
-export function ContentMenu(props: ContentMenuProps): JSX.Element {
-    const pair:InputResultPair = {input: props.input, $result:props.$result};
-
-    let new_box_button: JSX.Element|null = null;
-    if(props.box_drawing_mode)
-        new_box_button = <NewBoxButton drawing_mode_active={props.box_drawing_mode}/>
-    
+export function ContentMenu<I extends Input, R extends Result>(
+    props: ContentMenuProps<I,R>
+): JSX.Element {
     return (
         <div
             class = "ui bottom attached secondary icon menu"
             style = "border-top-width:0px; margin-bottom:0px;"
         >
-            <PlayButton     inputresultpair={pair} />
-            <ViewMenu       $result={pair.$result} extra_items={props.view_menu_extras}/>
-            { new_box_button }
-            <DownloadButton inputfile={pair.input} $result={pair.$result} />
+            <PlayButton     inputresultpair={props} processingmodule={props.processingmodule}/>
+            <ViewMenu 
+                $result         = {props.$result} 
+                $result_visible = {props.$result_visible}
+                extra_items     = {props.view_menu_extras}
+            />
+            { props.children }
+            <DownloadButton inputfile={props.input} $result={props.$result} />
             <HelpButton />
         </div>
     );
@@ -39,33 +43,37 @@ export function ContentMenu(props: ContentMenuProps): JSX.Element {
 
 
 
-type PlayButtonProps = {
-    inputresultpair:    InputResultPair;
-    callback?:          (f: InputFile) => void;
+type PlayButtonProps<I extends Input, R extends Result> = {
+    inputresultpair:    InputResultPair<I,R>;
+    
+    processingmodule:   ProcessingModule<I,R>
 };
 
 /** Button to trigger the processing of a single input file */
-function PlayButton(props: PlayButtonProps): JSX.Element {
-    const callback_fn: typeof props.callback 
-        = props.callback ?? ((f:InputFile) => process_files([props.inputresultpair]))
-    
-    //TODO: disable when processing is going on somewhere
-    return (
-        <a
-            class           =   "process item"
-            onClick         =   {() => callback_fn(props.inputresultpair.input)}
-            data-tooltip    =   "Process Image"
-            data-position   =   "bottom left"
-        >
-            <i class="play icon"></i>
-        </a>
-    );
+class PlayButton<I extends Input, R extends Result> 
+extends preact.Component<PlayButtonProps<I,R>> {
+    render(props: PlayButtonProps<I,R>): JSX.Element {
+        //TODO: disable when processing is going on somewhere
+        return (
+            <a
+                class           =   "process item"
+                onClick         =   {
+                    () => process_inputs([props.inputresultpair], props.processingmodule)
+                }
+                data-tooltip    =   "Process Image"
+                data-position   =   "bottom left"
+            >
+                <i class="play icon"></i>
+            </a>
+        );
+    }
 }
 
 
 
 type ViewMenuProps = {
-    $result:        ResultSignal;
+    $result:        Readonly<Signal<Result>>;
+    $result_visible:Signal<boolean>;
     extra_items?:   JSX.Element[],
 }
 
@@ -74,7 +82,7 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
     return (
         <div class="ui simple dropdown icon item view-menu-button">
             <i class="eye icon"></i>
-            <ViewMenuDropdown $result={props.$result} extra_items={props.extra_items}/>
+            <ViewMenuDropdown {...props}/>
         </div>
     );
 }
@@ -82,7 +90,7 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
 function ViewMenuDropdown(props:ViewMenuProps): JSX.Element {
     return (
         <div class="menu view-menu">
-            <ShowResultsCheckbox $result={props.$result}/>
+            <ShowResultsCheckbox $result={props.$result} $visible={props.$result_visible}/>
             { props.extra_items }
         </div>
     )
@@ -90,11 +98,14 @@ function ViewMenuDropdown(props:ViewMenuProps): JSX.Element {
 
 
 type ShowResultsCheckboxProps = {
-    $result:    ResultSignal;
+    $result:    Readonly<Signal<Result>>;
+    $visible:   Signal<boolean>;
 }
 
 /** A checkbox to toggle results */
 class ShowResultsCheckbox extends preact.Component<ShowResultsCheckboxProps> {
+    
+    /** Ref to the <div> element acting as a Fomantic checkbox */
     ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 
     render(props:ShowResultsCheckboxProps): JSX.Element {
@@ -104,7 +115,7 @@ class ShowResultsCheckbox extends preact.Component<ShowResultsCheckboxProps> {
             <div class={"ui item checkbox show-results-checkbox " + disabled} ref={this.ref}>
                 <input 
                     type        = "checkbox" 
-                    checked     = {props.$result.$visible} 
+                    checked     = {props.$visible} 
                     onChange    = {this.on_click.bind(this)}
                 />
                 <label style="padding-top:2px;">Show results</label>
@@ -113,11 +124,7 @@ class ShowResultsCheckbox extends preact.Component<ShowResultsCheckboxProps> {
     }
 
     on_click() {
-        const $visible: Signal<boolean> | undefined 
-            = this.props.$result.$visible
-        
-        if($visible)
-            $visible.value = !$visible.value
+        this.props.$visible.value = !this.props.$visible.value
     }
 
     componentDidMount(): void {
@@ -130,8 +137,8 @@ class ShowResultsCheckbox extends preact.Component<ShowResultsCheckboxProps> {
 
 
 type DownloadButtonProps = {
-    inputfile:          InputFile;
-    $result:            ResultSignal;
+    inputfile:          Input;
+    $result:            Readonly<Signal<Result>>;
 }
 
 
@@ -157,8 +164,8 @@ export function DownloadButton(props:DownloadButtonProps): JSX.Element {
 }
 
 /** Format the results of a single file and download */
-export async function download_single_result(input:InputFile, result:Result): Promise<void> {
-    const exportfiles:Record<string, File>|null = await result.export(input)
+export async function download_single_result(input:Input, result:Result): Promise<void> {
+    const exportfiles:Record<string, File>|null = await result.export()
     if(!exportfiles)
         //TODO some kind of error message maybe?
         return;

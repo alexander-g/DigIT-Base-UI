@@ -1,6 +1,8 @@
 import { Point, Size }                          from "../util.ts";
 import { ModelInfo, find_modelinfo }            from "../logic/settings.ts";
-import { AppState, InputResultPair, Result }    from "../state.ts";
+import { Input, Result, ProcessingModule }      from "../logic/files.ts";
+import { ObjectdetectionResult }                from "../logic/objectdetection.ts";
+import { AppState, InputResultPair }            from "./state.ts";
 import { preact, Signal, ReadonlySignal }       from "../dep.ts";
 
 
@@ -87,8 +89,10 @@ export function page2element_coordinates(
 }
 
 
-export
-function collect_all_classes(results: Result[], active_model?: ModelInfo): string[] {
+export function collect_all_classes(
+    results:       ObjectdetectionResult[], 
+    active_model?: ModelInfo
+): string[] {
     const labelset = new Set<string>(active_model?.properties?.known_classes);
     labelset.delete('background')
   
@@ -104,19 +108,23 @@ function collect_all_classes(results: Result[], active_model?: ModelInfo): strin
 
 /** Collect all possible classes from current global state.  */
 export function collect_all_classes_default(): string[] {
-    const STATE: AppState|undefined = globalThis.STATE;    //TODO: hard-coded
-    if(!STATE)
-        return []
+    return ['TODO'];
     
-    const results: Result[] = STATE.files.peek().map(
-        (pair: InputResultPair) => pair.$result.peek()
-    )
-    const model: string|undefined = STATE.settings.peek()?.active_models?.detection
-    let modelinfo: ModelInfo|undefined;
-    if(model) 
-        modelinfo = find_modelinfo(STATE.available_models.peek()?.detection ?? [], model)
+    // const STATE: AppState|undefined = globalThis.STATE;    //TODO: hard-coded
+    // if(!STATE)
+    //     return []
+    
+    //     //TODO
+    // /*const results: Result[] = STATE.$files.peek().map(
+    //     (pair: InputResultPair) => pair.$result.peek()
+    // )*/
+    // const results: Result[] = []
+    // const model: string|undefined = STATE.$settings.peek()?.active_models?.detection
+    // let modelinfo: ModelInfo|undefined;
+    // if(model) 
+    //     modelinfo = find_modelinfo(STATE.$available_models.peek()?.detection ?? [], model)
 
-    return collect_all_classes(results, modelinfo)
+    // return collect_all_classes(results, modelinfo)
 }
 
 
@@ -181,4 +189,21 @@ export abstract class MaybeHidden<P extends MaybeHiddenProps> extends preact.Com
 export function is_signalvalue_defined<T>(x:ReadonlySignal<T|undefined>): x is ReadonlySignal<T>;
 export function is_signalvalue_defined<T>(x:Signal<T|undefined>): x is Signal<T> {
     return (x.value != undefined)
+}
+
+
+
+/** Process inputs and update the result signal accordingly */
+export async function process_inputs<I extends Input, R extends Result>(
+    pairs:              readonly InputResultPair<I,R>[], 
+    processingmodule:   ProcessingModule<I,R>
+): Promise<void> {
+    for(const pair of pairs){
+        //TODO: cancel
+        const result:R = await processingmodule.process(
+            pair.input, 
+            ({result}) => { pair.$result.value = result } 
+        )
+        pair.$result.value = result;
+    }
 }

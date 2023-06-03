@@ -1,11 +1,11 @@
-import { preact, JSX, signals }         from "../dep.ts";
-import { ResultSignal }                 from "../state.ts";
+import { preact, JSX, signals, ReadonlySignal }         from "../dep.ts";
+import { Result }                       from "./state.ts";
 import { ResultStatus }                 from "../logic/files.ts"
 import { boolean_to_display_css }       from "./ui_util.ts";
 
 
 type ProgressDimmerProps = {
-    $result: Readonly<ResultSignal>;
+    $result: ReadonlySignal<Result>;
 }
 
 
