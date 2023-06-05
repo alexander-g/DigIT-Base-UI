@@ -36,7 +36,7 @@ export function categorize_files(
 export const MIMETYPES: string[] = ["image/jpeg", "image/tiff"]          //NOTE: no png
 
 /** Load input and corresponding result files */
-export async function load_list_of_files(file_list:FileList|File[]): Promise<InputResultPair[]>{
+export async function load_list_of_files(file_list:FileList|File[]): Promise<InputResultPair<File, Result>[]>{
     const {inputfiles, resultfiles:mayberesults} = categorize_files(file_list, MIMETYPES)
     return await load_result_files(inputfiles, mayberesults);
 }
@@ -60,8 +60,8 @@ export function load_resultfiles(file_list:FileList|File[]): void {
 export async function load_result_files(
     inputfiles:        File[],
     maybe_resultfiles: FileList|File[], 
-): Promise<InputResultPair[]> {
-    const pairs: InputResultPair[] = inputfiles.map(
+): Promise<InputResultPair<File, Result>[]> {
+    const pairs: InputResultPair<File, Result>[] = inputfiles.map(
         (input: File) => ({
             //input:  new Input(input), 
             input:  input, 

@@ -52,13 +52,15 @@ export class Result {
 
 
 
-export type InputResultPair<I = Input, R extends Result = Result> = {
+export type InputResultPair<I extends Input, R extends Result> = {
     input:  I;
     result: R;
 }
 
 
-export abstract class ProcessingModule<I, R extends Result> {
+
+
+export abstract class ProcessingModule<I extends Input, R extends Result> {
     abstract process(
         input:        I, 
         on_progress?: (x:InputResultPair<I,R>) => void

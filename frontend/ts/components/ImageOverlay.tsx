@@ -4,13 +4,28 @@ import * as ui_util                             from "./ui_util.ts";
 import * as styles                              from "./styles.ts"
 import { black_to_transparent_css }             from "./SVGFilters.tsx";
 
+import { SingleFileContent }                    from "./FileTable.tsx";
+import { SegmentationResult }                   from "../logic/segmentation.ts";
+
+
+export class SegmentationContent<R extends SegmentationResult = SegmentationResult> 
+extends SingleFileContent<R> {
+    result_overlays(): JSX.Element {
+        return (
+            <ImageOverlay 
+                imagename = {this.props.$result.value.classmap}
+                $visible  = {this.$result_visible}
+            />
+        )
+    }
+}
 
 
 
-export type ImageOverlayProps = {
-    imagename:        string;
-    //$visible:         ReadonlySignal<boolean>;
-} & ui_util.MaybeHiddenProps
+export type ImageOverlayProps = ui_util.MaybeHiddenProps & {
+    /** Image name/url to fetch that shall be overlayed */
+    imagename:        string|null;
+}
 
 /** A result overlay that displays an image (e.g. a segmentation result) */
 export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidden<P> {
@@ -31,7 +46,8 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
     }
 
     async componentDidMount(): Promise<void> {
-        this.img_src.value = await fetch_image_as_blob(this.props.imagename);
+        if(this.props.imagename != null)
+            this.img_src.value = await fetch_image_as_blob(this.props.imagename);
     }
 }
 

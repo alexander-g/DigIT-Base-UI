@@ -7,8 +7,8 @@ import type { Instance }            from "../logic/boxes.ts";
 import { ObjectdetectionResult }    from "../logic/objectdetection.ts";
 
 
-export type FileTableRowProps<IF extends Input = Input, R extends Result = Result> 
-= InputResultPair<IF, R> & {
+export type FileTableRowProps<I extends Input, R extends Result> 
+= InputResultPair<I, R> & {
     /** Which file(name) is currently displayed in this file table */
     active_file:    signals.ReadonlySignal<string|null>;
 
@@ -20,10 +20,10 @@ export type FileTableRowProps<IF extends Input = Input, R extends Result = Resul
 
 /** The row of the file table, conains image name and optionally more.
  *  Scrolls window on opening. */
-export class FileTableRow<P extends FileTableRowProps = FileTableRowProps> extends preact.Component<P> {
+export class FileTableRow<I extends Input, R extends Result> extends preact.Component<FileTableRowProps<I,R>> {
     tr_ref: preact.RefObject<HTMLTableRowElement> = preact.createRef()
 
-    render(props: P): JSX.Element {
+    render(props: FileTableRowProps<I,R>): JSX.Element {
         const processed: boolean = (props.$result.value.status == 'processed')
         const css = {
             fontWeight:     processed? 'bold' : 'normal'
@@ -114,9 +114,8 @@ export class FileTableRow<P extends FileTableRowProps = FileTableRowProps> exten
 
 
 
-type ObjectdetectionRowProps = FileTableRowProps<Input, ObjectdetectionResult>
 
-export class ObjectdetectionRow extends FileTableRow<ObjectdetectionRowProps> {
+export class ObjectdetectionRow extends FileTableRow<Input, ObjectdetectionResult> {
     extra_columns(): preact.JSX.Element {
         return <LabelsColumn instances={this.props.$result.value.instances}/>
     }

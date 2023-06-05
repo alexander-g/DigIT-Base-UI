@@ -1,6 +1,6 @@
 import { preact, JSX, signals, ReadonlySignal }         from "../dep.ts"
-import { Input, Result, ProcessingModule }              from "../logic/files.ts"
-import { InputFileList, InputResultPair }               from "./state.ts"
+import { Input, Result, ProcessingModule, InputResultPair }        from "../logic/files.ts"
+import { InputFileList, InputResultPair as InputResultSignalPair } from "./state.ts"
 import { Constructor, ImageSize }                       from "../util.ts";
 import { ContentMenu }                                  from "./ContentMenu.tsx"
 import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.tsx"
@@ -8,7 +8,6 @@ import { FileTableMenu }                                from "./FileTableMenu.ts
 import { FileTableRow, FileTableRowProps }              from "./FileTableRow.tsx";
 import { ProgressDimmer }                               from "./ProgressDimmer.tsx";
 
-import type { TypeConfig, BaseConfig }  from "../typeconfig.ts";
 
 
 type FomanticWidth = (
@@ -61,7 +60,7 @@ export function SpinnerSwitch(props:SpinnerSwitchProps): JSX.Element {
 }
 
 
-type FileTableContentProps<I extends Input = Input, R extends Result = Result> 
+export type FileTableContentProps<I extends Input, R extends Result> 
 = FileTableRowProps<I,R> & {
     /** Flag indicating that the content is loaded and ready to be displayed */
     $loaded:           signals.Signal<boolean>
@@ -69,11 +68,11 @@ type FileTableContentProps<I extends Input = Input, R extends Result = Result>
 }
 
 /** Input image, result overlays and controls */
-export abstract class FileTableContent<P extends FileTableContentProps = FileTableContentProps> 
-extends preact.Component<P> {
+export abstract class FileTableContent<I extends Input, R extends Result> 
+extends preact.Component<FileTableContentProps<I,R>> {
     $result_visible: signals.Signal<boolean> = new signals.Signal(true)
 
-    render(props: P): JSX.Element {
+    render(props: FileTableContentProps<I,R>): JSX.Element {
         return <>
             <ContentMenu 
                 input            = {props.input} 
@@ -107,7 +106,7 @@ extends preact.Component<P> {
 
 
 export class SingleFileContent<R extends Result = Result> 
-extends FileTableContent< FileTableContentProps<File, R> > {
+extends FileTableContent< File, R > {
 
     /** Size of the displayed image or null if image not yet loaded. 
      *  Forwarded from InputImage. */
@@ -140,22 +139,22 @@ extends FileTableContent< FileTableContentProps<File, R> > {
 
 
 
-export type FileTableItemProps<TC extends TypeConfig> = FileTableRowProps & {
+export type FileTableItemProps<I extends Input, R extends Result> = FileTableRowProps<I,R> & {
     /** A module handling input processing requests */
-    processingmodule:  ProcessingModule<TC['Input'], TC['Result']>
+    processingmodule:  ProcessingModule<I,R>
 
     /** @virtual To be overwritten downstream 
      *  @default {@link FileTableRow} */
-    FileTableRow:     Constructor<FileTableRow>
+    FileTableRow:     Constructor<FileTableRow<I,R>>
 
     /** @virtual To be overwritten downstream 
      *  @default {@link SingleFileContent} */
-    FileTableContent: Constructor<FileTableContent>;
+    FileTableContent: Constructor<FileTableContent<I,R>>;
 };
 
 /** A table row and the corresponding content, which is initially hidden */
-class FileTableItem<TC extends TypeConfig> extends preact.Component<FileTableItemProps<TC>> {
-    static defaultProps: Pick<FileTableItemProps<never>, 'FileTableContent'|'FileTableRow'> = {
+class FileTableItem<I extends Input, R extends Result> extends preact.Component<FileTableItemProps<I,R>> {
+    static defaultProps: Pick<FileTableItemProps<Input, Result>, 'FileTableContent'|'FileTableRow'> = {
         'FileTableContent' : SingleFileContent,
         'FileTableRow'     : FileTableRow,
     }
@@ -165,7 +164,7 @@ class FileTableItem<TC extends TypeConfig> extends preact.Component<FileTableIte
     $loading: signals.ReadonlySignal<boolean> 
         = signals.computed( () => !this.$loaded.value )
     
-    render( props:FileTableItemProps<TC> ): JSX.Element {
+    render( props:FileTableItemProps<I,R> ): JSX.Element {
         const no_padding_css = { padding: 0 }
 
         return <>
@@ -192,9 +191,10 @@ class FileTableItem<TC extends TypeConfig> extends preact.Component<FileTableIte
 
 
 
-type FileTableProps<TC extends TypeConfig> = {
+//type FileTableProps<IR extends InputResultPair> = {
+    type FileTableProps<I extends Input, R extends Result> = {
     /** The list of files that this file table should display */
-    $files:     InputFileList<TC['Input'], TC['Result']>
+    $files:     InputFileList<I,R>
     
     /** Whether or not a processing is operation is running somewehere in the app.
      *  Some UI elements might be disabled. */
@@ -208,18 +208,20 @@ type FileTableProps<TC extends TypeConfig> = {
     columns:    FileTableColumn[];
 
     /** A module handling input processing requests */
-    processingmodule:  ProcessingModule<TC['Input'], TC['Result']>
+    processingmodule:  ProcessingModule<I,R>
 
     /** Component class to show as the row title
      * @default {@link FileTableRow} */
-    FileTableRow?:     Constructor<FileTableRow<FileTableRowProps<TC['Input'], TC['Result']>>>;
+    FileTableRow?:     Constructor<FileTableRow<I,R>>;
 
     /** Component class to show as the content of the table rows */
-    FileTableContent?: Constructor<FileTableContent>;
+    FileTableContent?: Constructor<FileTableContent<I,R>>;
 }
 
-export class FileTable<TC extends TypeConfig = BaseConfig> extends preact.Component<FileTableProps<TC>> {
-    static defaultProps: Pick<FileTableProps<BaseConfig>, 'columns'> = {
+//export class FileTable<IR extends InputResultPair> extends preact.Component<FileTableProps<IR>> {
+export class FileTable<I extends Input, R extends Result> extends preact.Component<FileTableProps<I,R>> {
+    //Single column 'Files' by default
+    static defaultProps: Pick<FileTableProps<never, never>, 'columns'> = {
         columns: [{label:'Files', width_css_class:'sixteen'}]
     }
 
@@ -229,12 +231,12 @@ export class FileTable<TC extends TypeConfig = BaseConfig> extends preact.Compon
     /** Ref to the main <table> element */
     ref: preact.RefObject<HTMLTableElement> = preact.createRef()
 
-    render(props: FileTableProps<TC>): JSX.Element {
+    render(props: FileTableProps<I,R>): JSX.Element {
         const sort_class: string = props.sortable ? 'sortable' : '';         //TODO fix classes
 
         const rows: JSX.Element[] = props.$files.value.map(
-            (pair: InputResultPair<TC['Input'], TC['Result']>) => 
-                <FileTableItem<TC> 
+            (pair: InputResultSignalPair<I,R>) => 
+                <FileTableItem<I,R> 
                     key         =   {pair.input.name} 
                     input       =   {pair.input}
                     $result     =   {pair.$result}
@@ -266,7 +268,7 @@ export class FileTable<TC extends TypeConfig = BaseConfig> extends preact.Compon
 
     componentDidMount(): void {
         // deno-lint-ignore no-this-alias
-        const _this:FileTable<TC> = this;
+        const _this:FileTable<I,R> = this;
 
         $(this.ref.current).accordion({
             duration:  0, 

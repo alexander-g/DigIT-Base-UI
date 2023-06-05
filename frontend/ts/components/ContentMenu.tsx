@@ -1,4 +1,4 @@
-import { preact, JSX, Signal }      from "../dep.ts";
+import { preact, JSX, Signal, signals }     from "../dep.ts";
 import { Result, Input, InputResultPair }   from "./state.ts";
 import { process_inputs }           from "./ui_util.ts";
 import * as ui_util                 from "./ui_util.ts";
@@ -97,34 +97,38 @@ function ViewMenuDropdown(props:ViewMenuProps): JSX.Element {
 }
 
 
-type ShowResultsCheckboxProps = {
-    $result:    Readonly<Signal<Result>>;
-    $visible:   Signal<boolean>;
+type CheckboxProps = {
+    /** @input Flag indicating whether or not the checkbox is enabled/disabled */
+    $active:    Readonly<Signal<boolean>>
+    
+    /** @output Flag representing whether the checkbox is checked/unchecked */
+    $value:     Signal<boolean>
+
+    /** Label text to display next to the checkbox */
+    label:      string;
 }
 
-/** A checkbox to toggle results */
-class ShowResultsCheckbox extends preact.Component<ShowResultsCheckboxProps> {
-    
+/** Generic checkbox using signals */
+export class Checkbox extends preact.Component<CheckboxProps> {
     /** Ref to the <div> element acting as a Fomantic checkbox */
     ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 
-    render(props:ShowResultsCheckboxProps): JSX.Element {
-        const processed:boolean = ( props.$result.value.status == 'processed')
-        const disabled:string   = processed?  '' : 'disabled'
-        return (
-            <div class={"ui item checkbox show-results-checkbox " + disabled} ref={this.ref}>
-                <input 
-                    type        = "checkbox" 
-                    checked     = {props.$visible} 
-                    onChange    = {this.on_click.bind(this)}
-                />
-                <label style="padding-top:2px;">Show results</label>
-            </div>
-        )
+    render(props:CheckboxProps): JSX.Element {
+        const processed:boolean = props.$active.value;
+        const disabled:string   = processed?  '' : 'disabled';
+
+        return <div class={"ui item checkbox show-results-checkbox " + disabled} ref={this.ref}>
+            <input 
+                type        = "checkbox" 
+                checked     = {props.$value} 
+                onChange    = {this.on_click.bind(this)}
+            />
+            <label style="padding-top:2px;">{ this.props.label }</label>
+        </div>
     }
 
     on_click() {
-        this.props.$visible.value = !this.props.$visible.value
+        this.props.$value.value = !this.props.$value.value
     }
 
     componentDidMount(): void {
@@ -133,6 +137,26 @@ class ShowResultsCheckbox extends preact.Component<ShowResultsCheckboxProps> {
             $(this.ref.current).checkbox()
     }
 }
+
+
+
+type ShowResultsCheckboxProps = {
+    $result:    Readonly<Signal<Result>>;
+    $visible:   Signal<boolean>;
+}
+
+/** A checkbox to toggle results */
+function ShowResultsCheckbox(props: ShowResultsCheckboxProps): JSX.Element {
+    const $active: Readonly<Signal<boolean>> = signals.computed(
+        () => props.$result.value.status == 'processed'
+    )
+    return <Checkbox
+        $active     = {$active}
+        $value      = {props.$visible}
+        label       = "Show Results"
+    />
+}
+
 
 
 

@@ -21,7 +21,7 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
 
     const $files: InputFileList<File, Result> = new InputFileList([])
     const processing         = new signals.Signal(false)
-    const table_ref:preact.RefObject<FileTable> = preact.createRef()
+    const table_ref:preact.RefObject<FileTable<File, Result>> = preact.createRef()
 
     await util.wait(1)
 
