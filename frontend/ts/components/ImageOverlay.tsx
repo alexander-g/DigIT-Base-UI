@@ -1,4 +1,4 @@
-import { JSX, Signal }                          from "../dep.ts";
+import { JSX, Signal, preact }                  from "../dep.ts";
 import * as util                                from "../util.ts";
 import * as ui_util                             from "./ui_util.ts";
 import * as styles                              from "./styles.ts"
@@ -13,7 +13,7 @@ extends SingleFileContent<R> {
     result_overlays(): JSX.Element {
         return (
             <ImageOverlay 
-                imagename = {this.props.$result.value.classmap}
+                imagename = {this.props.$result.value.classmap}        
                 $visible  = {this.$result_visible}
             />
         )
@@ -24,18 +24,21 @@ extends SingleFileContent<R> {
 
 export type ImageOverlayProps = ui_util.MaybeHiddenProps & {
     /** Image name/url to fetch that shall be overlayed */
-    imagename:        string|null;
+    imagename:         string|null;
 }
 
 /** A result overlay that displays an image (e.g. a segmentation result) */
 export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidden<P> {
-    img_src: Signal<string|undefined> = new Signal()
+    //$img_src: Signal<string|undefined> = new Signal()
+
+    ref: preact.RefObject<HTMLImageElement> = preact.createRef()
 
     render(props:P): JSX.Element {        
+        //img.src set manually
         return <img 
             class       =   "overlay unselectable pixelated" 
-            src         =   {this.img_src.value}  
-            draggable   =   {false} 
+            ref         =   {this.ref}
+            draggable   =   {false}
             style       =   {{
                 ...styles.overlay_css, 
                 ...styles.pixelated_css,
@@ -45,14 +48,22 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
         />
     }
 
-    async componentDidMount(): Promise<void> {
-        if(this.props.imagename != null)
-            this.img_src.value = await fetch_image_as_blob(this.props.imagename);
+    shouldComponentUpdate(nextProps: Readonly<P>): boolean {
+        const imagename:string|null = nextProps.imagename;
+        if(imagename != null)
+            this.set_img_src(imagename)  //no await
+        
+        return true;
+    }
+
+    async set_img_src(imagename:string): Promise<void> {
+        if(this.ref.current != null)
+            this.ref.current.src = await fetch_image_as_blob(imagename)
     }
 }
 
 
-/** Request image from backend, retuning a blob object url */
+/** Request image from backend, returning a blob object url */
 export async function fetch_image_as_blob(imagename:string): Promise<string> {
     const response:Response = await fetch(util.url_for_image(imagename));
     const blob:Blob         = await response.blob()

@@ -20,7 +20,7 @@ export abstract class FlaskProcessing<R extends Result> extends ProcessingModule
         const response: Response|Error
             = await util.fetch_no_throw(`process_image/${input.name}`)
         if(response instanceof Error)
-        return new this.ResultClass('failed');
+            return new this.ResultClass('failed');
         
         
         const raw:unknown = await parse_response(response)
