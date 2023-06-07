@@ -118,7 +118,7 @@ extends FileTableContent< File, R > {
             <ImageControls $imagesize={this.$imagesize}>
                 <InputImage 
                     inputfile    = {this.props.input} 
-                    $active_file = {this.props.active_file}
+                    $active_file = {this.props.$active_file}
                     $loaded      = {this.props.$loaded}
                     $size        = {this.$imagesize}
                 /> 
@@ -159,7 +159,6 @@ class FileTableItem<I extends Input, R extends Result> extends preact.Component<
         'FileTableRow'     : FileTableRow,
     }
 
-
     $loaded:  signals.Signal<boolean> = new signals.Signal(false);
     $loading: signals.ReadonlySignal<boolean> 
         = signals.computed( () => !this.$loaded.value )
@@ -171,7 +170,7 @@ class FileTableItem<I extends Input, R extends Result> extends preact.Component<
             <props.FileTableRow 
                 input         = {props.input}
                 $result       = {props.$result}
-                active_file   = {props.active_file}
+                $active_file   = {props.$active_file}
                 $loaded       = {this.$loaded}
             />
 
@@ -240,7 +239,7 @@ export class FileTable<I extends Input, R extends Result> extends preact.Compone
                     key         =   {pair.input.name} 
                     input       =   {pair.input}
                     $result     =   {pair.$result}
-                    active_file =   {this.#$active_file}
+                    $active_file     =   {this.#$active_file}
                     processingmodule = {props.processingmodule}
                     FileTableRow     = {props.FileTableRow}
                     FileTableContent = {props.FileTableContent}

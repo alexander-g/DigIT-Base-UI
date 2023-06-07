@@ -10,7 +10,7 @@ import { ObjectdetectionResult }    from "../logic/objectdetection.ts";
 export type FileTableRowProps<I extends Input, R extends Result> 
 = InputResultPair<I, R> & {
     /** Which file(name) is currently displayed in this file table */
-    active_file:    signals.ReadonlySignal<string|null>;
+    $active_file:    signals.ReadonlySignal<string|null>;
 
     /** Flag indicating that the content is loaded. */
     $loaded?:        signals.ReadonlySignal<boolean>;
@@ -67,7 +67,7 @@ export class FileTableRow<I extends Input, R extends Result> extends preact.Comp
             //initializing #top inside the callback because it might 
             //not have been initialized correctly if the tab was not active
             this.#maybe_init_top()
-            if(this.props.active_file.value == this.props.input.name)
+            if(this.props.$active_file.value == this.props.input.name)
                 this.#scroll_to_row()
         })
 
