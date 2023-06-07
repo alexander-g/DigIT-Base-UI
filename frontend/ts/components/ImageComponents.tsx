@@ -33,9 +33,8 @@ export class InputImage extends preact.Component<InputImageProps> {
     componentDidMount(): void {
         this.#dispose_init = signals.effect( () => {
             if(this.props.$active_file.value == this.props.inputfile.name 
-                && !this.props.$loaded.value
-                && this.ref.current) {
-                    set_image_src(this.ref.current, this.props.inputfile)
+                && !this.props.$loaded.value) {
+                    this.load_image()
             }
         })
     }
@@ -53,6 +52,12 @@ export class InputImage extends preact.Component<InputImageProps> {
             ref     =   {this.ref}
             draggable = {false}
         />
+    }
+
+    load_image(): void {
+        if(this.ref.current) {
+            set_image_src(this.ref.current, this.props.inputfile)
+        }
     }
 
     /** Image loading callback. Update outputs for parent components. */
