@@ -15,9 +15,7 @@ export function ObjectdetectionResultMixin<R extends ClassWithValidate<BaseResul
         constructor(...args:any[]) {
             super(...args)
 
-            const maybe_result:ObjectdetectionResult|null 
-                = ObjectdetectionResult.validate(this.raw)
-            this.instances = maybe_result?.instances ?? null;
+            this.apply(this.raw)
         }
 
         /** @override */
@@ -29,22 +27,24 @@ export function ObjectdetectionResultMixin<R extends ClassWithValidate<BaseResul
 
         /** @override */
         static validate(raw: unknown): ObjectdetectionResult | null {
-            const baseresult: BaseResult|null = super.validate(raw)
-            if(baseresult
-            && util.is_object(raw)
+            return (new ObjectdetectionResult()).apply(raw)
+        }
+        
+        apply(raw:unknown): ObjectdetectionResult | null {
+            if( super.apply(raw) == null )
+                return null;
+
+            if(util.is_object(raw)
             && util.has_property_of_type(raw, 'boxes', boxes.validate_4_number_arrays)
-            && util.has_property_of_type(raw, 'labels', util.validate_string_array)){
-                if(raw.boxes.length != raw.labels.length)
-                    return null;
-                
-                const detresult:ObjectdetectionResult = baseresult as ObjectdetectionResult;
-                detresult.instances = raw.boxes.map(
+            && util.has_property_of_type(raw, 'labels', util.validate_string_array)) {
+                this.instances = raw.boxes.map(
                     (boxarray:boxes.FourNumbers, i:number) => ({
                         box     : boxes.Box.from_array(boxarray), 
                         label   : raw.labels[i]!
                     })
                 );
-                return detresult
+
+                return this;
             }
             else return null;
         }

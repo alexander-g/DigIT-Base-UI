@@ -19,13 +19,17 @@ export function SegmentationResultMixin<R extends ClassWithValidate<BaseResult>>
         }
 
         static validate(raw: unknown): SegmentationResult | null {
-            const baseresult: BaseResult|null = super.validate(raw)
-            if(baseresult
-            && util.is_object(raw)
-            && util.has_string_property(raw, 'classmap')){
-                const segresult:SegmentationResult = baseresult as SegmentationResult;
-                segresult.classmap = raw.classmap;
-                return segresult
+            return ( new SegmentationResult() ).apply(raw)
+        }
+
+        apply(raw:unknown): SegmentationResult | null {
+            if(super.apply(raw) == null)
+                return null
+            
+            if(util.is_object(raw)
+            && util.has_string_property(raw, 'classmap')) {
+                this.classmap = raw.classmap
+                return this;
             }
             else return null;
         }

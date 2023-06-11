@@ -32,6 +32,8 @@ export class Result {
     constructor(status:ResultStatus = 'unprocessed', raw:unknown = null) {
         this.status = status;
         this.raw    = raw;
+
+        this.apply(raw)
     }
 
     /** Export this result to files.
@@ -42,9 +44,17 @@ export class Result {
         return await null;
     }
 
+    /** @virtual Convet an object to a new result or null if invalid */
     static validate(raw:unknown): Result|null {
-        if(util.is_object(raw)){
-            return new Result('processed', raw)
+        const result = new Result('processed', raw)
+        return result.apply(raw)
+    }
+
+    /** @virtual Internal function to assign values from another object to this one  */
+    apply(raw:unknown): Result | null {
+        if(util.is_object(raw)) {
+            this.status = 'processed'
+            return this;
         }
         else return null;
     }
