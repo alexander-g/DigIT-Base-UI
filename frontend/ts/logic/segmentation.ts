@@ -14,12 +14,17 @@ export function SegmentationResultMixin<R extends ClassWithValidate<BaseResult>>
 
         async export(): Promise<Record<string, File>|null> {
             const exports: Record<string, File>|null = await super.export() ?? {}
-            exports['classmap'] = new File([], 'TODO.jpg')
+            
+            if(this.classmap != null) {
+                const classmap: Blob|Error = await util.fetch_image_as_blob(this.classmap)
+                if(!(classmap instanceof Error))
+                    exports['classmap.png'] = new File([classmap], 'classmap.png')
+            }
             return exports;
         }
 
         static validate(raw: unknown): SegmentationResult | null {
-            return ( new SegmentationResult() ).apply(raw)
+            return ( new this('processed', raw) ).apply(raw)
         }
 
         apply(raw:unknown): SegmentationResult | null {

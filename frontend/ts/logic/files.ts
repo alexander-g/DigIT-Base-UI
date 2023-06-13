@@ -46,7 +46,7 @@ export class Result {
 
     /** @virtual Convet an object to a new result or null if invalid */
     static validate(raw:unknown): Result|null {
-        const result = new Result('processed', raw)
+        const result = new this('processed', raw)
         return result.apply(raw)
     }
 

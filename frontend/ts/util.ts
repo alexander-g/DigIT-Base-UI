@@ -66,7 +66,25 @@ export async function fetch_no_throw(...x: Parameters<typeof fetch>): Promise<Re
 export function url_for_image(imagename:string, cachebuster = true): string {
     return `images/${imagename}` + (cachebuster? `?_=${Date.now()}` : '')
 }
-  
+
+/** Request image from backend, returning a blob */
+export async function fetch_image_as_blob(imagename:string): Promise<Blob|Error> {
+    const response:Response|Error = await fetch_no_throw(url_for_image(imagename));
+    if(response instanceof Error)
+        return response;
+    
+    const blob:Blob         = await response.blob()
+    return blob;
+}
+
+/** Request image from backend, returning a blob object url */
+export async function fetch_image_as_object_url(imagename:string): Promise<string|Error> {
+    const blob:Blob|Error = await fetch_image_as_blob(imagename)
+    if(blob instanceof Error)
+        return blob;
+    
+    return URL.createObjectURL(blob)
+}
 
 
 export type Point = {

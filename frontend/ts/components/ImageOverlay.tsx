@@ -57,15 +57,12 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
     }
 
     async set_img_src(imagename:string): Promise<void> {
-        if(this.ref.current != null)
-            this.ref.current.src = await fetch_image_as_blob(imagename)
+        if(this.ref.current != null) {
+            const maybe_objurl:string|Error = await util.fetch_image_as_object_url(imagename)
+            if(typeof maybe_objurl == 'string')
+                this.ref.current.src = maybe_objurl;
+        }
     }
 }
 
 
-/** Request image from backend, returning a blob object url */
-export async function fetch_image_as_blob(imagename:string): Promise<string> {
-    const response:Response = await fetch(util.url_for_image(imagename));
-    const blob:Blob         = await response.blob()
-    return URL.createObjectURL(blob)
-}

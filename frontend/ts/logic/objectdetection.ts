@@ -27,7 +27,7 @@ export function ObjectdetectionResultMixin<R extends ClassWithValidate<BaseResul
 
         /** @override */
         static validate(raw: unknown): ObjectdetectionResult | null {
-            return (new ObjectdetectionResult()).apply(raw)
+            return (new this('processed', raw)).apply(raw)
         }
         
         apply(raw:unknown): ObjectdetectionResult | null {
