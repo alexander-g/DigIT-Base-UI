@@ -72,26 +72,38 @@ export abstract class FileTableContent<I extends Input, R extends Result>
 extends preact.Component<FileTableContentProps<I,R>> {
     $result_visible: signals.Signal<boolean> = new signals.Signal(true)
 
-    render(props: FileTableContentProps<I,R>): JSX.Element {
+    render(_props: FileTableContentProps<I,R>): JSX.Element {
         return <>
-            <ContentMenu 
-                input            = {props.input} 
-                $result          = {props.$result}
-                $result_visible  = {this.$result_visible}
-                view_menu_extras = {this.view_menu_extras()}
-                processingmodule = {props.processingmodule}
-            >
-                { this.content_menu_extras() } 
-            </ContentMenu>
-            
+            { this.contentmenu() }
             { this.contentview() }
         </>
+    }
+
+    contentmenu(): JSX.Element {
+        return (
+        <ContentMenu 
+            input            = {this.props.input} 
+            $result          = {this.props.$result}
+            $result_visible  = {this.$result_visible}
+            view_menu_extras = {this.view_menu_extras()}
+            help_button      = {this.help_menu()}
+            processingmodule = {this.props.processingmodule}
+        >
+            { this.content_menu_extras() } 
+        </ContentMenu>
+        )
     }
 
     /** Additional menu elements to display in the "eye" view menu
      *  @virtual Overwritten by subclasses if needed */
     view_menu_extras(): JSX.Element[] {
         return []
+    }
+
+    /** Help button which displays an overlay with instructions */
+    help_menu(): JSX.Element|undefined {
+        //use default
+        return undefined;
     }
 
     /** Additional menu buttons to display in the content menu

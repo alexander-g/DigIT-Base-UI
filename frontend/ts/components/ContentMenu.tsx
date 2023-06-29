@@ -16,6 +16,10 @@ type ContentMenuProps<I extends Input, R extends Result> = InputResultPair<I,R> 
 
     /** Additional menu items to pass to the view menu */
     view_menu_extras?:  JSX.Element[];
+
+    /** Button with popup that displays instructions.
+     *  @default {@link HelpButton } */
+    help_button?:       JSX.Element;
 };
 
 /** A menu bar for every image, containing control buttons */
@@ -27,7 +31,7 @@ export function ContentMenu<I extends Input, R extends Result>(
             class = "ui bottom attached secondary icon menu"
             style = "border-top-width:0px; margin-bottom:0px;"
         >
-            <PlayButton     inputresultpair={props} processingmodule={props.processingmodule}/>
+            <PlayButton inputresultpair={props} processingmodule={props.processingmodule}/>
             <ViewMenu 
                 $result         = {props.$result} 
                 $result_visible = {props.$result_visible}
@@ -35,7 +39,7 @@ export function ContentMenu<I extends Input, R extends Result>(
             />
             { props.children }
             <DownloadButton inputfile={props.input} $result={props.$result} />
-            <HelpButton />
+            { props.help_button ?? <HelpButton /> }
         </div>
     );
 }
@@ -215,7 +219,7 @@ type HelpButtonProps = {
     children?: preact.ComponentChildren
 }
 
-/** Not a realbutton, but a popup that displays usage information */
+/** Not a real button, but a popup that displays usage information */
 export class HelpButton extends preact.Component<HelpButtonProps> {
     ref: preact.RefObject<HTMLAnchorElement> = preact.createRef()
 
