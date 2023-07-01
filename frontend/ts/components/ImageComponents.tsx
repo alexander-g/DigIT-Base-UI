@@ -78,6 +78,9 @@ type ImageControlsProps = {
     children:       preact.ComponentChildren;
     /** The natural/original size of the displayed image */
     $imagesize:     signals.ReadonlySignal<ImageSize|null>;
+
+    /** Callback for moving mouse event */
+    on_mouse_move?:  (event:MouseEvent) => void;
 }
 
 /** Responsible for panning and zooming of images and important for layout */
@@ -143,6 +146,7 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
             style       =   {{...set_aspect_ratio_css, ...unselectable_css, ...transform_css}}
             onWheel     =   {this.on_wheel.bind(this)}
             onMouseDown =   {this.on_mouse_down.bind(this) }
+            onMouseMove =   {this.props.on_mouse_move}
             >
                 {/* prevent children from receiving inputs by default */}
                 <div style="pointer-events: none">
