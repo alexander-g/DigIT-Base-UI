@@ -23,21 +23,12 @@ export abstract class FlaskProcessing<R extends Result> extends ProcessingModule
             return new this.ResultClass('failed');
         
         
-        const raw:unknown = await parse_response(response)
+        const raw:unknown = await util.parse_json_response(response)
         return this.ResultClass.validate(raw) ?? new this.ResultClass('failed');
     }
 }
 
 
 
-async function parse_response(response:Response): Promise<unknown|Error> {
-    let raw:unknown;
-    try {
-        raw = JSON.parse(await response.text())
-    } catch (error: unknown) {
-        return new Error('Failed to parse response',{cause:error});
-    }
-    return raw;
-}
 
 

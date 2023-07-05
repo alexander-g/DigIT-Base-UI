@@ -86,6 +86,17 @@ export async function fetch_image_as_object_url(imagename:string): Promise<strin
     return URL.createObjectURL(blob)
 }
 
+export async function parse_json_response(response:Response): Promise<unknown|Error> {
+    let raw:unknown;
+    try {
+        raw = JSON.parse(await response.text())
+    } catch (error: unknown) {
+        return new Error('Failed to parse response',{cause:error});
+    }
+    return raw;
+}
+
+
 
 export type Point = {
     x:number, 
@@ -221,6 +232,12 @@ export function is_array_of_type<T>(
 
 export function is_number_array(x: unknown): x is number[] {
     return is_array_of_type(x, validate_number)
+}
+
+export function validate_number_array(x: unknown): number[]|null {
+    if(is_number_array(x))
+        return x;
+    else return null;
 }
 
 export function validate_string_array(x: unknown): string[]|null {
