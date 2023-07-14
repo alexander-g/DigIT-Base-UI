@@ -61,6 +61,7 @@ ObjectDetectionDownload = class extends BaseDownload{
 
     static build_annotation_jsonfile(filename, results){
         let jsondata = deepcopy(LABELME_TEMPLATE);
+        jsondata = Object.assign(jsondata, results)
         jsondata.imagePath = filename
 
         for(const [i,box] of Object.entries(results.boxes ?? {})){
