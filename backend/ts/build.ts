@@ -71,7 +71,9 @@ export async function compile_everything(
     if(clear)
         clear_folder(paths.static)
     
-    await esbuild.initialize_esbuild()
+    await esbuild.initialize_esbuild(
+        path.dirname(paths.frontend)
+    )
     
     const promises: Promise<unknown>[] = []
 

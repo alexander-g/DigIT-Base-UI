@@ -169,8 +169,8 @@ async function fetch_esbuild_wasm(destination:string): Promise<void> {
 }
 
 /** Check that `esbuild.wasm` exists, download if necessary and initialize it */
-export async function initialize_esbuild(): Promise<void> {
-    const path_to_wasm = "./assets/esbuild.wasm"
+export async function initialize_esbuild(root?:string): Promise<void> {
+    const path_to_wasm:string = path.join(root ?? '', "./assets/esbuild.wasm")
     if(!fs.existsSync(path_to_wasm)) {
         await fetch_esbuild_wasm(path_to_wasm)
     }
