@@ -1,7 +1,8 @@
-#!./deno.sh run --allow-read=./frontend,./static --allow-write=./static --no-prompt
+#!./deno.sh run  --no-prompt --allow-read=./ --allow-write=./static --allow-env=DENO_DIR
 
-import { preact_ssr, sucrase }          from "./dep.ts";
+import { preact_ssr }                   from "./dep.ts";
 import { path, fs, flags }              from "./dep.ts"
+import * as esbuild                     from "./esbuild.ts";
 
 import * as paths                       from "./paths.ts"
 
@@ -16,12 +17,11 @@ type CompilationPaths = {
      */
     frontend:       string;
     
-    /** Glob pattern relative to the root path `frontend` to find files 
-     *  that need to be compiled. E.g: `'**\/*.ts{x,}'` */
-    frontend_glob:  string;
-    
     /** Path to the main tsx file, relative to `frontend` */
     index_tsx:      string;
+
+    /** Path to third-party dependencies/imports, relative to `frontend` */
+    dep_ts:         string;
 
     /** Additional glob patterns relative to `frontend` to find files
      *  that need to be copyied into `static` */
@@ -31,8 +31,8 @@ type CompilationPaths = {
 export const DEFAULT_PATHS: CompilationPaths = {
     static          :   paths.static_folder(),
     frontend        :   paths.frontend(),
-    frontend_glob   :   'ts/**/*.ts{x,}',
     index_tsx       :   'ts/index.tsx',
+    dep_ts          :   'ts/dep.ts',
     copy_globs      :   [
         'css/**/*.*',
         'thirdparty/**/*.*',
@@ -71,12 +71,35 @@ export async function compile_everything(
     if(clear)
         clear_folder(paths.static)
     
+    await esbuild.initialize_esbuild()
+    
+    const promises: Promise<unknown>[] = []
+
+    //copy css, assets and thirdparty JS into the static folder
     copy_files_to_static(paths)
-    for(const filepath of collect_files(paths.frontend_glob, paths.frontend)){
-        const jscode:string = transpile( path.join(paths.frontend, filepath) )
-        write_to_static(filepath, paths.static, jscode)
-    }
-    return await compile_index(paths)
+    
+    //transpile and bundle thirdparty dependencies to dep.ts
+    const dep_ts:string = path.join(paths.frontend, paths.dep_ts)
+    
+    promises.push(
+        esbuild.compile_esbuild(dep_ts, './static/dep.ts')
+    )
+
+    //transpile and bundle index.tsx
+    promises.push(
+        esbuild.compile_esbuild(
+            path.join(paths.frontend, paths.index_tsx), 
+            path.join(paths.static,   paths.index_tsx), 
+            {[dep_ts]: './dep.ts'}
+        )
+    )
+
+    //compile the main JSX <Index /> element into index.html
+    promises.push(
+        compile_index(paths)
+    )
+    
+    await Promise.all(promises)
 }
 
 export async function compile_default(overrides:Partial<CompilationPaths> = {}): Promise<void> {
@@ -90,13 +113,14 @@ export async function compile_index(paths: CompilationPaths): Promise<void> {
     // deno-lint-ignore no-explicit-any
     const module: { Index?: () => any } = await import(path_to_index)
     if(!module.Index)
-        throw new Error('Could not find Index component')
+        throw new Error('Could not find <Index/> component')
     
     // deno-lint-ignore no-explicit-any
     const main_element:any = module.Index()
     const rendered:string  = preact_ssr.render(main_element, {}, {pretty:true})
-    write_to_static(path.basename(paths.index_tsx).replace('.tsx', '.html'), paths.static, rendered)
-
+    write_to_static(
+        path.basename(paths.index_tsx).replace('.tsx', '.html'), paths.static, rendered
+    )
 }
 
 export function copy_files_to_static(paths:CompilationPaths): void {
@@ -122,25 +146,12 @@ export function write_to_static(filepath:string, destination:string, content:str
     Deno.writeTextFileSync(outputfile, content)
 }
 
-/** Read and convert a TypeScript/TSX file into JavaScript */
-function transpile(path:string): string {
-    const raw:string = Deno.readTextFileSync(path)
-    const transpiled:sucrase.TransformResult = sucrase.transform(
-      raw,
-      {
-        transforms:         ['jsx', 'typescript'],
-        production:         true,
-        jsxImportSource:    'preact',
-        jsxPragma:          'preact.h',
-        jsxFragmentPragma:  'preact.Fragment',
-        filePath:           path,
-      }
-    )
-    return transpiled.code;
-}
-
 export function clear_folder(path:string): void {
-    Deno.removeSync(path, {recursive:true})
+    try {
+        Deno.removeSync(path, {recursive:true})
+    // deno-lint-ignore no-empty
+    } catch {}
+    
     fs.ensureDirSync(path)
 }
 

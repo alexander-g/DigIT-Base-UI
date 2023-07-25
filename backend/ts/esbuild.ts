@@ -69,12 +69,46 @@ function CustomResolvePlugin(remap:Record<string, string> = {}): esbuild.Plugin 
     }
 }
 
+
+type MonkeyPermissions = {
+    permissions: Deno.Permissions,
+    env:         Deno.Env,
+}
+
+/** Replace `Deno.permissions` and `Deno.env` with mocks
+ *  because `deno_cache` doesnt know how to use them properly */
+function monkeypatch_permissions(replace_with?: MonkeyPermissions): MonkeyPermissions {
+    const DENO_DIR: string|undefined = Deno.env.get('DENO_DIR')
+    const previous: MonkeyPermissions = {
+        permissions: Deno.permissions,
+        env:         Deno.env,
+    }
+    
+    //mock
+    replace_with = replace_with ?? ({
+        permissions: {
+            request: () => {}
+        },
+        env:         new Map(
+            Object.entries({
+                DENO_AUTH_TOKENS: undefined,
+                DENO_DIR:         DENO_DIR,
+            })
+        )
+    } as unknown as MonkeyPermissions);
+
+    Object.assign(Deno, replace_with);
+    return previous;
+}
+
 async function load_module_from_deno_cache(path:string): Promise<string | null> {
+    const previous: MonkeyPermissions = monkeypatch_permissions()
     const loader: cache.Loader = cache.createCache({
         allowRemote:    true,
         readOnly:       true,
         cacheSetting:   'only',
     })
+    monkeypatch_permissions(previous);
 
     const loadresponse = await loader.load(path)
     if(loadresponse?.kind == 'module') {
@@ -86,7 +120,7 @@ async function load_module_from_deno_cache(path:string): Promise<string | null> 
 
 export async function compile_esbuild(
     rootfile:   string, 
-    output:     string, 
+    outputfile: string, 
     remap?:     Record<string, string>
 ): Promise<string> {
     rootfile = path.resolve(rootfile)
@@ -112,10 +146,14 @@ export async function compile_esbuild(
 
     const decoder = new TextDecoder("utf-8");
     const result_str: string = decoder.decode(result.outputFiles?.[0]?.contents)
-    Deno.writeTextFileSync(output, result_str)
+
+    //ensure sub-directories exist
+    fs.ensureFileSync(outputfile)
+    Deno.writeTextFileSync(outputfile, result_str)
     return result_str;
 }
 
+/** Download `esbuild.wasm` */
 async function fetch_esbuild_wasm(destination:string): Promise<void> {
     const url = new URL(`https://cdn.jsdelivr.net/npm/esbuild-wasm@${esbuild.version}/esbuild.wasm`)
     Deno.permissions.requestSync({name:'net', host:url.host})
@@ -130,6 +168,7 @@ async function fetch_esbuild_wasm(destination:string): Promise<void> {
     }
 }
 
+/** Check that `esbuild.wasm` exists, download if necessary and initialize it */
 export async function initialize_esbuild(): Promise<void> {
     const path_to_wasm = "./assets/esbuild.wasm"
     if(!fs.existsSync(path_to_wasm)) {
