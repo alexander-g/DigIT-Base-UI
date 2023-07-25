@@ -9,7 +9,7 @@
   },
   "lock": false,
   "tasks": {
-    "compile_index": "./backend/ts/preact.ts",
+    "compile_index": "./backend/ts/build.ts",
     "bundle_deps"  : "./backend/ts/esbuild.ts",
     "cache":         "./deno.sh cache ./backend/ts/dep.ts ./frontend/ts/index.tsx ./tests/testcases_deno/dep.ts",
     //vendoring currently not recommended, typechecking issues

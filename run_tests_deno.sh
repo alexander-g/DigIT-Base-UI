@@ -7,6 +7,7 @@ rm -rf $COVERAGE_DIR
 ./deno.sh test                  \
     --allow-read=.,/tmp         \
     --allow-write=/tmp          \
+    --allow-env=DENO_DIR        \
     --no-prompt                 \
     --cached-only               \
     --coverage=$COVERAGE_DIR/raw    \

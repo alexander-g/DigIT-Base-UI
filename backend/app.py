@@ -26,7 +26,7 @@ from .paths import (
 
 
 class App(flask.Flask):
-    def __init__(self, path_to_deno:str = None, path_to_deno_cfg:str = None, **kw):
+    def __init__(self, deno_cfg: 'DenoConfig' = None, **kw):
         is_debug         = sys.argv[0].endswith('.py')
         is_second_start  = (os.environ.get("WERKZEUG_RUN_MAIN") == 'true')
         do_not_reload    = (os.environ.get('DO_NOT_RELOAD',None) is not None)
@@ -59,10 +59,7 @@ class App(flask.Flask):
         print()
 
 
-        #TODO: check if paths exist        
-        self.deno     = path_to_deno     or default_deno_path()[0]
-        self.deno_cfg = path_to_deno_cfg or default_deno_path()[1]
-        self.deno_cfg = f'--config {self.deno_cfg}' if self.deno_cfg else ''
+        self.deno_cfg = deno_cfg or DenoConfig()
 
         setup_cache(self.cache_path)
         self.recompile_static()
@@ -199,8 +196,7 @@ class App(flask.Flask):
             #only in development and during build, not in release
             return
 
-        subprocess.check_call(f'{self.deno} task {self.deno_cfg} compile_index', shell=True)
-        #subprocess.check_call('./deno.sh task bundle_deps',  shell=True)
+        subprocess.check_call(self.deno_cfg.build_cmd, shell=True)
     
     def run(self, parse_args=True, **args):
         if parse_args:
@@ -227,7 +223,44 @@ def setup_cache(cache_path):
     atexit.register(lambda: shutil.rmtree(cache_path, ignore_errors=True))
 
 
-def default_deno_path() -> tp.Tuple[str,str]:
-    executable = os.path.join(path_to_this_module(), '..', 'deno.sh')
-    configfile = os.path.join(path_to_this_module(), '..', 'deno.jsonc')
-    return executable, configfile
+class DenoConfig:
+    def __init__(
+        self,
+        root:      tp.Optional[str] = None, 
+        executable:tp.Optional[str] = None,
+        configfile:tp.Optional[str] = None,
+        buildfile: tp.Optional[str] = None,
+        static:    tp.Optional[str] = None,
+        frontend:  tp.Optional[str] = None,
+        index_tsx: tp.Optional[str] = None,
+        dep_ts:    tp.Optional[str] = None,
+    ):
+        #path to the root of the base project
+        base_root = os.path.realpath(
+            os.path.join(path_to_this_module(), '..')
+        )
+        #path to the root of the downstream project
+        self.root       = root or base_root
+        self.executable = executable or os.path.join(base_root, 'deno.sh')
+        self.configfile = configfile or os.path.join(base_root, 'deno.jsonc')
+        self.buildfile  = buildfile or os.path.join(base_root, 'backend/ts/build.ts')
+        self.static     = static    or os.path.join(self.root, 'static/')
+        self.frontend   = frontend  or os.path.join(self.root, 'frontend/')
+        self.index_tsx  = index_tsx or 'ts/index.tsx'
+        self.dep_ts     = dep_ts    or 'ts/dep.ts'
+
+        self.build_cmd = (
+            f'{self.executable} run' 
+            f' --config {self.configfile}'
+            f' --allow-read={self.root}'
+            f' --allow-write={self.static}'
+            f' --allow-env=DENO_DIR'
+            f' {self.buildfile}'
+            f' --static={self.static}'
+            f' --frontend={self.frontend}'
+            f' --index_tsx={self.index_tsx}'
+            f' --dep_ts={self.dep_ts}'
+        )
+
+
+#run  --no-prompt --allow-read=./ --allow-write=./static --allow-env=DENO_DIR

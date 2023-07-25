@@ -57,7 +57,6 @@ Deno.test('collect_all_labels', () => {
         new ObjectdetectionResult('processed', raw),
         new ObjectdetectionResult('failed'),
     ]
-    console.log(all_results)
 
     //testing ObjectdetectionResult constructor
     asserts.assertEquals(all_results[1]?.instances?.length, 3)
