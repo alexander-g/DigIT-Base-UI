@@ -24,7 +24,7 @@ type CompilationPaths = {
     dep_ts:         string;
 
     /** Additional glob patterns relative to `frontend` to find files
-     *  that need to be copyied into `static` */
+     *  that need to be copied into `static` */
     copy_globs?:    string[];
 }
 
@@ -82,7 +82,10 @@ export async function compile_everything(
     const dep_ts:string = path.join(paths.frontend, paths.dep_ts)
     
     promises.push(
-        esbuild.compile_esbuild(dep_ts, './static/dep.ts')
+        esbuild.compile_esbuild(
+            dep_ts, 
+            path.join(paths.static,   paths.dep_ts)
+        )
     )
 
     //transpile and bundle index.tsx
@@ -123,7 +126,9 @@ export async function compile_index(paths: CompilationPaths): Promise<void> {
     )
 }
 
-export function copy_files_to_static(paths:CompilationPaths): void {
+type GlobPaths = Pick<CompilationPaths, 'frontend'|'static'|'copy_globs'>
+
+export function copy_files_to_static(paths:GlobPaths): void {
     //TODO: make async
     for(const pattern of paths.copy_globs ?? []) {
         const files_to_copy:string[] = collect_files(pattern, paths.frontend)
@@ -156,7 +161,19 @@ export function clear_folder(path:string): void {
 }
 
 
+function parse_args(): Record<string, string> {
+    return flags.parse(Deno.args, {default: {...DEFAULT_PATHS, copy_globs:[]} })
+}
+
 if(import.meta.main){
-    //const args: Record<string, string> = flags.parse(Deno.args);
-    compile_default()
+    const args: Record<string,string> = parse_args()
+
+    compile_default(args)
+
+    //copy assets/thirdparty files even from downstream //TODO: need some kind of flag
+    copy_files_to_static({
+        frontend:   DEFAULT_PATHS.frontend,
+        copy_globs: DEFAULT_PATHS.copy_globs,
+        static:     args.static!,
+    })
 }

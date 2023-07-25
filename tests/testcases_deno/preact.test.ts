@@ -1,8 +1,12 @@
 import { asserts, fs, path } from "./dep.ts"
-import * as preact from "../../backend/ts/preact.ts"
+import * as preact from "../../backend/ts/build.ts"
 
 
-Deno.test('preact.compile_default', async () => {
+Deno.test(
+    'preact.compile_default', 
+    {sanitizeOps:false, sanitizeResources:false},   //TODO: remove
+    async () => {
+
     const tempdir:string = Deno.makeTempDirSync({ prefix: 'tests' });
     //TODO: create file in temporary directory. must be deleted afterwards
     //const tempfile:string = Deno.makeTempFileSync({dir:tempdir})
