@@ -163,19 +163,25 @@ export function clear_folder(path:string): void {
 }
 
 
-function parse_args(): Record<string, string> {
-    return flags.parse(Deno.args, {default: {...DEFAULT_PATHS, copy_globs:[]} })
+function parse_args(): Record<string, string> & {copy_globs:string[]} {
+    const args:Record<string, string>  = flags.parse(
+        Deno.args, {default: {...DEFAULT_PATHS, copy_globs:undefined} }
+    )
+    const copy_globs:string[] = args.copy_globs?.split(',') ?? [];
+    
+    return Object.assign(args, {copy_globs})
 }
 
 if(import.meta.main){
     const args: Record<string,string> = parse_args()
 
-    compile_default(args)
-
+    const paths:CompilationPaths = {...DEFAULT_PATHS, ...args}
+    clear_folder(paths.static)
     //copy assets/thirdparty files even from downstream //TODO: need some kind of flag
     copy_files_to_static({
-        frontend:   DEFAULT_PATHS.frontend,
-        copy_globs: DEFAULT_PATHS.copy_globs,
-        static:     args.static!,
+        frontend:   DEFAULT_PATHS.frontend,   //!
+        copy_globs: DEFAULT_PATHS.copy_globs, //!
+        static:     paths.static,
     })
+    await compile_everything(paths, false)
 }

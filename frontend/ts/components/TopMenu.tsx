@@ -8,7 +8,7 @@ import { Constructor }      from "../util.ts";
 
 function Logo(): JSX.Element {
     return <div class="header item" style="padding-top:0; padding-bottom:0">
-        <img class="logo" src="logo.svg" />
+        <img class="logo" src="logo.svg" style="width:100%; max-height:28px;" />
     </div>
 }
 

@@ -234,6 +234,7 @@ class DenoConfig:
         frontend:  tp.Optional[str] = None,
         index_tsx: tp.Optional[str] = None,
         dep_ts:    tp.Optional[str] = None,
+        copy_globs:tp.Optional[str] = None,
     ):
         #path to the root of the base project
         base_root = os.path.realpath(
@@ -260,6 +261,7 @@ class DenoConfig:
             f' --frontend={self.frontend}'
             f' --index_tsx={self.index_tsx}'
             f' --dep_ts={self.dep_ts}'
+            + (f' --copy_globs={copy_globs}' if copy_globs else '')
         )
 
 
