@@ -58,6 +58,19 @@ extends preact.Component<{appstate:APPSTATE}> {
     }
 }
 
+/** Main container with only a detection tab, no training */
+export class DetectionOnlyContainer extends MainContainer {
+    /** @override */
+    tab_names: string[] = ['Detection'];
+
+    /** @override */
+    tab_contents(): JSX.Element[] {
+        return [
+            <DetectionTab name={this.tab_names[0]!} appstate={this.props.appstate}/>
+        ]
+    }
+}
+
 
 export function TrainingTab(props:{name:string}): JSX.Element {
     return <div class="ui bottom attached tab" data-tab={props.name}>
