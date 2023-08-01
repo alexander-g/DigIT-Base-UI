@@ -122,19 +122,72 @@ export class ObjectdetectionRow extends FileTableRow<Input, ObjectdetectionResul
 }
 
 
+
+type LabelsFormatFunc = (instances:readonly Instance[]|null) => string;
+
 type LabelsColumnProps = {
     instances:      readonly Instance[]|null
 }
 
 /** Column in the FileTable that displays which and how many labels were detected */
-export function LabelsColumn(props:LabelsColumnProps): JSX.Element {
-    const labels:string[] = props.instances?.map( (i:Instance) => i.label ) ?? []
+export class LabelsColumn extends preact.Component<LabelsColumnProps> {
+    /** @virtual */
+    static format_func: LabelsFormatFunc = format_instances_to_simple_list;
+
+    
+    render(props:LabelsColumnProps): JSX.Element {
+        const text: string = LabelsColumn.format_func(props.instances)
+        /** CSS to force a single line. Multiple lines can break auto-scroll. */
+        const css:Record<string, string> = {
+            "display"           : "-webkit-box",
+            "-webkit-line-clamp": "1",
+            "-webkit-box-orient": "vertical",
+            "overflow"          : "hidden",
+            
+            /*also needed*/
+            "line-height"       : "unset",
+        }
+        return (
+            <td>
+                <label class="detected-labels-summary" style={css}>
+                    { text }
+                </label>
+            </td>
+        )
+    }
+}
+
+
+/** Convert a list of `Instance` to a string by concatenating class names 
+ * e.g. `"banana, banana, potato"` */
+export function format_instances_to_simple_list(instances:readonly Instance[]|null): string {
+    if(instances == null)
+        return '';
+    if(instances.length == 0)
+        return '-'
+
+    const labels:string[] = instances.map( (i:Instance) => i.label ) ?? []
     const text:  string   = labels.join(', ')
-    return (
-        <td>
-            <label class="detected-labels-summary">
-                { text }
-            </label>
-        </td>
-    )
+    return text;
+}
+
+/** Convert a list of `Instance` to a string, showing the counts per class
+ * e.g. `"banana (x2), potato"` */
+export function format_instances_to_counts(instances:readonly Instance[]|null): string {
+    if(instances == null)
+        return '';
+    if(instances.length == 0)
+        return '-';
+    
+    const labels:string[] = instances.map( (i:Instance) => i.label ) ?? []
+    const label_counts:Record<string, number> = {}
+    for(const label of labels) {
+        label_counts[label] = (label_counts[label] ?? 0) + 1
+    }
+
+    //TODO: sort by counts
+
+    return Object.entries(label_counts).map(
+        ([label, n]:[string, number]) => `${label} (x${n})`
+    ).join(', ')
 }
