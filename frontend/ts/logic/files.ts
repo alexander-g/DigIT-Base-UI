@@ -44,14 +44,17 @@ export class Result {
         return await null;
     }
 
-    /** @virtual Convet an object to a new result or null if invalid */
-    static validate(raw:unknown): Result|null {
+    /** @virtual Convert an object to a new result or null if invalid */
+    static validate<T extends Result>(
+        this: new (...args:ConstructorParameters<typeof Result>) => T, 
+        raw:  unknown
+    ): T|null {
         const result = new this('processed', raw)
         return result.apply(raw)
     }
 
     /** @virtual Internal function to assign values from another object to this one  */
-    apply(raw:unknown): Result | null {
+    apply(raw:unknown): this | null {
         if(util.is_object(raw)) {
             this.status = 'processed'
             return this;

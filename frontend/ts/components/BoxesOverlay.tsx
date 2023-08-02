@@ -32,8 +32,9 @@ export class ObjectdetectionContent extends SingleFileContent<ObjectdetectionRes
     }
 
     on_new_instances(new_instances:Instance[]): void {
+        const old_result: ObjectdetectionResult = this.props.$result.value;
         const new_result: ObjectdetectionResult 
-            = util.deepcopy({...this.props.$result.value})
+            = Object.assign(new ObjectdetectionResult(), old_result)
         new_result.instances = new_instances;
         this.props.$result.value = new_result;
     }
