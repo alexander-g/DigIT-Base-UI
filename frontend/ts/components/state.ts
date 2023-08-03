@@ -1,11 +1,12 @@
-import { signals, ReadonlySignal }              from "../dep.ts"
+import { signals }                              from "../dep.ts"
 import { Settings, AvailableModels }            from "../logic/settings.ts";
 import { Result, Input }                        from "../logic/files.ts";
 import * as files                               from "../logic/files.ts";
-import { ImageSize, Constructor }               from "../util.ts";
+import { Constructor }                          from "../util.ts";
 
 //for convenience
-export {Result, Input};
+export { Result }
+export type {Input}
 
 
 /** Helper class to prevent undefined initial values */

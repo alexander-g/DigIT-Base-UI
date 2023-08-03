@@ -3,13 +3,7 @@ import * as util            from "../util.ts";
 
 
 /** Base input type, can be anything with a name */
-export class Input {
-    name: string;
-
-    constructor(name:string){
-        this.name = name;
-    }
-}
+export type Input = { name: string };
 
 
 
@@ -25,13 +19,21 @@ export class Result {
     /** Indicates if the result is valid or not */
     status:         ResultStatus = 'unprocessed';
 
+    /** The `name` attribute of the corresponding {@link Input} */
+    inputname:      string|null;                                         //TODO: make this non-null
+
     /** Raw processing outputs, as received from backend or onnx.
      *  For debugging. */
-    readonly raw?:  unknown;
+    readonly raw:   unknown;
 
-    constructor(status:ResultStatus = 'unprocessed', raw:unknown = null) {
+    constructor(
+        status:ResultStatus     = 'unprocessed', 
+        raw:unknown             = null, 
+        inputname:string|null   = null,                                  //TODO: make this required
+    ) {
         this.status = status;
         this.raw    = raw;
+        this.inputname = inputname;
 
         this.apply(raw)
     }

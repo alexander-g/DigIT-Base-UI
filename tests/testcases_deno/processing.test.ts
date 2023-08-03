@@ -84,7 +84,15 @@ Deno.test('objdetprocessing', async (t:Deno.TestContext) => {
         asserts.assertExists(result.instances)
         asserts.assertEquals(result.instances?.length, 2)
         asserts.assertEquals(result.instances[1]?.box.x1, 300)
-        asserts.assertExists(await result.export())
+
+        const exported = await result.export()
+        asserts.assertExists(exported)
+        asserts.assertExists(exported['mock.jpg.json'])
+        
+        //assert valid json and contains two boxes
+        asserts.assert(
+            JSON.parse(await exported['mock.jpg.json'].text()).shapes.length == 2
+        )
     })
     mock.restore()
 })

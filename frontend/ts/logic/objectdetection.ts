@@ -1,5 +1,5 @@
-import { Result as BaseResult, MaybeInstances } from "./files.ts";
-import * as util                from "../util.ts"
+import { Result as BaseResult, MaybeInstances, ResultStatus } from "./files.ts";
+import * as util                    from "../util.ts"
 import * as boxes                   from "./boxes.ts";
 import { FlaskProcessing }          from "./flask_processing.ts";
 
@@ -20,7 +20,10 @@ export class ObjectdetectionResult extends BaseResult {
     /** @override */
     async export(): Promise<Record<string, File>|null> {
         const exports: Record<string, File>|null = await super.export() ?? {}
-        exports['instances'] = new File([], 'TODO.csv')
+        const jsondata:string  = export_as_labelme_json(this)
+        // deno-lint-ignore no-inferrable-types
+        const filename:string  = `${this.inputname}.json`
+        exports[filename] = new File([jsondata], filename)
         return exports;
     }
     
@@ -49,4 +52,31 @@ export class ObjectdetectionFlaskProcessing extends FlaskProcessing<Objectdetect
 }
 
 
-
+/** Export a {@link ObjectdetectionResult} to the LabelMe format 
+ *  (https://github.com/wkentaro/labelme) */
+export function export_as_labelme_json(result:ObjectdetectionResult): string {
+    // deno-lint-ignore no-explicit-any
+    const shapes: any[] = []
+    for(const instance of result.instances ?? []) {
+        const shape = {
+            label:      instance.label,
+            line_color: null,
+            fill_color: null,
+            points: [ [ instance.box.x0, instance.box.y0 ],
+                      [ instance.box.x1, instance.box.y1 ] ],
+            shape_type: "rectangle",
+            flags: {}
+        }
+        shapes.push(shape)
+    }
+    const jsondata = {
+        //version: "3.16.2",
+        flags:     {},
+        shapes:    shapes,
+        lineColor: [ 0, 255, 0, 128 ],
+        fillColor: [255,  0, 0, 128 ],
+        imagePath: result.inputname,
+        imageData: null
+    }
+    return JSON.stringify(jsondata, null, 2)
+}
