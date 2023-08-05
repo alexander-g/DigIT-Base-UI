@@ -8,6 +8,7 @@ rm -rf $COVERAGE_DIR
     --allow-read=.,/tmp         \
     --allow-write=/tmp          \
     --allow-env=DENO_DIR        \
+    --allow-net=cdn.jsdelivr.net \
     --no-prompt                 \
     --cached-only               \
     --coverage=$COVERAGE_DIR/raw    \

@@ -2,7 +2,7 @@
 
 import { esbuild, cache, path, fs } from "./dep.ts";
 import * as paths                   from "./paths.ts"
-
+import { fetch_no_throw }           from "../../frontend/ts/util.ts";
 
 
 /** An esbuild plugin that resolves cached modules from deno cache and normal files */
@@ -118,7 +118,7 @@ async function load_module_from_deno_cache(path:string): Promise<string | null> 
 }
 
 
-export async function compile_esbuild(
+async function compile_esbuild(
     rootfile:   string, 
     outputfile: string, 
     remap?:     Record<string, string>
@@ -153,36 +153,78 @@ export async function compile_esbuild(
     return result_str;
 }
 
-/** Download `esbuild.wasm` */
-async function fetch_esbuild_wasm(destination:string): Promise<void> {
-    const url = new URL(`https://cdn.jsdelivr.net/npm/esbuild-wasm@${esbuild.version}/esbuild.wasm`)
-    Deno.permissions.requestSync({name:'net', host:url.host})
 
-    const response:Response = await fetch(url)
-    if(response.ok) {
-        const dirname:string = path.dirname(destination)
-        Deno.permissions.requestSync({name:'write', path:dirname})
+const ESBUILD_URL = new URL(
+    `https://cdn.jsdelivr.net/npm/esbuild-wasm@${esbuild.version}/esbuild.wasm`
+)
+
+/** Check that `esbuild.wasm` exists, download if necessary */
+async function ensure_esbuild_wasm(root:string): Promise<string|Error> {
+    const path_to_wasm:string = path.join(root, "assets/esbuild.wasm")
+    if(!fs.existsSync(path_to_wasm)) {
+        const response:Response|Error = await fetch_no_throw(ESBUILD_URL)
+        if(response instanceof Error)
+            return response;
+        
+        const dirname:string = path.dirname(path_to_wasm)
         fs.ensureDirSync(dirname)
-        const f:Deno.FsFile = Deno.openSync(destination, {write:true, create:true})
+        const f:Deno.FsFile = Deno.openSync(path_to_wasm, {write:true, create:true})
         await response?.body?.pipeTo(f.writable)
     }
+    return path_to_wasm;
 }
 
-/** Check that `esbuild.wasm` exists, download if necessary and initialize it */
-export async function initialize_esbuild(root?:string): Promise<void> {
-    const path_to_wasm:string = path.join(root ?? '', "./assets/esbuild.wasm")
-    if(!fs.existsSync(path_to_wasm)) {
-        await fetch_esbuild_wasm(path_to_wasm)
+/** Make sure all required permissions are set, return instructions if not */
+function check_permissions(root:string, static_folder?:string): true|Error {
+    static_folder = static_folder ?? paths.static_folder(root)
+    if(
+        Deno.permissions.querySync({name:"env", variable:'DENO_DIR'}).state != "granted"
+     || Deno.permissions.querySync({name:"read", path:root}).state != "granted"
+     || Deno.permissions.querySync({name:"write", path:static_folder}).state !=  "granted"
+     || Deno.permissions.querySync({name:'net', host:ESBUILD_URL.host}).state != "granted"
+    )
+        return new Error(`Required permissions:\n`
+            +`--allow-env=DENO_DIR \n`
+            +`--allow-read=${root}\n`
+            +`--allow-write=${root}\n`
+            +`--allow-net=${ESBUILD_URL.host}`
+        )
+    //else
+    return true;
+}
+
+export class ESBuild {
+    /** Check prerequisites and initialize esbuild if all ok */
+    static async initialize(root:string, static_folder?:string): Promise<ESBuild|Error> {
+        static_folder = static_folder ?? paths.static_folder(root)
+        const status: true|Error = check_permissions(root, static_folder)
+        if(status instanceof Error)
+            return status;
+        
+        const path_to_wasm:string|Error = await ensure_esbuild_wasm(root)
+        if(path_to_wasm instanceof Error)
+            return path_to_wasm;
+        
+        const esbuild_wasm_module
+            = new WebAssembly.Module(Deno.readFileSync(path_to_wasm))
+        await esbuild.initialize({ wasmModule: esbuild_wasm_module, worker: false })
+
+        return new ESBuild;
     }
-    const esbuild_wasm_module
-        = new WebAssembly.Module(Deno.readFileSync(path_to_wasm))
-    await esbuild.initialize({ wasmModule: esbuild_wasm_module, worker: false })
+
+    async compile_esbuild(...args:Parameters<typeof compile_esbuild>): Promise<string> {
+        return await compile_esbuild(...args)
+    }
 }
 
 
 if (import.meta.main) {
-    await initialize_esbuild()
-    const rootfile: string = path.join(paths.frontend(),      'dep.ts')
-    const output:   string = path.join(paths.static_folder(), 'dep.ts')
-    compile_esbuild(rootfile, output)
+    const build:ESBuild|Error = await ESBuild.initialize(paths.root())
+    if(build instanceof Error)
+        console.log(build.message)
+    else {
+        const rootfile: string = path.join(paths.frontend(),      'dep.ts')
+        const output:   string = path.join(paths.static_folder(), 'dep.ts')
+        build.compile_esbuild(rootfile, output)
+    }
 }

@@ -1,4 +1,4 @@
-#!./deno.sh run  --no-prompt --allow-read=./ --allow-write=./static --allow-env=DENO_DIR
+#!./deno.sh run  --no-prompt --allow-read=./ --allow-write=./ --allow-env=DENO_DIR --allow-net=cdn.jsdelivr.net
 
 import { preact_ssr }                   from "./dep.ts";
 import { path, fs, flags }              from "./dep.ts"
@@ -71,9 +71,13 @@ export async function compile_everything(
     if(clear)
         clear_folder(paths.static)
     
-    await esbuild.initialize_esbuild(
-        path.dirname(paths.frontend)
+    const build:esbuild.ESBuild|Error = await esbuild.ESBuild.initialize(
+        path.dirname(paths.frontend), paths.static
     )
+    if(build instanceof Error){
+        console.log(build.message)
+        return;
+    }
     
     const promises: Promise<unknown>[] = []
 
@@ -83,8 +87,9 @@ export async function compile_everything(
     //transpile and bundle thirdparty dependencies to dep.ts
     const dep_ts:string = path.join(paths.frontend, paths.dep_ts)
     
+    //bundle third-party dependencies
     promises.push(
-        esbuild.compile_esbuild(
+        build.compile_esbuild(
             dep_ts, 
             path.join(paths.static,   paths.dep_ts)
         )
@@ -92,7 +97,7 @@ export async function compile_everything(
 
     //transpile and bundle index.tsx
     promises.push(
-        esbuild.compile_esbuild(
+        build.compile_esbuild(
             path.join(paths.frontend, paths.index_tsx), 
             path.join(paths.static,   paths.index_tsx), 
             {[dep_ts]: './dep.ts'}
