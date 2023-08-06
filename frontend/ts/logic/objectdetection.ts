@@ -1,4 +1,4 @@
-import { Result as BaseResult, MaybeInstances, ResultStatus } from "./files.ts";
+import { Result as BaseResult, MaybeInstances } from "./files.ts";
 import * as util                    from "../util.ts"
 import * as boxes                   from "./boxes.ts";
 import { FlaskProcessing }          from "./flask_processing.ts";
@@ -20,6 +20,9 @@ export class ObjectdetectionResult extends BaseResult {
     /** @override */
     async export(): Promise<Record<string, File>|null> {
         const exports: Record<string, File>|null = await super.export() ?? {}
+        if(this.status != 'processed')
+            return null;
+        
         const jsondata:string  = export_as_labelme_json(this)
         // deno-lint-ignore no-inferrable-types
         const filename:string  = `${this.inputname}.json`

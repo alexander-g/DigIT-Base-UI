@@ -12,7 +12,8 @@ Deno.test(
     //const tempfile:string = Deno.makeTempFileSync({dir:tempdir})
     //fs.ensureFileSync(tempfile)
 
-    await preact.compile_default({static:tempdir})
+    const maybe_error:void|Error = await preact.compile_default({static:tempdir})
+    asserts.assertFalse(maybe_error instanceof Error, maybe_error?.message)
     //asserts.assertFalse( fs.existsSync(tempfile) )
     
     const dir_contents: Deno.DirEntry[] = [...Deno.readDirSync(tempdir)]

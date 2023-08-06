@@ -12,11 +12,11 @@ Deno.test("zip_files", async () => {
   };
 
   // Call the function
-  const compressed_data:Uint8Array = await zip_files(data);
+  const ziparchive:File|Error = await zip_files(data, "archive.zip");
 
   // Assert that the result is a Uint8Array with non-zero length
-  asserts.assert(compressed_data instanceof Uint8Array);
-  asserts.assert(compressed_data.length > 0);
+  asserts.assert(ziparchive instanceof File);
+  asserts.assert( new Uint8Array(await ziparchive.arrayBuffer()).length > 0);
 });
 
 

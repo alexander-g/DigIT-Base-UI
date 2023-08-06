@@ -194,9 +194,11 @@ export function DownloadButton(props:DownloadButtonProps): JSX.Element {
 /** Format the results of a single file and download */
 export async function download_single_result(input:Input, result:Result): Promise<void> {
     const exportfiles:Record<string, File>|null = await result.export()
-    if(!exportfiles)
-        //TODO some kind of error message maybe?
+    if(!exportfiles){
+        console.trace('result.export() failed')
+        //TODO error message to the user?
         return;
+    }
     
     const exportpaths:string[] = Object.keys(exportfiles)
     if(exportpaths.length == 1){
@@ -206,9 +208,13 @@ export async function download_single_result(input:Input, result:Result): Promis
     } else {
         //multiple files, zip into an archive first
         const archivename         = `${input.name}.result.zip`
-        const zipdata:Uint8Array  = await zip_files(exportfiles)
-        ui_util.download_file( new File([zipdata], archivename) )
-
+        const zipfile:File|Error  = await zip_files(exportfiles, archivename)
+        if(zipfile instanceof Error){
+            console.trace('Zipping results failed')
+            //TODO: error message to the user
+            return;
+        }
+        ui_util.download_file( zipfile )
     }
 }
 

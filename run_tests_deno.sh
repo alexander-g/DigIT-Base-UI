@@ -6,7 +6,7 @@ rm -rf $COVERAGE_DIR
 ./deno.sh check frontend/ts/index.tsx
 ./deno.sh test                  \
     --allow-read=.,/tmp         \
-    --allow-write=/tmp          \
+    --allow-write=/tmp,./assets \
     --allow-env=DENO_DIR        \
     --allow-net=cdn.jsdelivr.net \
     --no-prompt                 \

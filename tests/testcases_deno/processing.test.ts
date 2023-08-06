@@ -95,5 +95,10 @@ Deno.test('objdetprocessing', async (t:Deno.TestContext) => {
         )
     })
     mock.restore()
+
+    for(const status of ['unprocessed', 'processing', 'failed'])
+        asserts.assertEquals(
+            await (new objdet.ObjectdetectionResult(status as files.ResultStatus)).export(), null
+        )
 })
 
