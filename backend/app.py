@@ -235,6 +235,7 @@ class DenoConfig:
         index_tsx: tp.Optional[str] = None,
         dep_ts:    tp.Optional[str] = None,
         copy_globs:tp.Optional[str] = None,
+        assets:    tp.Optional[str] = None,
     ):
         #path to the root of the base project
         base_root = os.path.realpath(
@@ -249,13 +250,15 @@ class DenoConfig:
         self.frontend   = frontend  or os.path.join(self.root, 'frontend/')
         self.index_tsx  = index_tsx or 'ts/index.tsx'
         self.dep_ts     = dep_ts    or 'ts/dep.ts'
+        self.assets     = assets    or os.path.join(self.root, 'assets/')
 
         self.build_cmd = (
             f'{self.executable} run' 
             f' --config {self.configfile}'
             f' --allow-read={self.root}'
-            f' --allow-write={self.static}'
+            f' --allow-write={self.static},{self.assets}'
             f' --allow-env=DENO_DIR'
+            f' --allow-net=cdn.jsdelivr.net'
             f' {self.buildfile}'
             f' --static={self.static}'
             f' --frontend={self.frontend}'
@@ -265,4 +268,3 @@ class DenoConfig:
         )
 
 
-#run  --no-prompt --allow-read=./ --allow-write=./static --allow-env=DENO_DIR

@@ -65,7 +65,7 @@ function check_paths(paths: CompilationPaths): void {
 export async function compile_everything(
     paths: CompilationPaths, 
     clear: boolean
-): Promise<void> {
+): Promise<void|Error> {
     check_paths(paths)
 
     if(clear)
@@ -75,8 +75,7 @@ export async function compile_everything(
         path.dirname(paths.frontend), paths.static
     )
     if(build instanceof Error){
-        console.log(build.message)
-        return;
+        return build;
     }
     
     const promises: Promise<unknown>[] = []
@@ -112,9 +111,10 @@ export async function compile_everything(
     await Promise.all(promises)
 }
 
-export async function compile_default(overrides:Partial<CompilationPaths> = {}): Promise<void> {
-    //TODO: (need to coordinate with flask) clear static
-    await compile_everything({...DEFAULT_PATHS, ...overrides}, true)
+export async function compile_default(
+    overrides:Partial<CompilationPaths> = {}
+): Promise<void|Error> {
+    return await compile_everything({...DEFAULT_PATHS, ...overrides}, true)
 }
 
 /** Compile the main frontend JSX component `<Index/>` and write to the static folder */
@@ -188,5 +188,10 @@ if(import.meta.main){
         copy_globs: DEFAULT_PATHS.copy_globs, //!
         static:     paths.static,
     })
-    await compile_everything(paths, false)
+    
+    const rc: void|Error = await compile_everything(paths, false)
+    if(rc instanceof Error){
+        console.log(rc.message+'\n')
+        Deno.exit(1)
+    }
 }

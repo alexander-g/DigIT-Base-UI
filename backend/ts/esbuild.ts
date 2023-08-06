@@ -158,9 +158,13 @@ const ESBUILD_URL = new URL(
     `https://cdn.jsdelivr.net/npm/esbuild-wasm@${esbuild.version}/esbuild.wasm`
 )
 
+function path_to_esbuild_wasm(root:string): string {
+    return path.join(root, "assets/esbuild.wasm")
+}
+
 /** Check that `esbuild.wasm` exists, download if necessary */
 async function ensure_esbuild_wasm(root:string): Promise<string|Error> {
-    const path_to_wasm:string = path.join(root, "assets/esbuild.wasm")
+    const path_to_wasm:string = path_to_esbuild_wasm(root)
     if(!fs.existsSync(path_to_wasm)) {
         const response:Response|Error = await fetch_no_throw(ESBUILD_URL)
         if(response instanceof Error)
@@ -177,16 +181,18 @@ async function ensure_esbuild_wasm(root:string): Promise<string|Error> {
 /** Make sure all required permissions are set, return instructions if not */
 function check_permissions(root:string, static_folder?:string): true|Error {
     static_folder = static_folder ?? paths.static_folder(root)
+    const path_to_wasm:string = path.dirname(path_to_esbuild_wasm(root))
     if(
         Deno.permissions.querySync({name:"env", variable:'DENO_DIR'}).state != "granted"
      || Deno.permissions.querySync({name:"read", path:root}).state != "granted"
      || Deno.permissions.querySync({name:"write", path:static_folder}).state !=  "granted"
+     || Deno.permissions.querySync({name:"write", path:path_to_wasm}).state !=  "granted"
      || Deno.permissions.querySync({name:'net', host:ESBUILD_URL.host}).state != "granted"
     )
-        return new Error(`Required permissions:\n`
+        return new Error(`Required permissions (relative to ${root}):\n`
             +`--allow-env=DENO_DIR \n`
-            +`--allow-read=${root}\n`
-            +`--allow-write=${root}\n`
+            +`--allow-read=./${path.relative(root, root)}\n`
+            +`--allow-write=./${path.relative(root, static_folder)},./${path.relative(root, path_to_wasm)}\n`
             +`--allow-net=${ESBUILD_URL.host}`
         )
     //else
