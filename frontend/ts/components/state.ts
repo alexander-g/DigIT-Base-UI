@@ -58,9 +58,13 @@ class AvailableModelsSignal extends Signal<AvailableModels|undefined> {}
 
 
 /** Main application state structure */
-export class AppState<SETTINGS extends Settings = Settings> {
+export class AppState<
+I extends Input = Input, 
+R extends Result = Result, 
+SETTINGS extends Settings = Settings
+> {
     /** Currently loaded files and their results */
-    $files:InputFileList<Input, Result> = new Signal([])
+    $files:InputFileList<I, R> = new Signal([])
 
     /** Indicates whether there is a processing operation running somewhere */
     $processing: Signal<boolean> = new Signal<boolean>(false)

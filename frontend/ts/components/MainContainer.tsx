@@ -1,8 +1,9 @@
 import { preact, JSX }      from "../dep.ts"
 import { AppState }         from "./state.ts";
 import { DetectionTab }     from "./DetectionTab.tsx";
+import { ObjectDetectionTab } from "./DetectionTab.tsx";
 import { page_wide_css }    from "./styles.ts";
-
+import * as objdet          from "../logic/objectdetection.ts";
 
 type TabsProps = {
     tab_names:  string[]
@@ -28,6 +29,14 @@ export class Tabs extends preact.Component<TabsProps> {
 }
 
 
+type TabProps<AS extends AppState> = {
+    appstate:   AS;
+    name:       string;
+}
+
+export abstract class TabContent<AS extends AppState> extends preact.Component<TabProps<AS>>{}
+
+
 export class MainContainer<APPSTATE extends AppState = AppState> 
 extends preact.Component<{appstate:APPSTATE}> {
     /** @virtual */
@@ -45,15 +54,15 @@ extends preact.Component<{appstate:APPSTATE}> {
             <Tabs tab_names={this.tab_names}/>
 
             { this.tab_contents() }
-
         </div>
         )
     }
 
+    /** @virtual */
     tab_contents(): JSX.Element[] {
         return [
             <DetectionTab name={this.tab_names[0]!} appstate={this.props.appstate}/>, 
-            <TrainingTab  name={this.tab_names[1]!}/>,
+            <TrainingTab  name={this.tab_names[1]!} appstate={this.props.appstate}/>,
         ]
     }
 }
@@ -72,8 +81,35 @@ export class DetectionOnlyContainer extends MainContainer {
 }
 
 
-export function TrainingTab(props:{name:string}): JSX.Element {
-    return <div class="ui bottom attached tab" data-tab={props.name}>
-        Training Not Implemented.
-    </div>
+//TODO: this is messy
+
+export class MainContainerForObjectDetection
+extends MainContainer<AppState<objdet.Input, objdet.ObjectdetectionResult>> {
+    tab_contents(): preact.JSX.Element[] {
+        return [
+            <ObjectDetectionTab name={this.tab_names[0]!} appstate={this.props.appstate}/>, 
+            <TrainingTab  name={this.tab_names[1]!} appstate={this.props.appstate}/>,
+        ]
+    }
+}
+
+export class DetectionOnlyContainerForObjectDetection
+extends MainContainer<AppState<objdet.Input, objdet.ObjectdetectionResult>> {
+    /** @override */
+    tab_names: string[] = ['Detection'];
+    
+    tab_contents(): preact.JSX.Element[] {
+        return [
+            <ObjectDetectionTab name={this.tab_names[0]!} appstate={this.props.appstate}/>, 
+        ]
+    }
+}
+
+
+export class TrainingTab<AS extends AppState> extends TabContent<AS> {
+    render(props:TabProps<AS>): JSX.Element{
+        return <div class="ui bottom attached tab" data-tab={props.name}>
+            Training Not Implemented.
+        </div>
+    }
 }

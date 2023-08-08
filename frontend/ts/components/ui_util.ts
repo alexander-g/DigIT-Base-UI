@@ -107,24 +107,18 @@ export function collect_all_classes(
 
 
 /** Collect all possible classes from current global state.  */
-export function collect_all_classes_default(): string[] {
-    return ['TODO'];
-    
-    // const STATE: AppState|undefined = globalThis.STATE;    //TODO: hard-coded
-    // if(!STATE)
-    //     return []
-    
-    //     //TODO
-    // /*const results: Result[] = STATE.$files.peek().map(
-    //     (pair: InputResultPair) => pair.$result.peek()
-    // )*/
-    // const results: Result[] = []
-    // const model: string|undefined = STATE.$settings.peek()?.active_models?.detection
-    // let modelinfo: ModelInfo|undefined;
-    // if(model) 
-    //     modelinfo = find_modelinfo(STATE.$available_models.peek()?.detection ?? [], model)
+export function collect_all_classes_from_appstate(
+    appstate:AppState<Input, ObjectdetectionResult>
+): string[] {
+    const results: ObjectdetectionResult[] = appstate.$files.peek().map(
+        (pair: InputResultPair<Input, ObjectdetectionResult>) => pair.$result.peek()
+    )
+    const model: string|undefined = appstate.$settings.peek()?.active_models?.detection
+    let modelinfo: ModelInfo|undefined;
+    if(model) 
+        modelinfo = find_modelinfo(appstate.$available_models.peek()?.detection ?? [], model)
 
-    // return collect_all_classes(results, modelinfo)
+    return collect_all_classes(results, modelinfo)
 }
 
 

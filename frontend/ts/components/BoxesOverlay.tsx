@@ -338,10 +338,20 @@ type LabelDropdownProps =  {
     on_remove:  () => void;
     /** Called when user selects a new label for a box */
     on_change:  (new_label:string) => void;
+
+    /** Called to provide readymade choices when user clicks on the label 
+     * @note - this is currently not directly set, 
+     * instead, the defaultProps is overwritten globally in {@link DetectionTab} 
+     * This could lead to errors when using multiple tabs */
+    collect_all_classes?: () => string[];
 }
 
 /** Textbox, input and dropdown for fast label selection */
-class LabelDropdown extends preact.Component<LabelDropdownProps> {
+export class LabelDropdown extends preact.Component<LabelDropdownProps> {
+    static defaultProps: Pick<LabelDropdownProps, 'collect_all_classes'> = {
+        collect_all_classes: () => [/*  This should be replaced */]
+    }
+
     selectref: preact.RefObject<HTMLSelectElement>    = preact.createRef()
     labelref:  preact.RefObject<HTMLParagraphElement> = preact.createRef()
 
@@ -416,7 +426,7 @@ class LabelDropdown extends preact.Component<LabelDropdownProps> {
         const $input:any = $label.closest('.box-overlay').find('.search.dropdown');
 
         $input.dropdown('setup menu', {
-            values: ui_util.collect_all_classes_default().map( 
+            values: this.props.collect_all_classes?.().map( 
                 (v:string) => {return {name:v};} 
             ),
         });
