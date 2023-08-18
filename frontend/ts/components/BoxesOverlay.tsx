@@ -1,12 +1,10 @@
 import { preact, JSX, Signal, ReadonlySignal, signals }      from "../dep.ts";
 import { Instance, Box }                    from "../logic/boxes.ts";
-import { MaybeInstances }                   from "../logic/files.ts";
 import { Size, Point, ImageSize }           from "../util.ts";
 import * as styles                          from "./styles.ts";
 import * as ui_util                         from "./ui_util.ts";
-import * as util                            from "../util.ts";
 
-import { ObjectdetectionResult }            from "../logic/objectdetection.ts";
+import { ObjectdetectionResult, MaybeInstances } from "../logic/objectdetection.ts";
 import { SingleFileContent }                from "./FileTable.tsx";
 import { NewBoxButton }                     from "./ContentMenu.tsx";
 

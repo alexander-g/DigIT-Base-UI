@@ -1,10 +1,16 @@
-import { Result as BaseResult, MaybeInstances } from "./files.ts";
+import { Result as BaseResult, ExportType } from "./files.ts";
 import * as util                    from "../util.ts"
 import * as boxes                   from "./boxes.ts";
 import { FlaskProcessing }          from "./flask_processing.ts";
+import { ModelInfo }                from "../logic/settings.ts";
 
+
+/** The input for object detection is a single file */
 export class Input extends File {}
 
+/** Immutable array of Instance to avoid unintentional modification.
+ *  Can be also null to indicate that no boxes are available. */
+export type MaybeInstances = readonly boxes.Instance[] | null;
 
 /** Object detection result */
 export class ObjectdetectionResult extends BaseResult {
@@ -18,8 +24,10 @@ export class ObjectdetectionResult extends BaseResult {
     }
 
     /** @override */
-    async export(): Promise<Record<string, File>|null> {
-        const exports: Record<string, File>|null = await super.export() ?? {}
+    async export(what:ExportType = 'annotations'): Promise<Record<string, File>|null> {
+        console.trace(what)
+
+        const exports: Record<string, File>|null = await super.export(what) ?? {}
         if(this.status != 'processed')
             return null;
         
@@ -28,6 +36,26 @@ export class ObjectdetectionResult extends BaseResult {
         const filename:string  = `${this.inputname}.json`
         exports[filename] = new File([jsondata], filename)
         return exports;
+    }
+
+    /** @override */
+    // deno-lint-ignore require-await
+    static async export_combined(
+        results: BaseResult[],
+        format:  ExportType,
+    ): Promise<Record<string, File> | null> {
+        if(format != 'statistics')
+            return super.export_combined(results, format)
+        
+        const objdet_results: ObjectdetectionResult[] = []
+        for(const result of results)
+            if(result instanceof this)
+                objdet_results.push(result)
+        if(objdet_results.length != results.length)
+            return null;                                 //TODO: return an error
+        
+        const f = new File([export_results_as_csv(objdet_results)], 'statistics.csv')
+        return {[f.name]: f}
     }
     
     apply(raw:unknown): this | null {
@@ -55,6 +83,8 @@ export class ObjectdetectionFlaskProcessing extends FlaskProcessing<Objectdetect
 }
 
 
+
+//TODO: confidence + metadata
 /** Export a {@link ObjectdetectionResult} to the LabelMe format 
  *  (https://github.com/wkentaro/labelme) */
 export function export_as_labelme_json(result:ObjectdetectionResult): string {
@@ -82,4 +112,48 @@ export function export_as_labelme_json(result:ObjectdetectionResult): string {
         imageData: null
     }
     return JSON.stringify(jsondata, null, 2)
+}
+
+
+
+export function collect_all_classes(
+    results:       ObjectdetectionResult[], 
+    active_model?: ModelInfo
+): string[] {
+    const labelset = new Set<string>(active_model?.properties?.known_classes);
+    labelset.delete('background')
+  
+    for (const result of results) {
+        for (const instance of result.instances ?? []) {
+            labelset.add(instance.label);
+        }
+    }
+    labelset.delete('')
+    return Array.from(labelset);
+}
+
+
+/** Export a list of {@link ObjectdetectionResult} to a tabular CSV format 
+ *  @example
+ *  Filename, Bananas, Potatos
+ *  image0.jpg, 65, 0
+ *  image1.jpg, 99, 2
+ *  */
+export function export_results_as_csv(results:ObjectdetectionResult[]): string {
+    const all_classes:string[] = collect_all_classes(results)
+    const header = `Filename, ${ all_classes.join(', ') }`
+    const lines:string[] = [header]
+
+    for(const result of results) {
+        const counts:number[] = Array(all_classes.length).fill(0)
+        for(const instance of result?.instances ?? []) {
+            const index:number = all_classes.indexOf(instance.label)
+            if(index >= 0 && index <= counts.length)
+                counts[index] += 1
+            //else should not happen
+        }
+        const line = `${result.inputname}, ${counts.join(', ')}`
+        lines.push(line)
+    }
+    return lines.join('\n')
 }

@@ -6,6 +6,7 @@ import { ObjectdetectionFlaskProcessing }   from "../logic/objectdetection.ts";
 import { ObjectdetectionRow }               from "./FileTableRow.tsx";
 import { ObjectdetectionContent }           from "./BoxesOverlay.tsx";
 import { LabelDropdown }                    from "./BoxesOverlay.tsx";
+import { FileTableMenu, DownloadAllWithCSVAndAnnotations } from "./FileTableMenu.tsx";
 import { collect_all_classes_from_appstate } from "./ui_util.ts";
 import * as objdet                          from "../logic/objectdetection.ts";
 
@@ -45,10 +46,7 @@ extends preact.Component<DetectionTabProps<S>>{
             sortable        =   {false} 
             $files          =   {appstate.$files}
             $processing     =   {appstate.$processing}
-            columns         =   {[
-                {label:'Files',      width_css_class:'sixteen'}, 
-            ]}
-            processingmodule =  { new ObjectdetectionFlaskProcessing() }
+            processingmodule =  { new ObjectdetectionFlaskProcessing() }  //TODO: replace
         />; 
     }
 }
@@ -61,7 +59,9 @@ extends DetectionTab<S> {
 
         /** NOTE: overriding default prop of the label dropdown out of convenience */
         LabelDropdown.defaultProps.collect_all_classes = 
-            () => collect_all_classes_from_appstate( this.props.appstate )
+            () => collect_all_classes_from_appstate( this.props.appstate );
+        
+        FileTableMenu.defaultProps.DownloadButton = DownloadAllWithCSVAndAnnotations;
     }
 
     /** @virtual */

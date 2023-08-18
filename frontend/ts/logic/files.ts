@@ -1,4 +1,3 @@
-import { Instance }         from "./boxes.ts";
 import * as util            from "../util.ts";
 
 
@@ -9,9 +8,12 @@ export type Input = { name: string };
 
 export type ResultStatus = 'unprocessed' | 'processing' | 'processed' | 'failed';
 
-/** Immutable array of Instance to avoid unintentional modification.
- *  Can be also null to indicate that no boxes are available. */
-export type MaybeInstances = readonly Instance[] | null;
+
+
+/** What kind of data to export. 
+ *  - `annotations`: Raw data that can be loaded back into the UI.
+ *  - `statistics`:  Processed data for end user analysis. */
+export type ExportType = 'annotations'|'statistics';
 
 
 /** Base class for processing results. */
@@ -21,6 +23,8 @@ export class Result {
 
     /** The `name` attribute of the corresponding {@link Input} */
     inputname:      string|null;                                         //TODO: make this non-null
+
+    //TODO: modelinfo / metadata
 
     /** Raw processing outputs, as received from backend or onnx.
      *  For debugging. */
@@ -42,8 +46,36 @@ export class Result {
      *  @virtual Overwritten by subclasses for other types of results 
      *  @returns A mapping from filenames to exported result file objects 
      *           or null if result is not yet processed */
-    async export(): Promise<Record<string, File>|null> {
+    async export(format:ExportType = 'annotations'): Promise<Record<string, File>|null> {
         return await null;
+    }
+
+
+    /** Export a collection of results, e.g if some combined information is needed.
+     *  @virtual By default simply exports all results individually. Overrideable. */
+    static async export_combined(
+        results: Result[],
+        format:  ExportType
+    ): Promise<Record<string, File>|null> {
+        const combined_results: Record<string, File> = {}
+        for (const result of results) {
+            const exportfiles: Record<string, File> | null = await result.export(format)
+            if (exportfiles == null)
+                continue;
+    
+            if (Object.keys(exportfiles).length <= 1) {
+                //single file, add directly to the list
+                Object.assign(combined_results, exportfiles)
+            } else {
+                //multiple files, create a subfolder
+                for (const exportfile of Object.values(exportfiles))
+                combined_results[`${result.inputname}/${exportfile.name}`] = exportfile;
+            }
+        }
+        if(Object.keys(combined_results).length > 0)
+            return combined_results;
+        //else
+        return null;
     }
 
     /** @virtual Convert an object to a new result or null if invalid */

@@ -3,6 +3,7 @@ import * as testutil        from "./util.ts";
 import { asserts, mock }    from "./dep.ts";
 import { ModelInfo }        from "../../frontend/ts/logic/settings.ts";
 import { ObjectdetectionResult } from "../../frontend/ts/logic/objectdetection.ts";
+import { collect_all_classes }   from "../../frontend/ts/logic/objectdetection.ts";
 
 
 //mostly just to run through once
@@ -61,13 +62,13 @@ Deno.test('collect_all_labels', () => {
     //testing ObjectdetectionResult constructor
     asserts.assertEquals(all_results[1]?.instances?.length, 3)
     
-    const collected_labels: string[] = ui_util.collect_all_classes(
+    const collected_labels: string[] = collect_all_classes(
         all_results, active_model
     )
 
-    //alphabetically sorted, no duplicates, no 'background'
+    //no duplicates, no 'background', first the model classes
     asserts.assertEquals(
-        collected_labels, ['banana', 'kumquat', 'pineapple', 'potato', 'tomato']
+        collected_labels, ['potato', 'pineapple', 'banana', 'tomato', 'kumquat']
     )
 })
 

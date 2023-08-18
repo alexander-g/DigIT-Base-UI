@@ -1,8 +1,105 @@
 import { JSX, signals, preact }          from "../dep.ts";
-import {Input, Result, ProcessingModule} from "../logic/files.ts"
+import {Input, Result, ProcessingModule, ExportType} from "../logic/files.ts"
 import { process_inputs, download_file } from "./ui_util.ts";
 import * as state                        from "./state.ts";
 import { zip_files }                     from "../logic/zip.ts";
+
+
+
+
+type DownloadAllProps = {
+    items:       readonly state.InputResultPair<Input,Result>[];
+
+    /** Flag indicating that a processing operation is running somewhere. Read-only. */
+    $processing: signals.ReadonlySignal<boolean>;
+
+    /** Callback on click */
+    on_download_all?: (this:DownloadAllButton, event:MouseEvent) => void;
+
+    /** If provided, create a submenu with additional buttons.
+     *  Label of the submenu buttons is given by the key and callback is called on click */
+    submenu_callbacks?: Record<string, (this:DownloadAllButton, event:MouseEvent) => void >;
+}
+
+/** Button to combine and export all processed results */
+export class DownloadAllButton extends preact.Component<DownloadAllProps> {
+    static defaultProps: Pick<DownloadAllProps, 'on_download_all'|'submenu_callbacks'> = {
+        on_download_all:   this.on_download_all,
+        submenu_callbacks: undefined,
+    }
+
+    render(props: DownloadAllProps): JSX.Element {
+        //TODO: disable button if props.$processing
+        let submenu:JSX.Element|null = null
+        if(props.submenu_callbacks != undefined) {
+            submenu = <div class="menu">
+                { 
+                    Object.entries(props.submenu_callbacks).map(
+                        ([name, cb]:[string, (event:MouseEvent) => void]) => 
+                            <div class="item" onClick={cb.bind(this)}>
+                                { name }
+                            </div>
+                    ) 
+                }
+            </div>
+        }
+
+        return <>
+            <div 
+                class   = "ui simple dropdown download-all item"
+                onClick = {props.on_download_all?.bind(this)}
+            >
+                <i class="download icon"></i>
+                Download All
+                { submenu }
+            </div>
+        </>
+    }
+
+    // static only to put it into defaultProps
+    static async on_download_all(
+        this:DownloadAllButton, _event:MouseEvent, format:ExportType = 'annotations'
+    ) {
+        //TODO: this should be handled somewhere else
+        if(this.props.$processing.value)
+           return;
+        
+        const all_results:Result[] = this.props.items.map( 
+           (pair:state.InputResultPair<Input,Result>) => pair.$result.value 
+        )    
+        //TODO: show some error message to user
+        if(all_results.length == 0)
+            return;
+    
+        const ResultClass = (all_results[0]?.constructor as typeof Result|undefined)
+        //TODO: show error message if empty / or disable button
+        const all_exports: Record<string, File> 
+            = await ResultClass?.export_combined(all_results, format) ?? {}
+        const zip_archive: File|Error = await zip_files(all_exports, 'results.zip')
+        if(zip_archive instanceof Error) {
+           //TODO: show error message to user
+           console.trace(zip_archive.message)
+           return;
+        }
+        download_file(zip_archive)
+    }
+}
+
+
+/** {@link DownloadAllButton} with a predefined submenu */
+export class DownloadAllWithCSVAndAnnotations extends DownloadAllButton {
+    static defaultProps: Pick<DownloadAllProps, 'on_download_all'|'submenu_callbacks'> = {
+        on_download_all: undefined,
+        submenu_callbacks: {
+            'Download CSV':         this.on_download_all_csv,
+            'Download Annotations': this.on_download_all,
+        }
+    }
+
+    static on_download_all_csv(this:DownloadAllButton, event:MouseEvent) {
+        return DownloadAllButton.on_download_all.bind(this)(event, 'statistics')
+    }
+}
 
 
 
@@ -15,73 +112,44 @@ type FileTableMenuProps<I extends Input, R extends Result> = {
     $processing:        signals.Signal<boolean>;
 
     processingmodule:   ProcessingModule<I,R>;
+
+    /** Which DownloadButton to include.
+     *  @default {@link DownloadAllButton} */
+    DownloadButton:     typeof DownloadAllButton;
 }
 
 /** A menu on top of a file table containing buttons such as "Process all" */
-export function FileTableMenu<I extends Input, R extends Result>(
-    props:FileTableMenuProps<I,R>
-): JSX.Element {
-    const on_process_all: () => Promise<void> = async () => {
-        //TODO: this should be handled somewhere else
-        if(props.$processing.value)
-            return;
-        
-        props.$processing.value = true;
-        await process_inputs(props.displayed_items, props.processingmodule)
-        props.$processing.value = false;
+export class FileTableMenu<I extends Input, R extends Result>
+extends preact.Component<FileTableMenuProps<I,R>> {
+
+    static defaultProps: Pick<FileTableMenuProps<Input, Result>, 'DownloadButton'> = {
+        DownloadButton: DownloadAllButton,
     }
 
-    const on_export_all: () => Promise<void> = async () => {
-        //TODO: this should be handled somewhere else
-        if(props.$processing.value)
-            return;
-        
-        const all_results:R[] = props.displayed_items.map( 
-            (pair:state.InputResultPair<I,R>) => pair.$result.value 
+    render(props: FileTableMenuProps<I,R>): JSX.Element {
+        const on_process_all: () => Promise<void> = async () => {
+            //TODO: this should be handled somewhere else
+            if(props.$processing.value)
+                return;
+            
+            props.$processing.value = true;
+            await process_inputs(props.displayed_items, props.processingmodule)
+            props.$processing.value = false;
+        }
+
+        return (
+            <div class="ui top attached menu" style="border-top-width:0px;">
+                <ProcessAllButton 
+                    {...new ProcessAllButtonProps(props.$processing)} 
+                    on_process_all={on_process_all}
+                />
+                <props.DownloadButton
+                    items             = {props.displayed_items}
+                    $processing       = {props.$processing}
+                />
+            </div>
         )
-        const all_exports: Record<string, File> = await export_all(all_results)
-        const zip_archive: File|Error = await zip_files(all_exports, 'results.zip')
-        if(zip_archive instanceof Error) {
-            console.trace(zip_archive.message)
-            return;
-        }
-        download_file( zip_archive )
     }
-
-    return (
-        <div class="ui top attached menu" style="border-top-width:0px;">
-            <ProcessAllButton 
-                {...new ProcessAllButtonProps(props.$processing)} 
-                on_process_all={on_process_all}
-            />
-            <DownloadAllButton
-                $processing={props.$processing}
-                on_download_all={on_export_all}
-            />
-        </div>
-    )
-}
-
-/** Export and re-organize a list of results */
-export async function export_all<R extends Result>(
-    results: readonly R[]
-): Promise<Record<string, File>> {
-    const collection: Record<string, File> = {};
-    for (const result of results) {
-        const exportfiles: Record<string, File> | null = await result.export()
-        if (exportfiles == null)
-            continue;
-
-        if (Object.keys(exportfiles).length <= 1) {
-            //single file, add directly to the list
-            Object.assign(collection, exportfiles)
-        } else {
-            //multiple files, create a subfolder
-            for (const exportfile of Object.values(exportfiles))
-                collection[`${result.inputname}/${exportfile.name}`] = exportfile;
-        }
-    }
-    return collection
 }
 
 
@@ -128,27 +196,4 @@ export function ProcessAllButton(props:ProcessAllButtonProps): JSX.Element {
 
 ProcessAllButton.defaultprops = ProcessAllButtonProps
 
-
-
-type DownloadAllProps = {
-    /** Flag indicating that a processing operation is running somewhere. Read-only. */
-    $processing: signals.ReadonlySignal<boolean>;
-
-    /** Callback on click */
-    on_download_all: () => void;
-}
-
-/** Button to combine and export all processed results */  //TODO: csv / annotations
-export class DownloadAllButton extends preact.Component<DownloadAllProps> {
-    render(props: DownloadAllProps): JSX.Element {
-        //TODO: disable button if props.$processing
-
-        return <>
-            <div class="ui simple dropdown download-all item" onClick={props.on_download_all}>
-                <i class="download icon"></i>
-                Download All
-            </div>
-        </>
-    }
-}
 

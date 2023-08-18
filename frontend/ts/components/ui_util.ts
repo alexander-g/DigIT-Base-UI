@@ -1,7 +1,7 @@
 import { Point, Size }                          from "../util.ts";
 import { ModelInfo, find_modelinfo }            from "../logic/settings.ts";
 import { Input, Result, ProcessingModule }      from "../logic/files.ts";
-import { ObjectdetectionResult }                from "../logic/objectdetection.ts";
+import { ObjectdetectionResult, collect_all_classes } from "../logic/objectdetection.ts";
 import { AppState, InputResultPair }            from "./state.ts";
 import { preact, Signal, ReadonlySignal }       from "../dep.ts";
 
@@ -89,21 +89,6 @@ export function page2element_coordinates(
 }
 
 
-export function collect_all_classes(
-    results:       ObjectdetectionResult[], 
-    active_model?: ModelInfo
-): string[] {
-    const labelset = new Set<string>(active_model?.properties?.known_classes);
-    labelset.delete('background')
-  
-    for (const result of results) {
-        for (const instance of result.instances ?? []) {
-            labelset.add(instance.label);
-        }
-    }
-    labelset.delete('')
-    return Array.from(labelset).sort();
-}
 
 
 /** Collect all possible classes from current global state.  */

@@ -5,7 +5,7 @@ import { Box, Instance }    from "../../frontend/ts/logic/boxes.ts";
 
 import * as util            from "./util.ts";
 import { asserts, mock }    from "./dep.ts";
-import { MaybeInstances } from "../../frontend/ts/logic/files.ts";
+import { MaybeInstances } from "../../frontend/ts/logic/objectdetection.ts";
 
 
 
