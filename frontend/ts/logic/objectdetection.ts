@@ -62,6 +62,7 @@ export class ObjectdetectionResult extends BaseResult {
         if( super.apply(raw) == null )
             return null;
 
+        //format provided by the backend
         if(util.is_object(raw)
         && util.has_property_of_type(raw, 'boxes', boxes.validate_4_number_arrays)
         && util.has_property_of_type(raw, 'labels', util.validate_string_array)) {
@@ -72,6 +73,21 @@ export class ObjectdetectionResult extends BaseResult {
                 })
             );
 
+            return this;
+        }
+        //LabelMe json format as exported by {@link export_as_labelme_json()}
+        if(util.is_object(raw)
+        && util.has_property_of_type(raw, 'shapes', validate_labelme_shapes)){
+            this.instances = raw.shapes.map( (shape:LabelMeShape) => ({
+                    label: shape.label,
+                    box:   {
+                        x0: shape.points[0][0], 
+                        y0: shape.points[0][1], 
+                        x1: shape.points[1][0], 
+                        y1: shape.points[1][1], 
+                    }
+                })
+            )
             return this;
         }
         else return null;
@@ -114,6 +130,44 @@ export function export_as_labelme_json(result:ObjectdetectionResult): string {
     return JSON.stringify(jsondata, null, 2)
 }
 
+type LabelMeBox = [[number, number], [number, number]]
+
+type LabelMeShape = {
+    label:  string;
+    points: LabelMeBox;
+}
+
+function validate_labelme_shapes(x:unknown): LabelMeShape[]|null {
+    if(util.is_array_of_type(x, validate_labelme_shape)){
+        return x;
+    }
+    else return null;
+}
+
+function validate_labelme_shape(x:unknown): LabelMeShape|null {
+    if(util.is_object(x)
+    && util.has_string_property(x, 'label')
+    && util.has_property_of_type(x, 'points', validate_labelme_box)){
+        return x;
+    }
+    else return null;
+}
+
+function validate_labelme_box(x:unknown): LabelMeBox|null {
+    if(util.is_array_of_type(x, validate_2_number_array)
+    && x.length == 2){
+        return x as LabelMeBox;
+    }
+    else return null;
+}
+
+function validate_2_number_array(x:unknown): [number, number]|null {
+    if(util.is_number_array(x)
+    && x.length == 2) {
+        return x as [number, number];
+    }
+    else return null;
+}
 
 
 export function collect_all_classes(

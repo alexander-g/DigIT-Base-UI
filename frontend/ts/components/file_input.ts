@@ -1,7 +1,6 @@
-import { JSX, UTIF }    from "./dep.ts"
-import * as util        from "./util.ts"
-//import { import_result_from_file }      from "./logic/download.ts";
-import { Input, Result, InputResultPair } from "./logic/files.ts"
+import { JSX, UTIF }    from "../dep.ts"
+import * as util        from "../util.ts"
+import { Input, Result, InputResultPair } from "../logic/files.ts"
 
 /** Event handler for file drag events */
 export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
@@ -36,19 +35,23 @@ export function categorize_files(
 export const MIMETYPES: string[] = ["image/jpeg", "image/tiff"]          //NOTE: no png
 
 /** Load input and corresponding result files */
-export async function load_list_of_files(file_list:FileList|File[]): Promise<InputResultPair<File, Result>[]>{
-    const {inputfiles, resultfiles:mayberesults} = categorize_files(file_list, MIMETYPES)
-    return await load_result_files(inputfiles, mayberesults);
+export async function load_list_of_files<R extends Result>(
+    file_list:   FileList|File[],
+    ResultClass: util.ClassWithValidate<R>,
+    mimetypes:   string[] = MIMETYPES,
+): Promise<InputResultPair<File, R>[]>{
+    const {inputfiles, resultfiles:mayberesults} = categorize_files(file_list, mimetypes)
+    return await load_result_files(inputfiles, mayberesults, ResultClass);
 }
 
 
-/** Load input files only (filtering file types), uses global state */
+/** Load input files only (filtering file types) */
 export function load_inputfiles(file_list:FileList|File[]): void {
     throw new Error('TODO')
     //return load_list_of_files(file_list, MIMETYPES, set_inputfiles, () => {})
 }
 
-/** Load result files only (filtering file types), uses global state */
+/** Load result files only (filtering file types) */
 export function load_resultfiles(file_list:FileList|File[]): void {
     throw new Error('TODO')
     //return load_list_of_files(file_list, MIMETYPES, () => {}, set_resultfiles)
@@ -57,17 +60,18 @@ export function load_resultfiles(file_list:FileList|File[]): void {
 
 
 /** Load files as results if the match already loaded input files */
-export async function load_result_files(
+export async function load_result_files<R extends Result>(
     inputfiles:        File[],
     maybe_resultfiles: FileList|File[], 
-): Promise<InputResultPair<File, Result>[]> {
-    const pairs: InputResultPair<File, Result>[] = inputfiles.map(
+    ResultClass:       util.ClassWithValidate<R, ConstructorParameters<typeof Result> >,
+): Promise<InputResultPair<File, R>[]> {
+    const pairs: InputResultPair<File, R>[] = inputfiles.map(
         (input: File) => ({
-            //input:  new Input(input), 
             input:  input, 
-            result: new Result('unprocessed'),
+            result: new ResultClass('unprocessed'),
         })
     )
+    
     const input_result_map:InputResultMap
         = collect_result_files(inputfiles, Array.from(maybe_resultfiles))
     
@@ -83,16 +87,26 @@ export async function load_result_files(
         }
         
         console.log('Loading result of ', input.name)
-        console.log('TODO: Not implemented')
-        /*const result: Result|null = await import_result_from_file(result_candidates[0]!)
+        const result: R|null = await import_result_from_file(result_candidates[0]!, ResultClass)
         if(result == null){
-            console.error('Failed to parse result.')
+            console.error(`Failed to parse result for ${input}.`)
             continue;
         }
-
-        pair.result = result;*/
+        pair.result = result;
     }
     return pairs;
+}
+
+async function import_result_from_file<R extends Result>(
+    f:File, ResultClass: util.ClassWithValidate<R>
+): Promise<R|null> {
+    let jsondata:unknown;
+    try {
+        jsondata = JSON.parse(await f.text())
+    } catch (_error) {
+        return null
+    }
+    return ResultClass.validate(jsondata)
 }
 
 

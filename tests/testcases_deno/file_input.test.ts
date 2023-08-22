@@ -1,4 +1,5 @@
-import * as file_input          from "../../frontend/ts/file_input.ts"
+import * as file_input          from "../../frontend/ts/components/file_input.ts"
+import { Result }               from "../../frontend/ts/logic/files.ts"
 import { asserts, path }        from "./dep.ts"
 
 const IMAGE_ASSET1_PATH: string 
@@ -83,5 +84,5 @@ Deno.test('load_result_files', async () => {
     ];
     const result_files:File[] = []
     //just dont throw
-    await file_input.load_result_files(input_files, result_files)
+    await file_input.load_result_files(input_files, result_files, Result)
 })

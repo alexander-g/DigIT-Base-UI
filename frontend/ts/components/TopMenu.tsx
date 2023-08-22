@@ -2,7 +2,7 @@ import { JSX, preact }      from "../dep.ts"
 import { SettingsButton }   from "./Settings.tsx"
 import { page_wide_css }    from "./styles.ts";
 import * as Settings        from "./Settings.tsx"
-import * as file_input      from "../file_input.ts";
+import * as file_input      from "./file_input.ts";
 import { Constructor }      from "../util.ts";
 
 
@@ -20,7 +20,7 @@ type FileMenuItemProps = {
     /** Passed to the class attribute, should be a Fomantic icon class */
     icon_class:     string,
     /** Callback for new files */
-    on_change:      JSX.GenericEventHandler<HTMLInputElement>,
+    on_change:      (files:FileList|File[]) => unknown;
     /** Passed to the accept attribute, which file types to filter */
     accept?:        string,
     /** Additional keyword arguments for the input element */
@@ -29,6 +29,10 @@ type FileMenuItemProps = {
 
 /** Single item in the file menu */
 function FileMenuItem(props:FileMenuItemProps): JSX.Element {
+    const callback:JSX.GenericEventHandler<HTMLInputElement> = function(event:Event){
+        props.on_change((event.target as HTMLInputElement).files ?? [])
+    }
+
     return <>
         <label for={props.id} class="ui icon item">
             <i class={ props.icon_class + " icon" }></i>
@@ -38,7 +42,7 @@ function FileMenuItem(props:FileMenuItemProps): JSX.Element {
             type        =   "file" 
             id          =   { props.id }
             style       =   "display:none"
-            onChange    =   { props.on_change }
+            onChange    =   { callback }
             accept      =   { props.accept }
             multiple 
             {...props.kwargs}
@@ -46,8 +50,16 @@ function FileMenuItem(props:FileMenuItemProps): JSX.Element {
     </>
 }
 
+
+type FileMenuProps = {
+    on_inputfiles:      (files:FileList|File[]) => unknown;
+    on_inputfolder:     (files:FileList|File[]) => unknown;
+    on_annotationfiles: (files:FileList|File[]) => unknown;
+}
+
+
 /** Menu dropdown with several items for selection of input and annotation files */
-function FileMenu(): JSX.Element {
+function FileMenu(props:FileMenuProps): JSX.Element {
     return (
     <a class="ui simple dropdown item">
         <i class="file icon"></i>
@@ -61,7 +73,7 @@ function FileMenu(): JSX.Element {
                 id          =   'input-images'
                 icon_class  =   "images outline"
                 accept      =   "image/jpeg, image/tiff" 
-                on_change   =   { on_inputfiles_selected }
+                on_change   =   { props.on_inputfiles }
             />
 
             <FileMenuItem 
@@ -69,7 +81,7 @@ function FileMenu(): JSX.Element {
                 id          =   'input-folder'
                 icon_class  =   "folder outline"
                 kwargs      =   { {webkitdirectory:true, directory:true} }
-                on_change   =   { on_inputfolder_selected }
+                on_change   =   { props.on_inputfolder }
             />
 
             <div class="ui divider"></div>
@@ -80,7 +92,7 @@ function FileMenu(): JSX.Element {
                 icon_class  =   "images"
                 // TODO: this should be modifiable downstream
                 accept      =   "application/json, application/zip, application/x-zip-compressed" 
-                on_change   =   { on_annotationfiles_selected }
+                on_change   =   { props.on_annotationfiles }
             />
 
             {/* {{ filemenu_extras | indent(8) }} */}
@@ -89,27 +101,12 @@ function FileMenu(): JSX.Element {
     )
 }
 
-function on_inputfiles_selected(event:Event): void {
-    throw new Error('TODO')
-    // file_input.load_list_of_files_default(
-    //     (event.target as HTMLInputElement|null)?.files ?? []
-    // )
-}
 
-function on_inputfolder_selected(event:Event): void {
-    file_input.load_inputfiles(
-        (event.target as HTMLInputElement|null)?.files ?? []
-    )
-}
+type TopMenuProps = Settings.SettingsModalProps & FileMenuProps;
 
-function on_annotationfiles_selected(event:Event): void {
-    file_input.load_resultfiles(
-        (event.target as HTMLInputElement|null)?.files ?? []
-    )
-}
 
 /** Menu bar on the top of the page, containing file menu and settings button */
-export class TopMenu extends preact.Component<Settings.SettingsModalProps> {
+export class TopMenu extends preact.Component<TopMenuProps> {
     settings_modal: preact.RefObject<Settings.SettingsModal> = preact.createRef()
 
     /** @virtual Overwritten downstream */
@@ -119,7 +116,11 @@ export class TopMenu extends preact.Component<Settings.SettingsModalProps> {
         return <>
             <div class="ui container menu page-wide" style={page_wide_css}>
                 <Logo />
-                <FileMenu />
+                <FileMenu 
+                    on_inputfiles      = {this.props.on_inputfiles}
+                    on_inputfolder     = {this.props.on_inputfolder}
+                    on_annotationfiles = {this.props.on_annotationfiles}
+                />
                 <SettingsButton on_click={() => this.settings_modal.current?.show_modal()}/>
             </div>
             

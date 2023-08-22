@@ -3,31 +3,35 @@ import { TopMenu }          from "./components/TopMenu.tsx"
 import { MainContainer }    from "./components/MainContainer.tsx"
 import { SVGFilters }       from "./components/SVGFilters.tsx";
 
-import * as file_input      from "./file_input.ts"
+import { Input, Result }    from "./logic/files.ts";
+import * as file_input      from "./components/file_input.ts"
 import * as settings        from "./logic/settings.ts";
 
 import * as state           from "./components/state.ts";
-import { Constructor, wait } from "./util.ts";
+import * as util            from "./util.ts";
 
 
 /** Factory function creating the main component and app state.
- * @param id - HTML id for the body element
- * @param AppState - Class containing all required app variables 
+ * @param id            - HTML id for the body element
+ * @param AppState      - Class containing all required app variables 
  * @param load_settings - Function that loads and verifies settings
  * @param MainContainer - JSX component containing the main content
  * @param TopMenu       - JSX component on top of the main content */
 export function create_App<
+INPUT           extends Input,
+RESULT          extends Result,
+SETTINGS        extends settings.Settings,
+APPSTATE        extends state.AppState<File, RESULT, SETTINGS>,  //TODO: replace `File` with `INPUT`
 MAINCONTAINER   extends MainContainer,
 TOPMENU         extends TopMenu,
-APPSTATE        extends state.AppState,
-SETTINGS        extends NonNullable<APPSTATE['$settings']['value']>,
 >(
     options: {
     id:             string, 
-    AppState:       Constructor<APPSTATE>,
+    AppState:       util.Constructor<APPSTATE>,
+    ResultClass:    util.ClassWithValidate<RESULT>,
     load_settings:  () => Promise<settings.SettingsResponse<SETTINGS>|null>,
-    MainContainer:  Constructor<MAINCONTAINER>,
-    TopMenu:        Constructor<TOPMENU>,
+    MainContainer:  util.Constructor<MAINCONTAINER>,
+    TopMenu:        util.Constructor<TOPMENU>,
     }
 ){
     return class App extends preact.Component {
@@ -45,6 +49,9 @@ SETTINGS        extends NonNullable<APPSTATE['$settings']['value']>,
                     $settings           = {this.appstate.$settings}
                     $available_models   = {this.appstate.$available_models}
                     load_settings_fn    = {options.load_settings}
+                    on_inputfiles       = {this.set_files.bind(this)}
+                    on_inputfolder      = {this.set_files.bind(this)}
+                    on_annotationfiles  = {this.set_files.bind(this)}
                 />
                 <options.MainContainer appstate={this.appstate}/>
             </body>
@@ -65,22 +72,25 @@ SETTINGS        extends NonNullable<APPSTATE['$settings']['value']>,
             this.appstate.$available_models.value = settingsresponse.available_models;
         }
 
-        /** File drop event handler.
-         *  @virtual Can be customized downstream */
-        async on_drop(event:JSX.TargetedDragEvent<HTMLElement>): Promise<FileList|undefined> {
+        /** File drop event handler. */
+        async on_drop(event:JSX.TargetedDragEvent<HTMLElement>): Promise<FileList|File[]> {
             event.preventDefault()
+            const files: FileList | File[] = event.dataTransfer?.files ?? []
             
+            return await this.set_files(files)
+        }
+
+        /** Set the currently loaded files in the appstate */
+        async set_files(files: FileList|File[]): Promise<FileList|File[]>{
             //reset state  //TODO: should not be done here, but when setting the input files
             this.appstate.$files.value = []
-            //get file list from event, otherwise its gone after the wait
-            const files: FileList | undefined = event.dataTransfer?.files
             //refresh ui
-            await wait(1)
+            await util.wait(1)
 
             this.appstate.$files.value = state.input_result_signal_pairs_from_simple(
-                await file_input.load_list_of_files(files ?? [])
+                await file_input.load_list_of_files(files ?? [], options.ResultClass)
             )
-            
+
             return files;
         }
     }
@@ -90,6 +100,7 @@ SETTINGS        extends NonNullable<APPSTATE['$settings']['value']>,
 class App extends create_App({
     id:             'base', 
     AppState:       state.AppState, 
+    ResultClass:    Result,
     load_settings:  settings.load_settings, 
     MainContainer:  MainContainer, 
     TopMenu:        TopMenu

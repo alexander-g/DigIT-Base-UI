@@ -1,7 +1,6 @@
 import { preact, JSX, signals }             from "../dep.ts"
-//import type { GenericInputFileState }       from "./state.ts"
 import type { ImageSize, Point }            from "../util.ts"
-import { set_image_src }                    from "../file_input.ts"
+import { set_image_src }                    from "./file_input.ts"
 import * as styles                          from "./styles.ts"
 import { start_drag }                       from "./ui_util.ts";
 
