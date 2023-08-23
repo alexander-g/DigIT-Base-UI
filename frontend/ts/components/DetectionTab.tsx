@@ -1,6 +1,7 @@
 import { preact, JSX }  from "../dep.ts"
 import { FileTable }    from "./FileTable.tsx"
 import { AppState }     from "./state.ts"
+import { TabContent }   from "./MainContainer.tsx";
 
 import { ObjectdetectionFlaskProcessing }   from "../logic/objectdetection.ts";
 import { ObjectdetectionRow }               from "./FileTableRow.tsx";
@@ -10,17 +11,8 @@ import { FileTableMenu, DownloadAllWithCSVAndAnnotations } from "./FileTableMenu
 import { collect_all_classes_from_appstate } from "./ui_util.ts";
 import * as objdet                          from "../logic/objectdetection.ts";
 
-export type DetectionTabProps<APPSTATE extends AppState> = {
-    /** Name of the tab, used to associate it with the tab button */
-    name:           string;
 
-    /** Global application state */
-    appstate:       APPSTATE;
-}
-
-
-export class DetectionTab<S extends AppState> 
-extends preact.Component<DetectionTabProps<S>>{
+export class DetectionTab<S extends AppState> extends TabContent<S> {
     /** Flag indicating that this tab is the first one. Speeds up rendering.
      *  @virtual */
     // deno-lint-ignore no-inferrable-types

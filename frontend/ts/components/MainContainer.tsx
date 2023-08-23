@@ -30,80 +30,47 @@ export class Tabs extends preact.Component<TabsProps> {
 
 
 type TabProps<AS extends AppState> = {
+    /** Global application state */
     appstate:   AS;
+
+    /** Name of the tab, used to associate it with the tab button */
     name:       string;
 }
 
 export abstract class TabContent<AS extends AppState> extends preact.Component<TabProps<AS>>{}
 
 
-export class MainContainer<APPSTATE extends AppState = AppState> 
-extends preact.Component<{appstate:APPSTATE}> {
-    /** @virtual */
-    tab_names: string[] = ['Detection', 'Training']
+type MainContainerProps<AS extends AppState> = {
+    appstate: AS;
+    tabs:     Record<string, typeof TabContent<AS>>
+}
 
+/** Container below the top menu, organizes different tabs */
+export class MainContainer<AS extends AppState> 
+extends preact.Component<MainContainerProps<AS>> {
     render(): JSX.Element {
-        const pad_bottom_css = {paddingBottom: '50vh'}
+
+        const tab_names:string[] = Object.keys(this.props.tabs)
+        const tab_contents: JSX.Element[] = Object.entries(this.props.tabs).map(
+                 ([tabname, TabClass]:[string, typeof TabContent<AS>]) => 
+                     <TabClass name={tabname} appstate={this.props.appstate}/>
+        )
+
         return (
         <div 
-            class   =   "ui container page-wide" 
-            id      =   "main-container" 
-            style   =   {{...page_wide_css, ...pad_bottom_css}}
+            class = "ui container page-wide" 
+            id    = "main-container" 
+            style = {{...page_wide_css, ...{paddingBottom: '50vh'}}}
         >
             <div class="ui hidden section divider whitespace"></div>
-            <Tabs tab_names={this.tab_names}/>
+            <Tabs tab_names={tab_names}/>
 
-            { this.tab_contents() }
+            { tab_contents }
         </div>
         )
     }
-
-    /** @virtual */
-    tab_contents(): JSX.Element[] {
-        return [
-            <DetectionTab name={this.tab_names[0]!} appstate={this.props.appstate}/>, 
-            <TrainingTab  name={this.tab_names[1]!} appstate={this.props.appstate}/>,
-        ]
-    }
 }
 
-/** Main container with only a detection tab, no training */
-export class DetectionOnlyContainer extends MainContainer {
-    /** @override */
-    tab_names: string[] = ['Detection'];
-
-    /** @override */
-    tab_contents(): JSX.Element[] {
-        return [
-            <DetectionTab name={this.tab_names[0]!} appstate={this.props.appstate}/>
-        ]
-    }
-}
-
-
-//TODO: this is messy
-
-export class MainContainerForObjectDetection
-extends MainContainer<AppState<objdet.Input, objdet.ObjectdetectionResult>> {
-    tab_contents(): preact.JSX.Element[] {
-        return [
-            <ObjectDetectionTab name={this.tab_names[0]!} appstate={this.props.appstate}/>, 
-            <TrainingTab  name={this.tab_names[1]!} appstate={this.props.appstate}/>,
-        ]
-    }
-}
-
-export class DetectionOnlyContainerForObjectDetection
-extends MainContainer<AppState<objdet.Input, objdet.ObjectdetectionResult>> {
-    /** @override */
-    tab_names: string[] = ['Detection'];
-    
-    tab_contents(): preact.JSX.Element[] {
-        return [
-            <ObjectDetectionTab name={this.tab_names[0]!} appstate={this.props.appstate}/>, 
-        ]
-    }
-}
 
 
 export class TrainingTab<AS extends AppState> extends TabContent<AS> {

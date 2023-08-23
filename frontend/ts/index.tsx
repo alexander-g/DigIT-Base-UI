@@ -11,6 +11,11 @@ import * as state           from "./components/state.ts";
 import * as util            from "./util.ts";
 
 
+import { TrainingTab, TabContent }     from "./components/MainContainer.tsx"
+import { DetectionTab }    from "./components/DetectionTab.tsx"
+
+
+
 /** Factory function creating the main component and app state.
  * @param id            - HTML id for the body element
  * @param AppState      - Class containing all required app variables 
@@ -22,7 +27,6 @@ INPUT           extends Input,
 RESULT          extends Result,
 SETTINGS        extends settings.Settings,
 APPSTATE        extends state.AppState<File, RESULT, SETTINGS>,  //TODO: replace `File` with `INPUT`
-MAINCONTAINER   extends MainContainer,
 TOPMENU         extends TopMenu,
 >(
     options: {
@@ -30,9 +34,10 @@ TOPMENU         extends TopMenu,
     AppState:       util.Constructor<APPSTATE>,
     ResultClass:    util.ClassWithValidate<RESULT>,
     load_settings:  () => Promise<settings.SettingsResponse<SETTINGS>|null>,
-    MainContainer:  util.Constructor<MAINCONTAINER>,
     TopMenu:        util.Constructor<TOPMENU>,
-    }
+
+    tabs: Record<string, typeof TabContent<APPSTATE>>,
+    },
 ){
     return class App extends preact.Component {
         appstate: APPSTATE = new options.AppState()
@@ -53,7 +58,10 @@ TOPMENU         extends TopMenu,
                     on_inputfolder      = {this.set_files.bind(this)}
                     on_annotationfiles  = {this.set_files.bind(this)}
                 />
-                <options.MainContainer appstate={this.appstate}/>
+                <MainContainer<APPSTATE>
+                    appstate = {this.appstate} 
+                    tabs     = {options.tabs}
+                />
             </body>
             )
         }
@@ -102,11 +110,13 @@ class App extends create_App({
     AppState:       state.AppState, 
     ResultClass:    Result,
     load_settings:  settings.load_settings, 
-    MainContainer:  MainContainer, 
-    TopMenu:        TopMenu
+    TopMenu:        TopMenu,
+
+    tabs: {
+             'Detection': DetectionTab,
+             'Training':  TrainingTab,
+        },
 }){}
-
-
 
 
 /** CSS that does not seem to work adding via JSX */
