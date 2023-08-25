@@ -6,6 +6,36 @@ export type Input = { name: string };
 
 
 
+/** A `File` that represents an input */
+export class InputFile extends File implements Input  {
+
+    /** Check if `x` is a file and of the correct type (jpeg/tiff) */
+    static validate<I extends InputFile>(
+        this: util.Constructor<I, ConstructorParameters<typeof File>> & {
+            check_filetype: typeof InputFile.check_filetype;
+        },
+        x:    unknown
+    ): I|null {
+        if(x instanceof File
+        && this.check_filetype(x) ){
+            return new this([x], x.name)
+        }
+        else return null;
+    }
+
+
+    static MIMETYPES: string[] = ["image/jpeg", "image/tiff"]          //NOTE: no png
+
+    static check_filetype(f:File): boolean {
+        return this.MIMETYPES.includes(f.type)
+    }
+}
+
+
+
+
+
+
 export type ResultStatus = 'unprocessed' | 'processing' | 'processed' | 'failed';
 
 

@@ -3,6 +3,7 @@ import type { ImageSize, Point }            from "../util.ts"
 import { set_image_src }                    from "./file_input.ts"
 import * as styles                          from "./styles.ts"
 import { start_drag }                       from "./ui_util.ts";
+import { InputImageFile }                   from "./state.ts";
 
 export type InputImageProps = {
     /** Which file to display */
@@ -54,8 +55,14 @@ export class InputImage extends preact.Component<InputImageProps> {
     }
 
     load_image(): void {
-        if(this.ref.current) {
-            set_image_src(this.ref.current, this.props.inputfile)
+        const htmlimage: HTMLImageElement|null = this.ref.current;
+        const inputfile: File = this.props.inputfile;
+        if(htmlimage != null) {
+            if(inputfile instanceof InputImageFile){
+                inputfile.set_image_src(htmlimage)
+            } else {
+                set_image_src(htmlimage, this.props.inputfile)
+            }
         }
     }
 

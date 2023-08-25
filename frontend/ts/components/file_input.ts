@@ -10,8 +10,8 @@ export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
 
 /** Two sets of files, in no well-defined order. 
  *  First one to be interpreted as inputfiles, second one might be results */
-type CategorizedFiles = {
-    inputfiles:  File[],
+type CategorizedFiles<I extends Input>= {
+    inputfiles:  I[],
     resultfiles: File[]
 }
 
@@ -19,30 +19,23 @@ type CategorizedFiles = {
  *  @param file_list            - The list of files to load.
  *  @param input_file_types     - Mime types that are interpreted as input files.
  */
-export function categorize_files(
+export function categorize_files<I extends Input>(
     file_list:                  FileList|File[],
-    input_file_types:           string[],
-): CategorizedFiles {
+    InputClass:                 util.ClassWithValidate<I>,
+): CategorizedFiles<I> {
     const files: File[]       = Array.from(file_list)
-    const inputfiles: File[]  = files.filter(
-        (f:File) => input_file_types.includes(f.type)
-    )
-    const resultfiles: File[] = files.filter((f:File) => !inputfiles.includes(f))
+    const inputfiles: I[]     = []
+    const resultfiles:File[]  = []
+    for(const f of files) {
+        const inputfile:I|null = InputClass.validate(f)
+        if(inputfile != null)
+            inputfiles.push(inputfile)
+        else
+            resultfiles.push(f)          //TODO: convert to ResultClass.validate
+    }
     return {inputfiles, resultfiles}
 }
 
-
-export const MIMETYPES: string[] = ["image/jpeg", "image/tiff"]          //NOTE: no png
-
-/** Load input and corresponding result files */
-export async function load_list_of_files<R extends Result>(
-    file_list:   FileList|File[],
-    ResultClass: util.ClassWithValidate<R>,
-    mimetypes:   string[] = MIMETYPES,
-): Promise<InputResultPair<File, R>[]>{
-    const {inputfiles, resultfiles:mayberesults} = categorize_files(file_list, mimetypes)
-    return await load_result_files(inputfiles, mayberesults, ResultClass);
-}
 
 
 /** Load input files only (filtering file types) */
@@ -59,21 +52,22 @@ export function load_resultfiles(file_list:FileList|File[]): void {
 
 
 
-/** Load files as results if the match already loaded input files */
-export async function load_result_files<R extends Result>(
-    inputfiles:        File[],
-    maybe_resultfiles: FileList|File[], 
+/** Load a set of files. Some might be inputs, others previously exported results */
+export async function load_list_of_files<I extends Input, R extends Result>(
+    files:             FileList|File[],
+    InputClass:        util.ClassWithValidate<I>,
     ResultClass:       util.ClassWithValidate<R, ConstructorParameters<typeof Result> >,
-): Promise<InputResultPair<File, R>[]> {
-    const pairs: InputResultPair<File, R>[] = inputfiles.map(
-        (input: File) => ({
+): Promise<InputResultPair<I, R>[]> {
+    const {inputfiles, resultfiles:mayberesultfiles} = categorize_files(files, InputClass)
+    const pairs: InputResultPair<I, R>[] = inputfiles.map(
+        (input: I) => ({
             input:  input, 
             result: new ResultClass('unprocessed'),
         })
     )
     
-    const input_result_map:InputResultMap
-        = collect_result_files(inputfiles, Array.from(maybe_resultfiles))
+    const input_result_map:InputResultMap<I>
+        = collect_result_files(inputfiles, Array.from(mayberesultfiles))
     
     for(const pair of pairs){
         const input:Input = pair.input;
@@ -110,23 +104,23 @@ async function import_result_from_file<R extends Result>(
 }
 
 
-type InputResultFiles = {
-    inputfile:   File,
+type InputResultFiles<T> = {
+    inputfile:   T,
     resultfiles: File[]
 }
 
-type InputResultMap = Record<string, InputResultFiles>
+type InputResultMap<T> = Record<string, InputResultFiles<T>>
 
 /** Filter a list of files, matching result files to input files 
  * @param maybe_result_files - Array of File objects that may include result files.
  * @param input_files        - Array of File objects representing the input files that have already been loaded.
  * @returns Object mapping input file names to arrays of File objects representing the result files that match each input file.
  */
-export function collect_result_files(
-    input_files:        File[],
+export function collect_result_files<I extends Input>(
+    input_files:        I[],
     maybe_result_files: File[],
-): InputResultMap {
-    const collected: InputResultMap = {}
+): InputResultMap<I> {
+    const collected: InputResultMap<I> = {}
     for(const maybe_resultfile of maybe_result_files){
         const zip_filetypes:string[] = ["application/zip", "application/x-zip-compressed"]
         if(zip_filetypes.includes(maybe_resultfile.type)){
@@ -138,7 +132,7 @@ export function collect_result_files(
         /** Check for every input file if this result file matches */
         for(const inputfile of input_files){
             if(match_resultfile_to_inputfile(inputfile, maybe_resultfile)){
-                const prev: InputResultFiles = collected[inputfile.name] ?? {
+                const prev: InputResultFiles<I> = collected[inputfile.name] ?? {
                     inputfile:   inputfile,
                     resultfiles: []
                 }
@@ -151,7 +145,7 @@ export function collect_result_files(
 }
 
 /** Return true if the result file matches the input file */
-function match_resultfile_to_inputfile(inputfile:File, maybe_resultfile:File): boolean {
+function match_resultfile_to_inputfile(inputfile:Input, maybe_resultfile:File): boolean {
     const basename: string         = util.file_basename(maybe_resultfile.name)
     const no_ext_filename:string   = util.remove_file_extension(inputfile.name)
     const candidate_names:string[] = [

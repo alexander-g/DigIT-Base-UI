@@ -1,5 +1,5 @@
 import * as file_input          from "../../frontend/ts/components/file_input.ts"
-import { Result }               from "../../frontend/ts/logic/files.ts"
+import { Result, InputFile }    from "../../frontend/ts/logic/files.ts"
 import { asserts, path }        from "./dep.ts"
 
 const IMAGE_ASSET1_PATH: string 
@@ -38,11 +38,13 @@ Deno.test('categorize_files', () => {
     ];
 
     const categorized_files = file_input.categorize_files(
-        mock_files,
-        ["image/jpeg", "image/tiff"]
+        mock_files, InputFile,
     );
 
-    asserts.assertEquals(categorized_files.inputfiles, [mock_files[0], mock_files[2], mock_files[3]])
+    asserts.assertEquals(
+        categorized_files.inputfiles.map( i => i.name ), 
+        [mock_files[0], mock_files[2], mock_files[3]].map( f => f!.name ),
+    )
     asserts.assertEquals(categorized_files.resultfiles, [mock_files[1]])
 })
 
@@ -77,12 +79,11 @@ Deno.test("collect_result_files filters result files for input files", () => {
 
 
 Deno.test('load_result_files', async () => {
-    const input_files: File[] = [
+    const files: File[] = [
         new File([], "input1.jpg"),
         new File([], "input2.tiff"),
         new File([], "input3.tiff"),
     ];
-    const result_files:File[] = []
     //just dont throw
-    await file_input.load_result_files(input_files, result_files, Result)
+    await file_input.load_list_of_files(files, InputFile, Result)
 })

@@ -3,6 +3,7 @@ import { Settings, AvailableModels }            from "../logic/settings.ts";
 import { Result, Input }                        from "../logic/files.ts";
 import * as files                               from "../logic/files.ts";
 import { Constructor }                          from "../util.ts";
+import { set_image_src }                        from "./file_input.ts";
 
 //for convenience
 export { Result }
@@ -45,6 +46,19 @@ export function input_result_signal_pairs_from_inputs<I extends Input, R extends
     )
     return input_result_signal_pairs_from_simple(simple_pairs)
 }
+
+
+
+type HTMLDisplayable = {
+    set_image_src: (htmlimage: HTMLImageElement) => unknown;
+}
+
+export class InputImageFile extends files.InputFile implements HTMLDisplayable {
+    async set_image_src(htmlimage: HTMLImageElement): Promise<void> {
+        return await set_image_src(htmlimage, this)
+    }
+}
+
 
 
 
