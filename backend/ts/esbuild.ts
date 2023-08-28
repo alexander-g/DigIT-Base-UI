@@ -25,18 +25,25 @@ function CustomResolvePlugin(remap:Record<string, string> = {}): esbuild.Plugin 
         /** Resolve local to absolute paths */
         build.onResolve({ filter: /^\./ }, (args:esbuild.OnResolveArgs) => {
             const abspath:string = path.join( path.dirname(args.importer), args.path )
+            let result:esbuild.OnResolveResult = {}
             if(Object.keys(remap).includes(abspath)){
-                return {
+                result = {
                     path:       remap[abspath],
                     external:   true,
                 }
             }
             else {
-                return { 
+                result = { 
                     path:       abspath, 
                     external:   false,
                 }
             }
+            //for some reason the paths in windows are messed up
+            //and start with something like \Y:
+            //esbuild on the other hand complains if the path does not start with /
+            //workaround:
+            result.path = result.path!.replace(/\\([A-Z]):/g, '/$1:')
+            return result
         })
 
         /** Resolve absolute paths to https:// */
@@ -60,7 +67,10 @@ function CustomResolvePlugin(remap:Record<string, string> = {}): esbuild.Plugin 
                 
                 content = maybe_content!;
             } else {
-                content = Deno.readTextFileSync(args.path)
+                //on windows, args.path starts with something like /Y: (see above)
+                //remove the leading slash
+                const fixed_path:string = args.path.replace(/\/([A-Z]):/g, '$1:')
+                content = Deno.readTextFileSync(fixed_path)
             }
 
             return { contents: content, loader: args.path.endsWith('.tsx')? 'tsx' : 'ts'}

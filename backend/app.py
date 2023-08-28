@@ -3,7 +3,7 @@ import typing as tp
 import warnings
 warnings.simplefilter('ignore')
 
-import flask, jinja2
+import flask
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -243,7 +243,12 @@ class DenoConfig:
         )
         #path to the root of the downstream project
         self.root       = root or base_root
-        self.executable = executable or os.path.join(base_root, 'deno.sh')
+        self.executable = (
+            executable 
+            or os.path.join(
+                base_root, ('deno.bat' if sys.platform == 'win32' else 'deno.sh')
+            )
+        )
         self.configfile = configfile or os.path.join(base_root, 'deno.jsonc')
         self.buildfile  = buildfile or os.path.join(base_root, 'backend/ts/build.ts')
         self.static     = static    or os.path.join(self.root, 'static/')
@@ -259,6 +264,7 @@ class DenoConfig:
             f' --allow-write={self.static},{self.assets}'
             f' --allow-env=DENO_DIR'
             f' --allow-net=cdn.jsdelivr.net'
+            f' --no-prompt'
             f' {self.buildfile}'
             f' --static={self.static}'
             f' --frontend={self.frontend}'

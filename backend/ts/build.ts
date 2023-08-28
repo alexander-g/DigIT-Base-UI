@@ -118,15 +118,17 @@ export async function compile_default(
 }
 
 /** Compile the main frontend JSX component `<Index/>` and write to the static folder */
-export async function compile_index(paths: CompilationPaths): Promise<void> {
-    const path_to_index: string = path.join(paths.frontend, paths.index_tsx)
+export async function compile_index(paths: CompilationPaths, props?:Record<string, unknown>): Promise<void> {
+    const path_to_index: string = path.toFileUrl( 
+        path.join(paths.frontend, paths.index_tsx) 
+    ).href
     // deno-lint-ignore no-explicit-any
-    const module: { Index?: () => any } = await import(path_to_index)
+    const module: { Index?: (props?:Record<string, any>) => any } = await import(path_to_index)
     if(!module.Index)
         throw new Error('Could not find <Index/> component')
     
     // deno-lint-ignore no-explicit-any
-    const main_element:any = module.Index()
+    const main_element:any = module.Index(props)
     const rendered:string  = preact_ssr.render(main_element, {}, {pretty:true})
     write_to_static(
         path.basename(paths.index_tsx).replace('.tsx', '.html'), paths.static, rendered
