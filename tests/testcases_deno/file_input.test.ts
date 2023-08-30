@@ -3,7 +3,7 @@ import { Result, InputFile }    from "../../frontend/ts/logic/files.ts"
 import { asserts, path }        from "./dep.ts"
 
 const IMAGE_ASSET1_PATH: string 
-    = path.fromFileUrl(import.meta.resolve('../testcases/assets/test_image2.tiff'))
+    = path.fromFileUrl(import.meta.resolve('./assets/test_image2.tiff'))
 
 Deno.test("imagetools.load_tiff", async () => {
     const tiffdata: Uint8Array          = Deno.readFileSync(IMAGE_ASSET1_PATH)

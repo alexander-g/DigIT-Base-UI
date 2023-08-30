@@ -1,3 +1,0 @@
-#!/bin/bash
-
-DISPLAY=:99 /root/librewolf/AppRun $@
