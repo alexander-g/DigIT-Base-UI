@@ -24,13 +24,16 @@ export class InputFile extends File implements Input  {
     }
 
 
-    static MIMETYPES: string[] = ["image/jpeg", "image/tiff"]          //NOTE: no png
+    /** @virtual Mime types and file endings that are accepted as input */
+    static filetypes: string[] = ["image/jpeg", "image/tiff"]          //NOTE: no png
 
     static check_filetype(f:File): boolean {
-        return this.MIMETYPES.includes(f.type)
+        const file_extension:string = '.' + f.name.split('.').pop()?.toLowerCase()
+        return this.filetypes.includes(f.type) || this.filetypes.includes(file_extension)
     }
 }
 
+export type InputClassInterface<I extends Input> = util.ClassWithValidate<I> & { filetypes:string[] }
 
 
 

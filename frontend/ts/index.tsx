@@ -5,6 +5,7 @@ import { SVGFilters }       from "./components/SVGFilters.tsx";
 
 import { Input, Result }    from "./logic/files.ts";
 import { InputFile }        from "./logic/files.ts";
+import { InputClassInterface } from "./logic/files.ts";
 import * as file_input      from "./components/file_input.ts"
 import * as settings        from "./logic/settings.ts";
 
@@ -35,7 +36,7 @@ TOPMENU         extends TopMenu,
     options: {
     id:             string, 
     AppState:       util.Constructor<APPSTATE>,
-    InputClass:     util.ClassWithValidate<INPUT>,
+    InputClass:     InputClassInterface<INPUT>,
     ResultClass:    util.ClassWithValidate<RESULT>,
     load_settings:  () => Promise<settings.SettingsResponse<SETTINGS>|null>,
     TopMenu:        util.Constructor<TOPMENU>,
@@ -60,6 +61,7 @@ TOPMENU         extends TopMenu,
                     on_inputfiles       = {this.set_files.bind(this)}
                     on_inputfolder      = {this.set_files.bind(this)}
                     on_annotationfiles  = {this.set_files.bind(this)}
+                    input_filetypes     = {options.InputClass.filetypes}
                 />
                 <MainContainer<APPSTATE>
                     appstate = {this.appstate} 

@@ -44,6 +44,7 @@ function FileMenuItem(props:FileMenuItemProps): JSX.Element {
             style       =   "display:none"
             onChange    =   { callback }
             accept      =   { props.accept }
+            readonly    =   { true }
             multiple 
             {...props.kwargs}
         />
@@ -55,6 +56,9 @@ type FileMenuProps = {
     on_inputfiles:      (files:FileList|File[]) => unknown;
     on_inputfolder:     (files:FileList|File[]) => unknown;
     on_annotationfiles: (files:FileList|File[]) => unknown;
+
+    /** Which file types to accept in the input file dialog */
+    input_filetypes:    string[];
 }
 
 
@@ -72,7 +76,7 @@ function FileMenu(props:FileMenuProps): JSX.Element {
                 labeltext   =   "Load Input Images"
                 id          =   'input-images'
                 icon_class  =   "images outline"
-                accept      =   "image/jpeg, image/tiff" 
+                accept      =   { props.input_filetypes.join(',') } 
                 on_change   =   { props.on_inputfiles }
             />
 
@@ -120,6 +124,7 @@ export class TopMenu extends preact.Component<TopMenuProps> {
                     on_inputfiles      = {this.props.on_inputfiles}
                     on_inputfolder     = {this.props.on_inputfolder}
                     on_annotationfiles = {this.props.on_annotationfiles}
+                    input_filetypes    = {this.props.input_filetypes}
                 />
                 <SettingsButton on_click={() => this.settings_modal.current?.show_modal()}/>
             </div>
