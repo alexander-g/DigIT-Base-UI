@@ -1,7 +1,7 @@
 # DigIT-Base-UI
 Base User Interface for the DigIT Projects
 - [Root-Detector](https://github.com/alexander-g/Root-Detector)
-- Wood Anatomy
+- [CARROT](https://github.com/alexander-g/CARROT) (Wood Anatomy)
 - [Tofsi-POST](https://github.com/alexander-g/Tofsi-POST) (Pollen)
 - [BatNet](https://github.com/GabiK-bat/BatNet)
 
@@ -9,22 +9,23 @@ Base User Interface for the DigIT Projects
 
 ### Layout
 
+Currently meant to be used as a git submodule in a downstream project.
+
 ```
-RootDetector
+RootDetector                  #downstream project
 +-- base/                     #this repository
 |   +-- main.py               #minimal, for standalone testing only
 |   +-- backend/              #python server code
+|   |   +-- ts/               #typescript backend code for building and bundling
 |   |   +-- app.py            #base flask app
 |   +-- frontend/             
-|   |   +-- base/             #base javascript UI code
-|   +-- templates/            #jinja HTML templates
+|   |   +-- ts/               #base typescript UI code
 
-+-- backend/                  #downstream backend overrides
++-- backend/                  #downstream backend extensions
 |   +-- app.py                
 +-- frontend/
-|   +-- roots/                #downstream javascript UI overrides
+|   +-- roots/                #downstream typescript UI extensions
 +-- models/                   #pretrained models folder
-+-- templates/
 +-- static/                   #served HTML/JS/CSS, recompiled dynamically
 +-- cache/                    #temporary, stores images/results for processing
 ```

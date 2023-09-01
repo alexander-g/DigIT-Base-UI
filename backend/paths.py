@@ -24,12 +24,6 @@ def get_models_path():
     #stores pretrained models
     return os.path.join( get_instance_path(), 'models' )
 
-def get_template_folders():
-    return [
-        os.path.join(path_to_main_module(), 'templates'),            #subproject
-        os.path.join(path_to_this_module(), '..', 'templates'),      #base
-    ]
-
 def get_frontend_folders():
     return [
         os.path.join(path_to_this_module(), '..', 'frontend'),       #base

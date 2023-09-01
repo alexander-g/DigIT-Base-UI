@@ -20,17 +20,16 @@ from .paths import (
     get_static_path,
     get_cache_path,
     get_models_path,
-    get_template_folders,
     get_frontend_folders,
 )
 
 
 class App(flask.Flask):
     def __init__(self, deno_cfg: 'DenoConfig' = None, **kw):
-        is_debug         = sys.argv[0].endswith('.py')
+        self.is_debug    = sys.argv[0].endswith('.py')
         is_second_start  = (os.environ.get("WERKZEUG_RUN_MAIN") == 'true')
         do_not_reload    = (os.environ.get('DO_NOT_RELOAD',None) is not None)
-        is_reloader      = (is_debug and not is_second_start) and not do_not_reload
+        is_reloader      = (self.is_debug and not is_second_start) and not do_not_reload
         self.is_reloader = is_reloader
 
         super().__init__(
@@ -38,7 +37,7 @@ class App(flask.Flask):
             root_path          = path_to_main_module(),
             static_folder      = get_static_path(), 
             instance_path      = get_instance_path(),
-            #template_folder   = <multiple>                # handled manually
+            #template_folder   = <not-used>
             static_url_path    = '/',
             **kw
         )
@@ -46,15 +45,13 @@ class App(flask.Flask):
             return
         
 
-        self.template_folders = get_template_folders()
         self.frontend_folders = get_frontend_folders()
         self.cache_path       = get_cache_path()
         print('Root path:       ', self.root_path)
         print('Models path:     ', get_models_path())
         print('Static path:     ', self.static_folder)
         print('Cache path:      ', self.cache_path)
-        if is_debug:
-            print('Template paths:  ', self.template_folders)
+        if self.is_debug:
             print('Frontend paths:  ', self.frontend_folders)
         print()
 
@@ -144,7 +141,7 @@ class App(flask.Flask):
                 response.mimetype = 'application/javascript'
             return response
 
-        if not is_debug:
+        if not self.is_debug:
             with self.app_context():
                 print('Flask started')
                 webbrowser.open('http://localhost:5000', new=2)
@@ -187,12 +184,9 @@ class App(flask.Flask):
                 m.stop_training()
         return 'OK'
     
-
     def recompile_static(self, force=False):
-        '''Compiles templates into a single HTML file and copies JavaScript files
-           into the static folder from which flask serves files'''
-        is_debug = any([os.path.exists(f) for f in self.template_folders])
-        if not is_debug and not force:
+        '''Compile frontend into the static folder from which flask serves files'''
+        if not self.is_debug and not force:
             #only in development and during build, not in release
             return
 
@@ -204,17 +198,6 @@ class App(flask.Flask):
             args = dict(host=args.host, port=args.port, debug=args.debug)
         super().run(**args)
 
-
-def copytree(source, target):
-    '''shutil.copytree() that ignores if target folder exists. (python 3.7)'''
-    for f in glob.glob(os.path.join(source, '**'), recursive=True):
-        if not os.path.isfile(f):
-            continue
-        destination = f.replace(source, target)
-        if os.path.exists(destination) and os.path.samefile(f,destination):
-            continue
-        os.makedirs(os.path.dirname(destination), exist_ok=True)
-        shutil.copy(f, destination)
 
 def setup_cache(cache_path):
     shutil.rmtree(cache_path, ignore_errors=True)
