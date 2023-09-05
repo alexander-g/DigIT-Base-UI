@@ -1,8 +1,9 @@
-import os, sys, shutil, glob, tempfile, json, webbrowser
+import os, sys, shutil, glob, tempfile, json, webbrowser, subprocess
+import typing as tp
 import warnings
 warnings.simplefilter('ignore')
 
-import flask, jinja2
+import flask
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -12,50 +13,23 @@ parser.add_argument('--debug',   default=sys.argv[0].endswith('.py'))
 
 import backend
 
-
-def path_to_this_module():
-    return os.path.dirname(os.path.realpath(__file__))
-
-def path_to_main_module():
-    path = os.environ.get('ROOT_PATH',None)
-    path = path or os.path.dirname(os.path.realpath(sys.modules['__main__'].__file__))
-    return path
-
-def get_instance_path():
-    path = os.environ.get('INSTANCE_PATH',None)
-    return path or path_to_main_module()
-
-def get_static_path():
-    #stores compiled html/javascript/etc files
-    return os.path.join(get_instance_path(), 'static')
-
-def get_cache_path(tail=''):
-    #stores images and other data used for processing
-    return os.path.join( get_instance_path(), 'cache', tail )
-
-def get_models_path():
-    #stores pretrained models
-    return os.path.join( get_instance_path(), 'models' )
-
-def get_template_folders():
-    return [
-        os.path.join(path_to_main_module(), 'templates'),            #subproject
-        os.path.join(path_to_this_module(), '..', 'templates'),      #base
-    ]
-
-def get_frontend_folders():
-    return [
-        os.path.join(path_to_this_module(), '..', 'frontend'),       #base
-        os.path.join(path_to_main_module(), 'frontend'),             #subproject
-    ]
+from .paths import (
+    path_to_this_module,
+    path_to_main_module,
+    get_instance_path,
+    get_static_path,
+    get_cache_path,
+    get_models_path,
+    get_frontend_folders,
+)
 
 
 class App(flask.Flask):
-    def __init__(self, **kw):
-        is_debug         = sys.argv[0].endswith('.py')
+    def __init__(self, deno_cfg: 'DenoConfig' = None, **kw):
+        self.is_debug    = sys.argv[0].endswith('.py')
         is_second_start  = (os.environ.get("WERKZEUG_RUN_MAIN") == 'true')
         do_not_reload    = (os.environ.get('DO_NOT_RELOAD',None) is not None)
-        is_reloader      = (is_debug and not is_second_start) and not do_not_reload
+        is_reloader      = (self.is_debug and not is_second_start) and not do_not_reload
         self.is_reloader = is_reloader
 
         super().__init__(
@@ -63,7 +37,7 @@ class App(flask.Flask):
             root_path          = path_to_main_module(),
             static_folder      = get_static_path(), 
             instance_path      = get_instance_path(),
-            #template_folder   = <multiple>                # handled manually
+            #template_folder   = <not-used>
             static_url_path    = '/',
             **kw
         )
@@ -71,17 +45,18 @@ class App(flask.Flask):
             return
         
 
-        self.template_folders = get_template_folders()
         self.frontend_folders = get_frontend_folders()
         self.cache_path       = get_cache_path()
         print('Root path:       ', self.root_path)
         print('Models path:     ', get_models_path())
         print('Static path:     ', self.static_folder)
         print('Cache path:      ', self.cache_path)
-        if is_debug:
-            print('Template paths:  ', self.template_folders)
+        if self.is_debug:
             print('Frontend paths:  ', self.frontend_folders)
         print()
+
+
+        self.deno_cfg = deno_cfg or DenoConfig()
 
         setup_cache(self.cache_path)
         self.recompile_static()
@@ -157,8 +132,16 @@ class App(flask.Flask):
             r.headers['Cache-Control'] = 'public, max-age=0'
             return r
 
+        @self.after_request
+        def ts_to_js_mimetype_corrections(response:flask.Response):
+            #NOTE: this contains the filename, but is this always present?
+            dispo = response.headers.get('Content-Disposition', '')
 
-        if not is_debug:
+            if dispo.endswith('.ts') or dispo.endswith('.tsx'):
+                response.mimetype = 'application/javascript'
+            return response
+
+        if not self.is_debug:
             with self.app_context():
                 print('Flask started')
                 webbrowser.open('http://localhost:5000', new=2)
@@ -201,28 +184,13 @@ class App(flask.Flask):
                 m.stop_training()
         return 'OK'
     
-
     def recompile_static(self, force=False):
-        '''Compiles templates into a single HTML file and copies JavaScript files
-           into the static folder from which flask serves files'''
-        is_debug = any([os.path.exists(f) for f in self.template_folders])
-        if not is_debug and not force:
+        '''Compile frontend into the static folder from which flask serves files'''
+        if not self.is_debug and not force:
             #only in development and during build, not in release
             return
-        
-        #clear the folder before copying
-        shutil.rmtree(self.static_folder, ignore_errors=True)
-        os.makedirs(self.static_folder)
-        for source in self.frontend_folders:
-            if os.path.abspath(source) != os.path.abspath(self.static_folder):
-                #shutil.copytree(source, target)
-                copytree(source, self.static_folder)
-        
-        env   = jinja2.Environment(loader=jinja2.FileSystemLoader(self.template_folders))
-        tmpl  = env.get_template('index.html')
-        outf  = os.path.join(self.static_folder, 'index.html')
-        os.makedirs(os.path.dirname(outf), exist_ok=True)
-        open(outf,'w', encoding="utf-8").write(tmpl.render(warning='GENERATED FILE. DO NOT EDIT MANUALLY'))
+
+        subprocess.check_call(self.deno_cfg.build_cmd, shell=True)
     
     def run(self, parse_args=True, **args):
         if parse_args:
@@ -231,19 +199,61 @@ class App(flask.Flask):
         super().run(**args)
 
 
-def copytree(source, target):
-    '''shutil.copytree() that ignores if target folder exists. (python 3.7)'''
-    for f in glob.glob(os.path.join(source, '**'), recursive=True):
-        if not os.path.isfile(f):
-            continue
-        destination = f.replace(source, target)
-        if os.path.exists(destination) and os.path.samefile(f,destination):
-            continue
-        os.makedirs(os.path.dirname(destination), exist_ok=True)
-        shutil.copy(f, destination)
-
 def setup_cache(cache_path):
     shutil.rmtree(cache_path, ignore_errors=True)
     os.makedirs(cache_path)
     import atexit
     atexit.register(lambda: shutil.rmtree(cache_path, ignore_errors=True))
+
+
+class DenoConfig:
+    def __init__(
+        self,
+        root:      tp.Optional[str] = None, 
+        executable:tp.Optional[str] = None,
+        configfile:tp.Optional[str] = None,
+        buildfile: tp.Optional[str] = None,
+        static:    tp.Optional[str] = None,
+        frontend:  tp.Optional[str] = None,
+        index_tsx: tp.Optional[str] = None,
+        dep_ts:    tp.Optional[str] = None,
+        copy_globs:tp.Optional[str] = None,
+        assets:    tp.Optional[str] = None,
+    ):
+        #path to the root of the base project
+        base_root = os.path.realpath(
+            os.path.join(path_to_this_module(), '..')
+        )
+        #path to the root of the downstream project
+        self.root       = root or base_root
+        self.executable = (
+            executable 
+            or os.path.join(
+                base_root, ('deno.bat' if sys.platform == 'win32' else 'deno.sh')
+            )
+        )
+        self.configfile = configfile or os.path.join(base_root, 'deno.jsonc')
+        self.buildfile  = buildfile or os.path.join(base_root, 'backend/ts/build.ts')
+        self.static     = static    or os.path.join(self.root, 'static/')
+        self.frontend   = frontend  or os.path.join(self.root, 'frontend/')
+        self.index_tsx  = index_tsx or 'ts/index.tsx'
+        self.dep_ts     = dep_ts    or 'ts/dep.ts'
+        self.assets     = assets    or os.path.join(self.root, 'assets/')
+
+        self.build_cmd = (
+            f'{self.executable} run' 
+            f' --config {self.configfile}'
+            f' --allow-read={self.root}'
+            f' --allow-write={self.static},{self.assets}'
+            f' --allow-env=DENO_DIR'
+            f' --allow-net=cdn.jsdelivr.net'
+            f' --no-prompt'
+            f' {self.buildfile}'
+            f' --static={self.static}'
+            f' --frontend={self.frontend}'
+            f' --index_tsx={self.index_tsx}'
+            f' --dep_ts={self.dep_ts}'
+            + (f' --copy_globs={copy_globs}' if copy_globs else '')
+        )
+
+

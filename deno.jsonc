@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "lib": ["dom", "deno.ns"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "https://esm.sh/preact@10.11.3",
+
+    //to make sure that [][0] gives undefined
+    "noUncheckedIndexedAccess": true
+  },
+  "lock": false,
+  "tasks": {
+    "compile_index": "./backend/ts/build.ts",
+    "bundle_deps"  : "./backend/ts/esbuild.ts",
+    "cache":         "./deno.sh cache ./backend/ts/dep.ts ./frontend/ts/index.tsx ./tests/testcases_deno/dep.ts",
+    //vendoring currently not recommended, typechecking issues
+    //"vendor":"./deno.sh vendor --reload --force --no-config --output=.deno/vendor frontend/ts/index.tsx backend/ts/preact.ts tests/testcases_deno/dep.ts "
+  }
+}
