@@ -11,7 +11,7 @@ set "HTTPS_PROXY=%DENO_HTTPS_PROXY%"
 
 if not exist "%DENO_PATH%" (
     echo Downloading deno...
-    powershell -command "Invoke-WebRequest -Uri 'https://github.com/denoland/deno/releases/download/v1.30.3/deno-x86_64-pc-windows-msvc.zip' -OutFile .\deno.zip"
+    powershell -command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://github.com/denoland/deno/releases/download/v1.30.3/deno-x86_64-pc-windows-msvc.zip' -OutFile .\deno.zip"
     powershell -command "Expand-Archive -Path .\deno.zip -DestinationPath %DENO_DIR%"
     del .\deno.zip
 )
