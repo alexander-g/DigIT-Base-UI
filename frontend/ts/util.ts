@@ -247,6 +247,10 @@ export function validate_string_array(x: unknown): string[]|null {
     else return null;
 }
 
+export function validate_file(x:unknown): File|null {
+    return (x instanceof File) ? x : null;
+}
+
 
 
 
@@ -259,7 +263,7 @@ export type Constructor<T, Arguments extends unknown[] = any[]>
 export type Class<T, Arguments extends unknown[] = any[]> = Constructor<T, Arguments> & {prototype: T};
 
 
-export type HasValidate<R> = {validate: (raw:unknown) => R|null}
+export type HasValidate<R> = {validate: (raw:unknown) => R|null|Promise<R|null>}
 
 // deno-lint-ignore no-explicit-any
 export type ClassWithValidate<R, Arguments extends unknown[] = any[]> 

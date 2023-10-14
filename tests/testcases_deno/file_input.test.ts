@@ -29,7 +29,7 @@ Deno.test("imagetools.load_tiff", async () => {
 
 
 //TODO: test that files are reset
-Deno.test('categorize_files', () => {
+Deno.test('categorize_files', async () => {
     const mock_files: File[] = [
         new File([""], "input.jpg",  { type: "image/jpeg" }),
         new File([""], "result.zip", { type: "application/zip" }),
@@ -37,7 +37,7 @@ Deno.test('categorize_files', () => {
         new File([""], "jpg_without_jpg",  { type: "image/jpeg" }),
     ];
 
-    const categorized_files = file_input.categorize_files(
+    const categorized_files = await file_input.categorize_files(
         mock_files, InputFile,
     );
 
@@ -48,34 +48,6 @@ Deno.test('categorize_files', () => {
     asserts.assertEquals(categorized_files.resultfiles, [mock_files[1]])
 })
 
-
-Deno.test("collect_result_files filters result files for input files", () => {
-    // Define some input and result files
-    const input_files: File[] = [
-        new File([], "input1.jpg"),
-        new File([], "input2.tiff"),
-        new File([], "input3.tiff"),
-    ];
-    const result_files: File[] = [
-        new File([], "input1.json"),
-        new File([], "input1.jpg.result.json"),
-        new File([], "input2.jpg"),
-        new File([], "input2.json"),
-        new File([], "input4.jpg"),
-    ];
-
-    // Call the function being tested
-    const collected 
-        = file_input.collect_result_files(input_files, result_files);
-
-    // Check that the function returns the correct output
-    asserts.assertEquals(collected['input1.jpg']?.resultfiles.length, 2);
-    asserts.assertEquals(collected['input1.jpg']?.resultfiles[0], result_files[0]);
-    asserts.assertEquals(collected['input1.jpg']?.resultfiles[1], result_files[1]);
-    asserts.assertEquals(collected['input2.tiff']?.resultfiles.length, 1);
-    asserts.assertEquals(collected['input2.tiff']?.resultfiles[0]?.name, "input2.json");
-    asserts.assertEquals(collected['input3.tiff'], undefined);
-});
 
 
 Deno.test('load_result_files', async () => {

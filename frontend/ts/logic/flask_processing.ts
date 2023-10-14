@@ -24,7 +24,7 @@ export abstract class FlaskProcessing<R extends Result> extends ProcessingModule
         
         
         const raw:unknown = await util.parse_json_response(response)
-        const result: R   = this.ResultClass.validate(raw) ?? new this.ResultClass('failed');
+        const result: R   = await this.ResultClass.validate(raw) ?? new this.ResultClass('failed');
         //TODO: set inputname via validate/constructor
         result.inputname  = input.name;
         return result;

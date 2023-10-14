@@ -41,7 +41,7 @@ Deno.test('start_drag', async () => {
 })
 
 
-Deno.test('collect_all_labels', () => {
+Deno.test('collect_all_labels', async () => {
     const active_model: ModelInfo = {
         name: 'dontcare',
         properties: {
@@ -53,17 +53,17 @@ Deno.test('collect_all_labels', () => {
         labels: ['tomato', 'tomato', 'kumquat'],
         boxes: [ [0,0,0,0], [0,0,0,0], [0,0,0,0], ]
     }
-    const all_results: ObjectdetectionResult[] = [
+    const all_results: (ObjectdetectionResult|null)[] = [
         new ObjectdetectionResult('unprocessed'),
-        new ObjectdetectionResult('processed', raw),
+        await ObjectdetectionResult.validate<ObjectdetectionResult>(raw),
         new ObjectdetectionResult('failed'),
     ]
 
-    //testing ObjectdetectionResult constructor
+    //testing ObjectdetectionResult.validate()
     asserts.assertEquals(all_results[1]?.instances?.length, 3)
     
     const collected_labels: string[] = collect_all_classes(
-        all_results, active_model
+        all_results as ObjectdetectionResult[], active_model
     )
 
     //no duplicates, no 'background', first the model classes

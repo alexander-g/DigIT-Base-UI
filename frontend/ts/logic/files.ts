@@ -71,8 +71,6 @@ export class Result {
         this.status = status;
         this.raw    = raw;
         this.inputname = inputname;
-
-        this.apply(raw)
     }
 
     /** Export this result to files.
@@ -111,22 +109,18 @@ export class Result {
         return null;
     }
 
-    /** @virtual Convert an object to a new result or null if invalid */
-    static validate<T extends Result>(
+    /** @virtual Convert an object to a new result or null if invalid. 
+     * This includes importing a previously exported result. */
+    static async validate<T extends Result>(
         this: new (...args:ConstructorParameters<typeof Result>) => T, 
         raw:  unknown
-    ): T|null {
-        const result = new this('processed', raw)
-        return result.apply(raw)
-    }
-
-    /** @virtual Internal function to assign values from another object to this one  */
-    apply(raw:unknown): this | null {
-        if(util.is_object(raw)) {
-            this.status = 'processed'
-            return this;
-        }
-        else return null;
+    ): Promise<T|null> {
+        if(util.is_object(raw)){
+            const inputname: string|undefined 
+                = (util.has_string_property(raw, 'inputname')) ? raw.inputname : undefined;
+            return await new this('processed', raw, inputname)
+        } 
+        else return null
     }
 }
 
@@ -138,12 +132,34 @@ export type InputResultPair<I extends Input, R extends Result> = {
 }
 
 
-
-
 export abstract class ProcessingModule<I extends Input, R extends Result> {
     abstract process(
         input:        I, 
         on_progress?: (x:InputResultPair<I,R>) => void
     ): Promise<R> ;
+}
+
+
+/** Return true if the result file matches the input file */
+export function match_resultfile_to_inputfile(
+    inputfile:        Input,
+    maybe_resultfile: File,
+    file_endings:     string[],
+): boolean {
+    const basename: string         = util.file_basename(maybe_resultfile.name)
+    const no_ext_filename:string   = util.remove_file_extension(inputfile.name)
+    const candidate_names:string[] = file_endings.map(
+        (ending:string) => [ inputfile.name + ending, no_ext_filename + ending ]
+    ).flat()
+    return (candidate_names.indexOf(basename) != -1)
+}
+
+/** Check if input has a `name` thus implementing {@link Input} */
+export function validate_baseinput_type(x:unknown): Input|null {
+    if(util.is_object(x)
+    && util.has_string_property(x, 'name')) {
+        return x;
+    }
+    else return null;
 }
 

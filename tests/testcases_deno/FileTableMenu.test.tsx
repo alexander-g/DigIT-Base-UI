@@ -55,9 +55,12 @@ Deno.test('DownloadAllButton', async (t:Deno.TestContext) => {
     )
 
     const download_button:HTMLElement|null = document.querySelector('.download-all')
-    const download_banana:HTMLElement|null    = document.querySelector('.download-all .menu .item')
+    const download_banana:HTMLElement|null = document.querySelector('.download-all .menu .item')
     asserts.assertExists(download_button)
     asserts.assertExists(download_banana)
+
+    //keep this, some sleep operation above makes this test flaky otherwise
+    await util.wait(10)
 
     await t.step('callbacks-bind-this', async () => {
         download_button.click()

@@ -1,4 +1,6 @@
 import { Result as BaseResult, ExportType } from "./files.ts";
+import { Input as BaseInput }               from "./files.ts";
+import * as files                   from "./files.ts"
 import * as util                    from "../util.ts"
 import * as boxes                   from "./boxes.ts";
 import { FlaskProcessing }          from "./flask_processing.ts";
@@ -6,7 +8,7 @@ import { ModelInfo }                from "../logic/settings.ts";
 
 
 /** The input for object detection is a single file */
-export class Input extends File {}
+export class Input extends File implements BaseInput  {}
 
 /** Immutable array of Instance to avoid unintentional modification.
  *  Can be also null to indicate that no boxes are available. */
@@ -17,16 +19,16 @@ export class ObjectdetectionResult extends BaseResult {
     /** Boxes and labels of objects */
     instances:  MaybeInstances = null;
 
-    //currently need to this.apply() after super()  //TODO: fix this
-    constructor(...args:ConstructorParameters<typeof BaseResult>) {
-        super(...args)
-        this.apply(this.raw)
+    constructor(...args:[
+        ...baseargs: ConstructorParameters<typeof BaseResult>,
+        instances?:  MaybeInstances,
+    ]) {
+        super(args[0], args[1], args[2])
+        this.instances = args[3] ?? null;
     }
 
     /** @override */
     async export(what:ExportType = 'annotations'): Promise<Record<string, File>|null> {
-        console.trace(what)
-
         const exports: Record<string, File>|null = await super.export(what) ?? {}
         if(this.status != 'processed')
             return null;
@@ -57,28 +59,31 @@ export class ObjectdetectionResult extends BaseResult {
         const f = new File([export_results_as_csv(objdet_results)], 'statistics.csv')
         return {[f.name]: f}
     }
-    
-    apply(raw:unknown): this | null {
-        if( super.apply(raw) == null )
+
+    static async validate<T extends BaseResult>(
+        this: util.ClassWithValidate<T, ConstructorParameters<typeof ObjectdetectionResult> >,
+        raw:  unknown
+    ): Promise<T|null> {
+        const baseresult: BaseResult|null = await super.validate(raw)
+        if( baseresult == null )
             return null;
 
         //format provided by the backend
         if(util.is_object(raw)
         && util.has_property_of_type(raw, 'boxes', boxes.validate_4_number_arrays)
         && util.has_property_of_type(raw, 'labels', util.validate_string_array)) {
-            this.instances = raw.boxes.map(
+            const instances: MaybeInstances = raw.boxes.map(
                 (boxarray:boxes.FourNumbers, i:number) => ({
                     box     : boxes.Box.from_array(boxarray), 
                     label   : raw.labels[i]!
                 })
             );
-
-            return this;
+            return new this('processed', raw, baseresult.inputname, instances);
         }
         //LabelMe json format as exported by {@link export_as_labelme_json()}
         if(util.is_object(raw)
         && util.has_property_of_type(raw, 'shapes', validate_labelme_shapes)){
-            this.instances = raw.shapes.map( (shape:LabelMeShape) => ({
+            const instances: MaybeInstances = raw.shapes.map( (shape:LabelMeShape) => ({
                     label: shape.label,
                     box:   {
                         x0: shape.points[0][0], 
@@ -88,7 +93,25 @@ export class ObjectdetectionResult extends BaseResult {
                     }
                 })
             )
-            return this;
+            return new this('processed', raw, baseresult.inputname, instances);
+        }
+
+        //format {file:File, input:BaseInput}; load file
+        if(util.is_object(raw)
+        && util.has_property_of_type(raw, 'file',  util.validate_file)
+        && util.has_property_of_type(raw, 'input', files.validate_baseinput_type)){
+            const match:boolean 
+                = files.match_resultfile_to_inputfile(raw.input, raw.file, ['.json'])
+            if(match){
+                let jsondata:unknown;
+                try {
+                    jsondata = JSON.parse(await raw.file.text())
+                } catch (_error) {
+                    return null
+                }
+                return await this.validate(jsondata)
+            }
+            else return null;
         }
         else return null;
     }
@@ -168,6 +191,9 @@ function validate_2_number_array(x:unknown): [number, number]|null {
     }
     else return null;
 }
+
+
+
 
 
 export function collect_all_classes(
