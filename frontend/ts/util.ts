@@ -86,14 +86,20 @@ export async function fetch_image_as_object_url(imagename:string): Promise<strin
     return URL.createObjectURL(blob)
 }
 
-export async function parse_json_response(response:Response): Promise<unknown|Error> {
+
+/** `JSON.parse` but returns an error instead of throwing it  */
+export function parse_json_no_throw(x:string): unknown|Error {
     let raw:unknown;
     try {
-        raw = JSON.parse(await response.text())
+        raw = JSON.parse(x)
     } catch (error: unknown) {
-        return new Error('Failed to parse response',{cause:error});
+        return (error as Error);
     }
     return raw;
+}
+
+export async function parse_json_response(response:Response): Promise<unknown|Error> {
+    return parse_json_no_throw(await response.text())
 }
 
 

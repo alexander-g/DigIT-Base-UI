@@ -24,12 +24,14 @@ export class InputFile extends File implements Input  {
     }
 
 
-    /** @virtual Mime types and file endings that are accepted as input */
+    /** @virtual Mime types that are accepted as input */
     static filetypes: string[] = ["image/jpeg", "image/tiff"]          //NOTE: no png
+    /** @virtual File extensions that are accepted as input */
+    static file_exts: string[] = [".jpeg", ".jpg", ".tiff", ".tif"]
 
     static check_filetype(f:File): boolean {
         const file_extension:string = '.' + f.name.split('.').pop()?.toLowerCase()
-        return this.filetypes.includes(f.type) || this.filetypes.includes(file_extension)
+        return this.filetypes.includes(f.type) || this.file_exts.includes(file_extension)
     }
 }
 

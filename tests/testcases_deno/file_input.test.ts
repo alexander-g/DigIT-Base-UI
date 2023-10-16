@@ -1,6 +1,6 @@
 import * as file_input          from "../../frontend/ts/components/file_input.ts"
 import { Result, InputFile }    from "../../frontend/ts/logic/files.ts"
-import { asserts, path }        from "./dep.ts"
+import { asserts, path, mock }  from "./dep.ts"
 
 const IMAGE_ASSET1_PATH: string 
     = path.fromFileUrl(import.meta.resolve('./assets/test_image2.tiff'))
@@ -50,12 +50,28 @@ Deno.test('categorize_files', async () => {
 
 
 
-Deno.test('load_result_files', async () => {
+Deno.test('load_list_of_files', async () => {
     const files: File[] = [
         new File([], "input1.jpg"),
         new File([], "input2.tiff"),
         new File([], "input3.tiff"),
+        new File([], "input3.zip"),
+        new File([], "input4.zip"),
     ];
-    //just dont throw
-    await file_input.load_list_of_files(files, InputFile, Result)
+    const pairs = await file_input.load_list_of_files(files, InputFile, Result)
+    // only the jpg & tiff files = 3
+    asserts.assertEquals(Object.keys(pairs).length, 3)
+
+
+    const validate_spy: mock.Spy = mock.spy( () => null )
+    class MockResultClass extends Result {
+        static validate = validate_spy as <T extends Result>() => Promise<T|null>
+    }
+    await file_input.load_list_of_files(files, InputFile, MockResultClass)
+    // 3 input files x 2 remaining files = 6
+    asserts.assertEquals(validate_spy.calls.length, 6)
+    //should pass {input:..., file:...} as an input
+    asserts.assertArrayIncludes(
+        Object.keys(validate_spy.calls[0]?.args[0]), ['input', 'file']
+    )
 })
