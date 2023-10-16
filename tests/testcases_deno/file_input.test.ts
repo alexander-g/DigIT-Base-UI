@@ -74,4 +74,9 @@ Deno.test('load_list_of_files', async () => {
     asserts.assertArrayIncludes(
         Object.keys(validate_spy.calls[0]?.args[0]), ['input', 'file']
     )
+
+    //only input files, no result files
+    const files2 = [files[0]!]
+    const pairs2 = await file_input.load_list_of_files(files2, InputFile, Result)
+    asserts.assertEquals(Object.keys(pairs2).length, files2.length)
 })

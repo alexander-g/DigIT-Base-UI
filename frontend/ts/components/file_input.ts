@@ -73,13 +73,16 @@ export async function try_load_results<R extends Result>(
 ): Promise<R[]> {
     const results: R[] =[]
     for(const input of inputs){
+        let result: R|null = null
         for(const result_candidate of mayberesultfiles) {
-            let result: R|null = await ResultClass.validate({input, file:result_candidate})
-            if(result == null){
-                result = new ResultClass('unprocessed')
-            }
-            results.push(result)
+            result = await ResultClass.validate({input, file:result_candidate})
+            if(result != null)
+                break;
         }
+        
+        if(result == null)
+            result = new ResultClass('unprocessed')
+        results.push(result)
     }
     return results;
 }
