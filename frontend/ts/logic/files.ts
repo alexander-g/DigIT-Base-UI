@@ -83,7 +83,6 @@ export class Result {
         return await null;
     }
 
-
     /** Export a collection of results, e.g if some combined information is needed.
      *  @virtual By default simply exports all results individually. Overrideable. */
     static async export_combined(
@@ -102,7 +101,7 @@ export class Result {
             } else {
                 //multiple files, create a subfolder
                 for (const exportfile of Object.values(exportfiles))
-                combined_results[`${result.inputname}/${exportfile.name}`] = exportfile;
+                    combined_results[`${result.inputname}/${exportfile.name}`] = exportfile;
             }
         }
         if(Object.keys(combined_results).length > 0)
@@ -131,6 +130,20 @@ export class Result {
 export type InputResultPair<I extends Input, R extends Result> = {
     input:  I;
     result: R;
+}
+
+export function zip_inputs_and_results<I extends Input, R extends Result>(
+    inputs:  readonly I[],
+    results: readonly R[],
+): InputResultPair<I,R>[] {
+    const pairs: InputResultPair<I,R>[] = []
+    //TODO: better error handling
+    const length:number = Math.min(inputs.length, results.length);
+    // deno-lint-ignore no-inferrable-types
+    for(let i:number=0; i<length; i++){
+        pairs.push({input: inputs[i]!, result: results[i]!})
+    }
+    return pairs;
 }
 
 

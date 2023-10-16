@@ -1,6 +1,7 @@
 import { JSX, UTIF }    from "../dep.ts"
 import * as util        from "../util.ts"
 import { Input, Result, InputResultPair } from "../logic/files.ts"
+import { zip_inputs_and_results }         from "../logic/files.ts"
 
 /** Event handler for file drag events */
 export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
@@ -11,7 +12,7 @@ export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
 /** Two sets of files, in no well-defined order. 
  *  First one to be interpreted as inputfiles, second one might be results */
 type CategorizedFiles<I extends Input>= {
-    inputfiles:  I[],
+    inputs:  I[],
     resultfiles: File[]
 }
 
@@ -24,16 +25,16 @@ export async function categorize_files<I extends Input>(
     InputClass:                 util.ClassWithValidate<I>,
 ): Promise<CategorizedFiles<I>> {
     const files: File[]       = Array.from(file_list)
-    const inputfiles: I[]     = []
+    const inputs: I[]         = []
     const resultfiles:File[]  = []
     for(const f of files) {
         const inputfile:I|null = await InputClass.validate(f)
         if(inputfile != null)
-            inputfiles.push(inputfile)
+            inputs.push(inputfile)
         else
             resultfiles.push(f)          //TODO: convert to ResultClass.validate
     }
-    return {inputfiles, resultfiles}
+    return {inputs, resultfiles}
 }
 
 
@@ -58,25 +59,29 @@ export async function load_list_of_files<I extends Input, R extends Result>(
     InputClass:        util.ClassWithValidate<I>,
     ResultClass:       util.ClassWithValidate<R, ConstructorParameters<typeof Result> >,
 ): Promise<InputResultPair<I, R>[]> {
-    const {inputfiles, resultfiles:mayberesultfiles} = await categorize_files(files, InputClass)
+    const {inputs, resultfiles:mayberesultfiles} = await categorize_files(files, InputClass)
+    const results:R[] = await try_load_results(inputs, mayberesultfiles, ResultClass)
+    const pairs:InputResultPair<I,R>[] = zip_inputs_and_results(inputs, results)
+    return pairs;
+}
 
-    const pairs: InputResultPair<I, R>[] = inputfiles.map(
-        (input: I) => ({
-            input:  input, 
-            result: new ResultClass('unprocessed'),
-        })
-    )
-    
-    for(const pair of pairs){
-        const input:Input = pair.input;
+/** Create a result for each input, potentially loading from `mayberesultfiles` */
+export async function try_load_results<R extends Result>(
+    inputs:           readonly Input[],
+    mayberesultfiles: readonly File[],
+    ResultClass:      util.ClassWithValidate<R, ConstructorParameters<typeof Result> >,
+): Promise<R[]> {
+    const results: R[] =[]
+    for(const input of inputs){
         for(const result_candidate of mayberesultfiles) {
-            const result: R|null = await ResultClass.validate({input, file:result_candidate})
-            if(result != null){
-                pair.result = result;
+            let result: R|null = await ResultClass.validate({input, file:result_candidate})
+            if(result == null){
+                result = new ResultClass('unprocessed')
             }
+            results.push(result)
         }
     }
-    return pairs;
+    return results;
 }
 
 

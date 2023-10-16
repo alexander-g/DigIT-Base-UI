@@ -10,7 +10,7 @@ Deno.test('DownloadButton.enable', async () => {
 
     const file:Input = new File([], 'file000.jpg')
     const $result:Signal<Result> = new Signal(new Result())
-    const dbutton = <ContentMenu.DownloadButton inputfile={file} $result={$result} />
+    const dbutton = <ContentMenu.DownloadButton $result={$result} />
     
     preact.render(dbutton, document.body)
     await util.wait(1)

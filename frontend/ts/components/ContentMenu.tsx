@@ -38,7 +38,7 @@ export function ContentMenu<I extends Input, R extends Result>(
                 extra_items     = {props.view_menu_extras}
             />
             { props.children }
-            <DownloadButton inputfile={props.input} $result={props.$result} />
+            <DownloadButton $result={props.$result} />
             { props.help_button ?? <HelpButton /> }
         </div>
     );
@@ -165,7 +165,6 @@ function ShowResultsCheckbox(props: ShowResultsCheckboxProps): JSX.Element {
 
 
 type DownloadButtonProps = {
-    inputfile:          Input;
     $result:            Readonly<Signal<Result>>;
 }
 
@@ -181,7 +180,7 @@ export function DownloadButton(props:DownloadButtonProps): JSX.Element {
         <a
             class           =   {"download item " + disabled}
             onClick         =   {
-                () => download_single_result(props.inputfile, props.$result.peek())
+                () => download_single_result(props.$result.peek())
             }
             data-tooltip    =   "Download Result"
             data-position   =   "bottom left"
@@ -192,7 +191,7 @@ export function DownloadButton(props:DownloadButtonProps): JSX.Element {
 }
 
 /** Format the results of a single file and download */
-export async function download_single_result(input:Input, result:Result): Promise<void> {
+export async function download_single_result(result:Result): Promise<void> {
     const exportfiles:Record<string, File>|null = await result.export()
     if(!exportfiles){
         console.trace('result.export() failed')
@@ -207,7 +206,7 @@ export async function download_single_result(input:Input, result:Result): Promis
         ui_util.download_file( exportfile )
     } else {
         //multiple files, zip into an archive first
-        const archivename         = `${input.name}.result.zip`
+        const archivename         = `${result.inputname}.zip`
         const zipfile:File|Error  = await zip_files(exportfiles, archivename)
         if(zipfile instanceof Error){
             console.trace('Zipping results failed')

@@ -42,7 +42,7 @@ Deno.test('categorize_files', async () => {
     );
 
     asserts.assertEquals(
-        categorized_files.inputfiles.map( i => i.name ), 
+        categorized_files.inputs.map( i => i.name ), 
         [mock_files[0], mock_files[2], mock_files[3]].map( f => f!.name ),
     )
     asserts.assertEquals(categorized_files.resultfiles, [mock_files[1]])
