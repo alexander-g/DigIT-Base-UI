@@ -11,7 +11,7 @@ Deno.test('ImageOverlay.hide', async () => {
     const $visible: signals.Signal<boolean> = new signals.Signal(true)
 
     util.mock_fetch(async () => await new Response())
-    preact.render(<ImageOverlay imagename="" $visible={$visible}/>, document.body)
+    preact.render(<ImageOverlay image="" $visible={$visible}/>, document.body)
     await util.wait(1)
 
     const img:HTMLImageElement|null = document.querySelector('img')

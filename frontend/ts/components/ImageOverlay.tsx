@@ -5,6 +5,7 @@ import * as styles                              from "./styles.ts"
 import { black_to_transparent_css }             from "./SVGFilters.tsx";
 
 import { SingleFileContent }                    from "./FileTable.tsx";
+import { set_image_src }                        from "./file_input.ts";
 import { SegmentationResult }                   from "../logic/segmentation.ts";
 
 
@@ -13,7 +14,7 @@ extends SingleFileContent<R> {
     result_overlays(): JSX.Element {
         return (
             <ImageOverlay 
-                imagename = {this.props.$result.value.classmap}        
+                image     = {this.props.$result.value.classmap}        
                 $visible  = {this.$result_visible}
             />
         )
@@ -23,8 +24,8 @@ extends SingleFileContent<R> {
 
 
 export type ImageOverlayProps = ui_util.MaybeHiddenProps & {
-    /** Image name/url to fetch that shall be overlayed */
-    imagename:         string|null;
+    /** Image name/url to fetch or already loaded image file/blob that shall be overlayed */
+    image: string|Blob|null;
 }
 
 /** A result overlay that displays an image (e.g. a segmentation result) */
@@ -49,19 +50,23 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
     }
 
     shouldComponentUpdate(nextProps: Readonly<P>): boolean {
-        const imagename:string|null = nextProps.imagename;
-        if(imagename != null)
-            this.set_img_src(imagename)  //no await
+        const image:string|Blob|null = nextProps.image;
+        if(image != null)
+            this.set_img_src(image)  //no await
         
         return true;
     }
 
-    async set_img_src(imagename:string): Promise<void> {
-        if(this.ref.current != null) {
-            const maybe_objurl:string|Error = await util.fetch_image_as_object_url(imagename)
-            if(typeof maybe_objurl == 'string')
-                this.ref.current.src = maybe_objurl;
+    async set_img_src(image:string|Blob): Promise<void> {
+        if(this.ref.current == null) 
+            return;
+
+        if(typeof image == 'string'){
+            const blob:Blob|Error = await util.fetch_image_as_blob(image)
+            if(blob instanceof Blob)
+                image = blob;
         }
+        set_image_src(this.ref.current, image)
     }
 }
 

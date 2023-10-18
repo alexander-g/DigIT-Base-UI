@@ -42,7 +42,7 @@ export function zip_files(data:Files, filename:string): Promise<File|Error> {
 
 
 
-export async function unzip(file:File): Promise<Files|Error> {
+export async function unzip(file:Blob): Promise<Files|Error> {
     const data:Uint8Array = new Uint8Array( await file.arrayBuffer() )
     let unzipped:fflate.Unzipped;
     try {
