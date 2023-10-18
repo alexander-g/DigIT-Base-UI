@@ -132,6 +132,7 @@ export type InputResultPair<I extends Input, R extends Result> = {
     result: R;
 }
 
+/** Combine lists of inputs and results into a list of {@link InputResultPair} */
 export function zip_inputs_and_results<I extends Input, R extends Result>(
     inputs:  readonly I[],
     results: readonly R[],

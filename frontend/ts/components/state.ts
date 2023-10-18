@@ -26,7 +26,7 @@ export type InputResultPair<I extends Input, R extends Result> = {
 }
 
 
-/** Convert {@link files.InputResultPair} to {@link InputResultPair}  */
+/** Convert {@link files.InputResultPair}[] to {@link InputResultPair}[]  */
 export function input_result_signal_pairs_from_simple<I extends Input, R extends Result>(
     pairs: files.InputResultPair<I,R>[]
 ): InputResultPair<I,R>[] {
@@ -36,6 +36,18 @@ export function input_result_signal_pairs_from_simple<I extends Input, R extends
         )
     )
 }
+
+/** Convert {@link InputResultPair}[] to {@link files.InputResultPair}[]  */
+export function input_result_simple_pairs_from_signals<I extends Input, R extends Result>(
+    pairs: InputResultPair<I,R>[]
+): files.InputResultPair<I,R>[] {
+    return pairs.map(
+        ({input, $result}: InputResultPair<I,R>) => (
+            {input, result: $result.value}
+        )
+    )
+}
+
 
 /** Convert {@link files.Input} to {@link InputResultPair}  */
 export function input_result_signal_pairs_from_inputs<I extends Input, R extends Result>(

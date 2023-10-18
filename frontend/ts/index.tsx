@@ -3,9 +3,10 @@ import { TopMenu }          from "./components/TopMenu.tsx"
 import { MainContainer }    from "./components/MainContainer.tsx"
 import { SVGFilters }       from "./components/SVGFilters.tsx";
 
-import { Input, Result }    from "./logic/files.ts";
-import { InputFile }        from "./logic/files.ts";
-import { InputClassInterface } from "./logic/files.ts";
+// import { Input, Result }    from "./logic/files.ts";
+// import { InputFile }        from "./logic/files.ts";
+// import { InputClassInterface } from "./logic/files.ts";
+import * as files           from "./logic/files.ts";
 import * as file_input      from "./components/file_input.ts"
 import * as settings        from "./logic/settings.ts";
 
@@ -27,8 +28,8 @@ import { DetectionTab }    from "./components/DetectionTab.tsx"
  * @param TopMenu       - JSX component on top of the main content 
  * @param tabs          - Dict mapping tab name to tab JSX component */
 export function create_App<
-INPUT           extends Input,
-RESULT          extends Result,
+INPUT           extends files.Input,
+RESULT          extends files.Result,
 SETTINGS        extends settings.Settings,
 APPSTATE        extends state.AppState<INPUT, RESULT, SETTINGS>,
 TOPMENU         extends TopMenu,
@@ -36,7 +37,7 @@ TOPMENU         extends TopMenu,
     options: {
     id:             string, 
     AppState:       util.Constructor<APPSTATE>,
-    InputClass:     InputClassInterface<INPUT>,
+    InputClass:     files.InputClassInterface<INPUT>,
     ResultClass:    util.ClassWithValidate<RESULT>,
     load_settings:  () => Promise<settings.SettingsResponse<SETTINGS>|null>,
     TopMenu:        util.Constructor<TOPMENU>,
@@ -95,15 +96,17 @@ TOPMENU         extends TopMenu,
 
         /** Set the currently loaded files in the appstate */
         async set_files(files: FileList|File[]): Promise<FileList|File[]>{
-            //reset state  //TODO: should not be done here, but when setting the input files
+            const previous_pairs: files.InputResultPair<INPUT,RESULT>[] 
+                = state.input_result_simple_pairs_from_signals(this.appstate.$files.value)
+            //reset state
             //TODO: send clear cache request to backend
             this.appstate.$files.value = []
             //refresh ui
             await util.wait(1)
-
+            //load the new files
             this.appstate.$files.value = state.input_result_signal_pairs_from_simple(
                 await file_input.load_list_of_files(
-                    files ?? [], options.InputClass, options.ResultClass
+                    files ?? [], options.InputClass, options.ResultClass, previous_pairs
                 )
             )
 
@@ -117,8 +120,8 @@ TOPMENU         extends TopMenu,
 class App extends create_App({
     id:             'base', 
     AppState:       state.AppState, 
-    InputClass:     InputFile,
-    ResultClass:    Result,
+    InputClass:     files.InputFile,
+    ResultClass:    files.Result,
     load_settings:  settings.load_settings, 
     TopMenu:        TopMenu,
 

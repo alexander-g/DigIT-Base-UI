@@ -53,13 +53,23 @@ export function load_resultfiles(file_list:FileList|File[]): void {
 
 
 
-/** Load a set of files. Some might be inputs, others previously exported results */
+/** Load a set of files. Some might be inputs, others previously exported results.
+ *  - `InputClass.validate()` and `ResultClass.validate()` are used to categorize the files.
+ *  - If `previous_pairs` is provided and there are no new inputs in `files`, 
+ *    then will use these previous inputs.
+ *  @returns list of input-result pairs */
 export async function load_list_of_files<I extends Input, R extends Result>(
     files:             FileList|File[],
     InputClass:        util.ClassWithValidate<I>,
     ResultClass:       util.ClassWithValidate<R, ConstructorParameters<typeof Result> >,
+    previous_pairs?:   InputResultPair<I,R>[],
 ): Promise<InputResultPair<I, R>[]> {
-    const {inputs, resultfiles:mayberesultfiles} = await categorize_files(files, InputClass)
+    let {inputs, resultfiles:mayberesultfiles} = await categorize_files(files, InputClass)
+    if(inputs.length == 0 && previous_pairs?.length != undefined){
+        //use already loaded inputs and try to assign results to them
+        inputs = previous_pairs.map(p => p.input)
+    }
+
     const results:R[] = await try_load_results(inputs, mayberesultfiles, ResultClass)
     const pairs:InputResultPair<I,R>[] = zip_inputs_and_results(inputs, results)
     return pairs;

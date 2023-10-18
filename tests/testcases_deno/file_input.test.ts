@@ -79,4 +79,13 @@ Deno.test('load_list_of_files', async () => {
     const files2 = [files[0]!]
     const pairs2 = await file_input.load_list_of_files(files2, InputFile, Result)
     asserts.assertEquals(Object.keys(pairs2).length, files2.length)
+
+    //only result files, no new input files but previous inputs
+    const files3 = [files[3]!, files[4]!]
+    const pairs3 = await file_input.load_list_of_files(
+        files3, InputFile, Result, pairs2
+    )
+    //should keep the previous inputs
+    asserts.assertEquals(Object.keys(pairs3).length, pairs2.length)
+    asserts.assertEquals(pairs3[0]?.input, pairs2[0]?.input)
 })
