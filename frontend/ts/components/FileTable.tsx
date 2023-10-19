@@ -2,7 +2,7 @@ import { preact, JSX, signals, ReadonlySignal }         from "../dep.ts"
 import { Input, Result, ProcessingModule, InputResultPair }        from "../logic/files.ts"
 import { InputFileList, InputResultPair as InputResultSignalPair } from "./state.ts"
 import { Constructor, ImageSize }                       from "../util.ts";
-import { ContentMenu }                                  from "./ContentMenu.tsx"
+import { ContentMenu, ShowResultsCheckbox }             from "./ContentMenu.tsx"
 import { ImageContainer, ImageControls, InputImage }    from "./ImageComponents.tsx"
 import { FileTableMenu }                                from "./FileTableMenu.tsx";
 import { FileTableRow, FileTableRowProps }              from "./FileTableRow.tsx";
@@ -85,7 +85,7 @@ extends preact.Component<FileTableContentProps<I,R>> {
             input            = {this.props.input} 
             $result          = {this.props.$result}
             $result_visible  = {this.$result_visible}
-            view_menu_extras = {this.view_menu_extras()}
+            view_menu_items  = {this.view_menu_items()}
             help_button      = {this.help_menu()}
             processingmodule = {this.props.processingmodule}
         >
@@ -94,10 +94,16 @@ extends preact.Component<FileTableContentProps<I,R>> {
         )
     }
 
-    /** Additional menu elements to display in the "eye" view menu
-     *  @virtual Overwritten by subclasses if needed */
-    view_menu_extras(): JSX.Element[] {
-        return []
+    /** Menu elements to display in the "eye" view menu.
+     *  - If `[]`, no view menu will be created.
+     *  @virtual Overwritten by subclasses for custom elements */
+    view_menu_items(): JSX.Element[] {
+        return [
+            <ShowResultsCheckbox 
+                $result  = {this.props.$result} 
+                $visible = {this.$result_visible}
+            />
+        ]
     }
 
     /** Help button which displays an overlay with instructions */

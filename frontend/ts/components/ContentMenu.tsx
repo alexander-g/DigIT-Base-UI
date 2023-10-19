@@ -14,8 +14,8 @@ type ContentMenuProps<I extends Input, R extends Result> = InputResultPair<I,R> 
     /** Additional buttons to display in the content menu */
     children?:          preact.ComponentChildren
 
-    /** Additional menu items to pass to the view menu */
-    view_menu_extras?:  JSX.Element[];
+    /** Menu items to show to the view menu */
+    view_menu_items?:   JSX.Element[];
 
     /** Button with popup that displays instructions.
      *  @default {@link HelpButton } */
@@ -32,11 +32,13 @@ export function ContentMenu<I extends Input, R extends Result>(
             style = "border-top-width:0px; margin-bottom:0px;"
         >
             <PlayButton inputresultpair={props} processingmodule={props.processingmodule}/>
-            <ViewMenu 
-                $result         = {props.$result} 
-                $result_visible = {props.$result_visible}
-                extra_items     = {props.view_menu_extras}
-            />
+            {
+                //add a ViewMenu only if there are any menu items to show
+                (!props.view_menu_items?.length)
+                ? null
+                : <ViewMenu menu_items={props.view_menu_items}/>
+            }
+            {/* <ViewMenu menu_items={props.view_menu_items}/> */}
             { props.children }
             <DownloadButton $result={props.$result} />
             { props.help_button ?? <HelpButton /> }
@@ -76,9 +78,7 @@ extends preact.Component<PlayButtonProps<I,R>> {
 
 
 type ViewMenuProps = {
-    $result:        Readonly<Signal<Result>>;
-    $result_visible:Signal<boolean>;
-    extra_items?:   JSX.Element[],
+    menu_items?:    JSX.Element[],
 }
 
 /** Button with dropdown that contains control elements regarding the presentation */
@@ -86,18 +86,11 @@ export function ViewMenu(props: ViewMenuProps): JSX.Element {
     return (
         <div class="ui simple dropdown icon item view-menu-button">
             <i class="eye icon"></i>
-            <ViewMenuDropdown {...props}/>
+            <div class="menu view-menu">
+                {  props.menu_items  }
+            </div>
         </div>
     );
-}
-
-function ViewMenuDropdown(props:ViewMenuProps): JSX.Element {
-    return (
-        <div class="menu view-menu">
-            <ShowResultsCheckbox $result={props.$result} $visible={props.$result_visible}/>
-            { props.extra_items }
-        </div>
-    )
 }
 
 
@@ -145,19 +138,23 @@ export class Checkbox extends preact.Component<CheckboxProps> {
 
 
 type ShowResultsCheckboxProps = {
+    /** Signal of {@link Result} whose `status` determines whether the checkbox is active */
     $result:    Readonly<Signal<Result>>;
+    /** @output The value of the checkbox */
     $visible:   Signal<boolean>;
+    /** @optional Text beside the checkbox @default "Show Results" */
+    label?:     string;
 }
 
 /** A checkbox to toggle results */
-function ShowResultsCheckbox(props: ShowResultsCheckboxProps): JSX.Element {
+export function ShowResultsCheckbox(props: ShowResultsCheckboxProps): JSX.Element {
     const $active: Readonly<Signal<boolean>> = signals.computed(
         () => props.$result.value.status == 'processed'
     )
     return <Checkbox
         $active     = {$active}
         $value      = {props.$visible}
-        label       = "Show Results"
+        label       = {props.label ?? "Show Results"}
     />
 }
 
