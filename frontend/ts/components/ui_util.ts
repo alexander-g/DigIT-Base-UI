@@ -21,7 +21,7 @@ export type DragCallback = (start:Point, end:Point) => void;
  */
 export function start_drag (
     mousedown_event: MouseEvent,
-    targetelement:   HTMLElement,
+    targetelement:   Element,
     targetsize?:     Size,
     on_move?:        DragCallback,
     on_end?:         DragCallback,
@@ -64,7 +64,7 @@ export function start_drag (
 */
 export function page2element_coordinates(
     p       : Point, 
-    element : HTMLElement, 
+    element : Element, 
     size?   : Size, 
     offset? : Point
 ): Point {

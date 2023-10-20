@@ -87,6 +87,9 @@ type ImageControlsProps = {
 
     /** Callback for moving mouse event */
     on_mouse_move?:  (event:MouseEvent) => void;
+    /** Callback for mouse click event.
+     *  Will stop the default panning the return value is `true` */
+    on_mouse_down?:  (event:MouseEvent) => boolean;
 }
 
 /** Responsible for panning and zooming of images and important for layout */
@@ -187,6 +190,8 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
 
     /** SHIFT+Mouse-Down on image: start panning */
     on_mouse_down(mousedown_event:MouseEvent): boolean {
+        if(this.props.on_mouse_down?.(mousedown_event))
+            return true;
         if(!mousedown_event.shiftKey)
             return false;
         if(!this.ref.current)
