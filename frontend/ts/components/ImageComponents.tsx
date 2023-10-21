@@ -1,4 +1,4 @@
-import { preact, JSX, signals }             from "../dep.ts"
+import { preact, JSX, signals, Signal }     from "../dep.ts"
 import type { ImageSize, Point }            from "../util.ts"
 import { set_image_src }                    from "./file_input.ts"
 import * as styles                          from "./styles.ts"
@@ -13,11 +13,11 @@ export type InputImageProps = {
 
     /** Flag indicating that the image has been loaded. 
      *  @output To be used by parent components */
-    $loaded: signals.Signal<boolean>;
+    $loaded: Signal<boolean>;
 
     /** The original size of the image or null if not yet loaded 
      * @output To be used by parent components*/
-    $size:   signals.Signal<ImageSize|null>;
+    $size:   Signal<ImageSize|null>;
 }
 
 
@@ -94,9 +94,13 @@ type ImageControlsProps = {
 
 /** Responsible for panning and zooming of images and important for layout */
 export class ImageControls extends preact.Component<ImageControlsProps> {
-    scale: signals.Signal<number>               = new signals.Signal(1)
-    offset:signals.Signal<Point>                = new signals.Signal({x:0,y:0})
+    /** Current scale of the children components */
+    $scale: Signal<number> = new Signal(1)
+    /** Current offset of the children components */
+    $offset:Signal<Point>  = new Signal({x:0,y:0})
 
+
+    /** Reference to the view box */
     ref:   preact.RefObject<HTMLDivElement>     = preact.createRef()
 
     render(props:ImageControlsProps) {
@@ -135,21 +139,22 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
         ) */
         //NOTE: currently not using DOMMatrix because not implemented in deno
         //TODO: fix this
-        const scale:number  = this.scale.value
-        const {x,y}         = this.offset.value;
+        const scale:number  = this.$scale.value
+        const {x,y}         = this.$offset.value;
         const matrix        = `matrix(${scale}, 0, 0, ${scale}, ${x}, ${y} )`
         const transform_css = {
             transform: matrix.toString(),
         }
 
         return (
+        /** Viewbox has a fixed position. Children outside of the viewbox are not visible */
         <div 
             class       =   "view-box stripes" 
             style       =   {{...stripes_css, ...view_box_css}} 
             onDblClick  =   {this.on_dbl_click.bind(this)}
             ref         =   {this.ref}
         >
-            {/* TODO: transform-box callbacks */}
+            {/* Transformbox moves around on user input */}
             <div 
             class       =   "transform-box unselectable set-aspect-ratio-manually" 
             style       =   {{...set_aspect_ratio_css, ...unselectable_css, ...transform_css}}
@@ -171,8 +176,8 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
         if(!event.shiftKey)
             return;
         
-        this.scale.value  = 1;
-        this.offset.value = {x:0, y:0}
+        this.$scale.value  = 1;
+        this.$offset.value = {x:0, y:0}
     }
 
     /** SHIFT+Mouse-Wheel on image: zoom in/out */
@@ -181,11 +186,11 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
             return;
         event.preventDefault();
 
-        const {x,y}         = this.offset.peek()
+        const {x,y}         = this.$offset.peek()
         const new_x: number = x * (1 - 0.1*Math.sign(event.deltaY))
         const new_y: number = y * (1 - 0.1*Math.sign(event.deltaY))
-        this.offset.value   = {x: new_x, y:new_y}
-        this.scale.value    = Math.max(1.0, this.scale.peek() * (1 - 0.1*Math.sign(event.deltaY)));
+        this.$offset.value   = {x: new_x, y:new_y}
+        this.$scale.value    = Math.max(1.0, this.$scale.peek() * (1 - 0.1*Math.sign(event.deltaY)));
     }
 
     /** SHIFT+Mouse-Down on image: start panning */
@@ -202,7 +207,7 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
 
         // deno-lint-ignore no-this-alias
         const _this: ImageControls  = this;
-        const start_offset: Point   = this.offset.value
+        const start_offset: Point   = this.$offset.value
 
         /** Drag to pan the image */
         start_drag(
@@ -210,7 +215,7 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
             this.ref.current,
             undefined,
             (start:Point, end:Point) => {
-                _this.offset.value = { 
+                _this.$offset.value = { 
                     x: start_offset.x + (end.x - start.x),
                     y: start_offset.y + (end.y - start.y),
                 }

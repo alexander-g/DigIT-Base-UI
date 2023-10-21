@@ -38,8 +38,14 @@ Deno.test('ViewMenu.show_results', async () => {
 
     const $result:Signal<Result> = new Signal(new Result())
     const $result_visible:Signal<boolean> = new Signal(true)
+    const menu_items = [
+        <ContentMenu.ShowResultsCheckbox 
+            $result  = {$result} 
+            $visible = {$result_visible}
+        />
+    ]
     preact.render(
-        <ContentMenu.ViewMenu $result={$result} $result_visible={$result_visible}/>,
+        <ContentMenu.ViewMenu menu_items={menu_items}/>,
         document.body
     )
     await util.wait(1)
