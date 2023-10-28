@@ -85,6 +85,9 @@ type ImageControlsProps = {
     /** The natural/original size of the displayed image */
     $imagesize:     signals.ReadonlySignal<ImageSize|null>;
 
+    /** Current zoom/scale of the children components. Will create one if not provided. */
+    $scale?:        signals.Signal<number>;
+
     /** Callback for moving mouse event */
     on_mouse_move?:  (event:MouseEvent) => void;
     /** Callback for mouse click event.
@@ -94,8 +97,8 @@ type ImageControlsProps = {
 
 /** Responsible for panning and zooming of images and important for layout */
 export class ImageControls extends preact.Component<ImageControlsProps> {
-    /** Current scale of the children components */
-    $scale: Signal<number> = new Signal(1)
+    /** Current zoom/scale of the children components */
+    $scale: Signal<number> = this.props.$scale ?? new Signal(1);
     /** Current offset of the children components */
     $offset:Signal<Point>  = new Signal({x:0,y:0})
 

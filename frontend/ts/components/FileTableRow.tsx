@@ -98,7 +98,7 @@ export class FileTableRow<I extends Input, R extends Result> extends preact.Comp
 
     /** Called when an accordion opens, scrolls to this row */
     #scroll_to_row(): void {
-        console.log('scrolling to ', this.#top)
+        //console.log('scrolling to ', this.#top)
         setTimeout(() => {
             window.scrollTo( {top:this.#top, behavior:'smooth'} )
         }, 10)
