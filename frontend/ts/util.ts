@@ -275,3 +275,7 @@ export type HasValidate<R> = {validate: (raw:unknown) => R|null|Promise<R|null>}
 export type ClassWithValidate<R, Arguments extends unknown[] = any[]> 
     = Class<R, Arguments> & HasValidate<R>
 
+
+export function is_deno(): boolean {
+    return (self.Deno != undefined)
+}
