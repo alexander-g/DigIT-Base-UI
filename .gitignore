@@ -8,5 +8,5 @@ static
 cache
 models
 venv
-assets
+./assets
 .deno

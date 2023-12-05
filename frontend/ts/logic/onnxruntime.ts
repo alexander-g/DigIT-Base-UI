@@ -33,23 +33,37 @@ function check_permissions(): true|Error {
     else return true;
 }
 
-async function cached_fetch(
-    ...x: Parameters<typeof fetch>
-): Promise<Response|Error> {
-    const [request, _request_init] = x
 
-    const cache:Cache = await caches.open("default")
-    const response:Response|undefined = await cache.match(request)
-    if(response != undefined){
-        return response;
-    }
-    else {
-        const response: Response|Error = await util.fetch_no_throw(...x)
-        if(response instanceof Error)
-            return response as Error;
-        
-        await cache.put(request, response)
-        return response
+/** Replace the original fetch with a cached version for requests that match `pattern` */
+function monkeypatch_fetch(pattern:RegExp) {
+    const _original_fetch: typeof fetch = self.fetch;
+
+    self.fetch = async function(
+        ...x: Parameters<typeof fetch>
+    ): ReturnType<typeof fetch>{
+        const request: RequestInfo|URL = x[0]
+        let url_string:string;
+        if(request instanceof URL){
+            url_string = request.href
+        } else if(request instanceof Request){
+            url_string = request.url
+        } else {
+            url_string = request;
+        }
+    
+        if(pattern.test(url_string)){
+            const cache:Cache = await caches.open("default")
+            const response:Response|undefined = await cache.match(request)
+            if(response != undefined){
+                return response;
+            }
+            else {
+                const response:Response = await _original_fetch(...x)
+                await cache.put(request, response)
+                return response
+            }
+        }
+        else return _original_fetch(...x)
     }
 }
 
@@ -57,16 +71,9 @@ function set_ort_env(wasmpath:string): true|Error {
     //NOTE: threaded wasm currently doesnt work. fix it to single-threaded
     ort.env.wasm.numThreads = 1;
 
-    // const response: Response|Error = cached_fetch(wasmpath)
-
-
-    // if(wasmpath.startsWith('file://') && util.is_deno()) {
-    //     cached_fetch(wasmpath)
-    // } else {
-    //     ort.env.wasm.wasmPaths = wasmpath;
-    // }
-
     ort.env.wasm.wasmPaths = wasmpath;
+    //TODO: do this only once?
+    monkeypatch_fetch(new RegExp('^'+wasmpath))
 
     return true;
 }
@@ -124,6 +131,10 @@ export class Session {
     }
 
     async process_image_from_path(imagepath:string): Promise<unknown> {
+        return new Error('Not Implemented')
+    }
+
+    async process_image_from_blob(blob:Blob): Promise<unknown> {
         return new Error('Not Implemented')
     }
 }

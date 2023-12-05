@@ -60,3 +60,9 @@ export function mock_fetch_404(): mock.Spy {
 export function is_hidden(element: HTMLElement): boolean {
     return (element.style.display == 'none')
 }
+
+/** Add a global window.document object, so that `util.is_deno()` returns false
+ *  to simulate a browser environment. */
+export function simulate_browser() {
+    globalThis.document = {} as Document;
+}
