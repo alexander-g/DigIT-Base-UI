@@ -3,15 +3,13 @@ import { TopMenu }          from "./components/TopMenu.tsx"
 import { MainContainer }    from "./components/MainContainer.tsx"
 import { SVGFilters }       from "./components/SVGFilters.tsx";
 
-// import { Input, Result }    from "./logic/files.ts";
-// import { InputFile }        from "./logic/files.ts";
-// import { InputClassInterface } from "./logic/files.ts";
 import * as files           from "./logic/files.ts";
 import * as file_input      from "./components/file_input.ts"
 import * as settings        from "./logic/settings.ts";
 
 import * as state           from "./components/state.ts";
 import * as util            from "./util.ts";
+import { show_error_toast } from "./components/errors.ts";
 
 
 import { TrainingTab, TabContent }     from "./components/MainContainer.tsx"
@@ -39,7 +37,7 @@ TOPMENU         extends TopMenu,
     AppState:       util.Constructor<APPSTATE>,
     InputClass:     files.InputClassInterface<INPUT>,
     ResultClass:    util.ClassWithValidate<RESULT>,
-    load_settings:  () => Promise<settings.SettingsResponse<SETTINGS>|null>,
+    settingshandler:settings.SettingsHandler<SETTINGS>,
     TopMenu:        util.Constructor<TOPMENU>,
     tabs:           Record<string, typeof TabContent<APPSTATE>>,
     },
@@ -58,7 +56,7 @@ TOPMENU         extends TopMenu,
                 <options.TopMenu
                     $settings           = {this.appstate.$settings}
                     $available_models   = {this.appstate.$available_models}
-                    load_settings_fn    = {options.load_settings}
+                    settingshandler     = {options.settingshandler}
                     on_inputfiles       = {this.set_files.bind(this)}
                     on_inputfolder      = {this.set_files.bind(this)}
                     on_annotationfiles  = {this.set_files.bind(this)}
@@ -76,10 +74,10 @@ TOPMENU         extends TopMenu,
             state.set_global_app_state(this.appstate)
             
             //TODO: refactor out
-            const settingsresponse:settings.SettingsResponse<SETTINGS>|null 
-                = await options.load_settings()
-            if(settingsresponse == null){
-                //TODO: show an error message
+            const settingsresponse:settings.SettingsResponse<SETTINGS>|Error 
+                = await options.settingshandler.load()
+            if(settingsresponse instanceof Error){
+                show_error_toast('Could not load settings', settingsresponse)
                 return;
             }
             this.appstate.$settings.value = settingsresponse.settings
@@ -118,12 +116,12 @@ TOPMENU         extends TopMenu,
 
 /** Main component for the base project */
 class App extends create_App({
-    id:             'base', 
-    AppState:       state.AppState, 
-    InputClass:     files.InputFile,
-    ResultClass:    files.Result,
-    load_settings:  settings.load_settings, 
-    TopMenu:        TopMenu,
+    id:              'base', 
+    AppState:        state.AppState, 
+    InputClass:      files.InputFile,
+    ResultClass:     files.Result,
+    settingshandler: new settings.BaseSettingsHandler(), 
+    TopMenu:         TopMenu,
 
     tabs: {
              'Detection': DetectionTab,

@@ -111,7 +111,7 @@ type FileTableMenuProps<I extends Input, R extends Result> = {
     /** Flag indicating that a processing operation is running somewhere. Read+Write. */
     $processing:        signals.Signal<boolean>;
 
-    processingmodule:   ProcessingModule<I,R>;
+    $processingmodule:  signals.ReadonlySignal< ProcessingModule<I,R>|null >;
 
     /** Which DownloadButton to include.
      *  @default {@link DownloadAllButton} */
@@ -131,9 +131,13 @@ extends preact.Component<FileTableMenuProps<I,R>> {
             //TODO: this should be handled somewhere else
             if(props.$processing.value)
                 return;
+            if(!props.$processingmodule.value)
+                return;
             
             props.$processing.value = true;
-            await process_inputs(props.displayed_items, props.processingmodule)
+            await process_inputs(
+                props.displayed_items, props.$processingmodule.value
+            )
             props.$processing.value = false;
         }
 

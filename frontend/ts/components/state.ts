@@ -80,7 +80,8 @@ extends Signal< InputResultPair<I,R>[] >{}
 
 
 /** Reactive AvailableModels */
-class AvailableModelsSignal extends Signal<AvailableModels|undefined> {}
+class AvailableModelsSignal<S extends Settings> 
+    extends Signal<AvailableModels<S>|undefined> {}
 
 
 /** Main application state structure */
@@ -99,9 +100,22 @@ SETTINGS extends Settings = Settings
     $settings: Signal<SETTINGS|undefined> = new Signal(undefined)
 
     /** Which models can be selected in the settings */
-    $available_models: AvailableModelsSignal = new AvailableModelsSignal(undefined)
+    $available_models: AvailableModelsSignal<SETTINGS> 
+        = new AvailableModelsSignal(undefined)
 }
 
+
+/** Utility type extracting the `InputResultPair` type of a {@link AppState} */
+export type InputResultPairOfAppState<AS extends AppState>
+    = NonNullable<ReturnType<AS['$files']['value']['at']>>
+
+/** Utility type extracting the `Input` type of a {@link AppState} */
+export type InputTypeOfAppState<AS extends AppState> 
+    = InputResultPairOfAppState<AS>['input']
+
+/** Utility type extracting the `Result` type of a {@link AppState} */
+export type ResultTypeOfAppState<AS extends AppState>
+    = InputResultPairOfAppState<AS>['$result']['value']
 
 
 

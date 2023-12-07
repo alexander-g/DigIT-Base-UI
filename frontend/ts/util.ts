@@ -276,6 +276,10 @@ export type ClassWithValidate<R, Arguments extends unknown[] = any[]>
     = Class<R, Arguments> & HasValidate<R>
 
 
+export function is_browser(): boolean {
+    return (typeof document == 'object')
+}
+
 export function is_deno(): boolean {
-    return (self.Deno != undefined)
+    return !is_browser()
 }

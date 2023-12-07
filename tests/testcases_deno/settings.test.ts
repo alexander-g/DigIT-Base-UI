@@ -1,41 +1,32 @@
-// deno-lint-ignore-file no-explicit-any
 import * as settings    from "../../frontend/ts/logic/settings.ts";
 import * as util        from "./util.ts";
 import { mock }         from "./dep.ts";
 import { asserts }      from "./dep.ts";
 
 Deno.test('load_settings.errorhandling', async (t: Deno.TestContext) => {
+    const handler = new settings.BaseSettingsHandler;
 
     await t.step('do-catch-errors', async () => {
         // fetch that throws an error
-        util.mock_fetch_connection_error('Should not be caught')
-        const error_spy: mock.Spy<any, [string], void> = mock.spy()
-        await asserts.assertRejects(
-            async () => { await settings.load_settings(error_spy) }
-        );
-        mock.assertSpyCalls(error_spy, 1)
+        util.mock_fetch_connection_error('We are offline')
+        const response = await handler.load()
+        asserts.assertInstanceOf(response, Error)
     })
     mock.restore()
 
     await t.step('error-on-404', async () => {
         //fetch that returns a response with 404 status code
         util.mock_fetch_404()
-        const error_spy: mock.Spy<any, [string], void> = mock.spy()
-        await asserts.assertRejects(
-            async () => { await settings.load_settings(error_spy) }
-        );
-        mock.assertSpyCalls(error_spy, 1)
+        const response = await handler.load()
+        asserts.assertInstanceOf(response, Error)
     })
     mock.restore()
 
     await t.step('error-on-invalid-json', async () => {
         //fetch that returns a response with invalid json data
         util.mock_fetch(async () => await new Response('$&"!'))
-        const error_spy: mock.Spy<any, [string], void> = mock.spy()
-        await asserts.assertRejects(
-            async () => { await settings.load_settings(error_spy) }
-        );
-        mock.assertSpyCalls(error_spy, 1)
+        const response = await handler.load()
+        asserts.assertInstanceOf(response, Error)
     })
 })
 
@@ -43,7 +34,7 @@ Deno.test('load_settings.errorhandling', async (t: Deno.TestContext) => {
 
 
 
-Deno.test('validate.basic', () => {
+Deno.test('validate.basic', async () => {
     const test_string0 = `{
         "available_models": {
           "detection": [
@@ -63,8 +54,11 @@ Deno.test('validate.basic', () => {
           }
         }
       }`
+    const response = new Response(test_string0)
 
+    const handler = new settings.BaseSettingsHandler;
     //assert no error is thrown
-    const result = settings.validate_settings_response(test_string0)
-    asserts.assertFalse(result instanceof Error)
+    const result = await handler._validate_response(response)
+    asserts.assertNotInstanceOf(result, Error)
+    asserts.assertEquals(Object.keys(result.available_models.detection).length, 2)
 })

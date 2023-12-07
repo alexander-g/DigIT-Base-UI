@@ -1,9 +1,6 @@
 import { preact, JSX }      from "../dep.ts"
-import { AppState }         from "./state.ts";
-import { DetectionTab }     from "./DetectionTab.tsx";
-import { ObjectDetectionTab } from "./DetectionTab.tsx";
+import { AppState }         from "./state.ts"
 import { page_wide_css }    from "./styles.ts";
-import * as objdet          from "../logic/objectdetection.ts";
 
 type TabsProps = {
     tab_names:  string[]
@@ -37,7 +34,8 @@ type TabProps<AS extends AppState> = {
     name:       string;
 }
 
-export abstract class TabContent<AS extends AppState> extends preact.Component<TabProps<AS>>{}
+export abstract class TabContent<AS extends AppState>
+extends preact.Component<TabProps<AS>>{}
 
 
 type MainContainerProps<AS extends AppState> = {

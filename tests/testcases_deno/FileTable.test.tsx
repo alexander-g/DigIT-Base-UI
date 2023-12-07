@@ -1,5 +1,5 @@
 import { FileTable }        from "../../frontend/ts/components/FileTable.tsx"
-import { Result, ProcessingModule }    from "../../frontend/ts/logic/files.ts"
+import { Result, DummyProcessingModule }    from "../../frontend/ts/logic/files.ts"
 import { 
     InputFileList, 
     input_result_signal_pairs_from_inputs 
@@ -9,11 +9,6 @@ import { asserts, mock }    from "./dep.ts"
 import { preact, signals }  from "../../frontend/ts/dep.ts"
 
 
-class DummyProcessingModule extends ProcessingModule<File, Result> {
-    async process(input: File): Promise<Result> {
-        return new Result()
-    }
-}
 
 Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
     const document:Document = await util.setup_jsdom()
@@ -31,7 +26,9 @@ Deno.test('FileTable.basic', async (t:Deno.TestContext) => {
                 $files          =   {$files}
                 sortable        =   {false} 
                 $processing     =   {processing}
-                processingmodule =  {new DummyProcessingModule()}
+                $processingmodule = {
+                    signals.computed(() => new DummyProcessingModule()) 
+                }
                 ref             =   {table_ref}
             />,
             document.body

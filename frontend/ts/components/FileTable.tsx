@@ -1,5 +1,5 @@
 import { preact, JSX, signals, ReadonlySignal }         from "../dep.ts"
-import { Input, Result, ProcessingModule, InputResultPair }        from "../logic/files.ts"
+import { Input, Result, ProcessingModule }              from "../logic/files.ts"
 import { InputFileList, InputResultPair as InputResultSignalPair } from "./state.ts"
 import { Constructor, ImageSize }                       from "../util.ts";
 import { ContentMenu, ShowResultsCheckbox }             from "./ContentMenu.tsx"
@@ -64,7 +64,7 @@ export type FileTableContentProps<I extends Input, R extends Result>
 = FileTableRowProps<I,R> & {
     /** Flag indicating that the content is loaded and ready to be displayed */
     $loaded:           signals.Signal<boolean>
-    processingmodule:  ProcessingModule<I, R>
+    $processingmodule: ReadonlySignal< ProcessingModule<I, R>|null >
 }
 
 /** Input image, result overlays and controls */
@@ -82,12 +82,12 @@ extends preact.Component<FileTableContentProps<I,R>> {
     contentmenu(): JSX.Element {
         return (
         <ContentMenu 
-            input            = {this.props.input} 
-            $result          = {this.props.$result}
-            $result_visible  = {this.$result_visible}
-            view_menu_items  = {this.view_menu_items()}
-            help_button      = {this.help_menu()}
-            processingmodule = {this.props.processingmodule}
+            input             = {this.props.input} 
+            $result           = {this.props.$result}
+            $result_visible   = {this.$result_visible}
+            view_menu_items   = {this.view_menu_items()}
+            help_button       = {this.help_menu()}
+            $processingmodule = {this.props.$processingmodule}
         >
             { this.content_menu_extras() } 
         </ContentMenu>
@@ -159,7 +159,7 @@ extends FileTableContent< File, R > {
 
 export type FileTableItemProps<I extends Input, R extends Result> = FileTableRowProps<I,R> & {
     /** A module handling input processing requests */
-    processingmodule:  ProcessingModule<I,R>
+    $processingmodule: ReadonlySignal< ProcessingModule<I,R>|null >
 
     /** @virtual To be overwritten downstream 
      *  @default {@link FileTableRow} */
@@ -224,7 +224,7 @@ type FileTableProps<I extends Input, R extends Result> = {
     columns:    FileTableColumn[];
 
     /** A module handling input processing requests */
-    processingmodule:  ProcessingModule<I,R>
+    $processingmodule:  ReadonlySignal< ProcessingModule<I,R>|null >
 
     /** Component class to show as the row title
      * @default {@link FileTableRow} */
@@ -256,10 +256,10 @@ class FileTable<I extends Input, R extends Result> extends preact.Component<File
                     key         =   {pair.input.name} 
                     input       =   {pair.input}
                     $result     =   {pair.$result}
-                    $active_file     =   {this.#$active_file}
-                    processingmodule = {props.processingmodule}
-                    FileTableRow     = {props.FileTableRow}
-                    FileTableContent = {props.FileTableContent}
+                    $active_file      = {this.#$active_file}
+                    $processingmodule = {props.$processingmodule}
+                    FileTableRow      = {props.FileTableRow}
+                    FileTableContent  = {props.FileTableContent}
                 />
         )
 
@@ -267,7 +267,7 @@ class FileTable<I extends Input, R extends Result> extends preact.Component<File
         <FileTableMenu 
             displayed_items     =   {props.$files.value} 
             $processing         =   {props.$processing}
-            processingmodule    =   {props.processingmodule}
+            $processingmodule   =   {props.$processingmodule}
         />
         <table 
             class = "ui fixed celled unstackable table accordion filetable" 

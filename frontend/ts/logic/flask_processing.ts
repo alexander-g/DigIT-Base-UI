@@ -1,14 +1,11 @@
-import { InputResultPair, ProcessingModule, Result }         from "./files.ts";
-import * as util                            from "../util.ts";
-
+import { InputResultPair, ProcessingModule, Result } from "./files.ts";
+import * as util from "../util.ts";
 
 
 /** Processing module that sends the input file to the flask backend for processing */
-export abstract class FlaskProcessing<R extends Result> extends ProcessingModule<File,R> {
-    abstract ResultClass: util.ClassWithValidate<R, ConstructorParameters<typeof Result>>;
-
+export class FlaskProcessing<R extends Result> extends ProcessingModule<File,R> {
     async process(
-        input:        File, 
+        input:        File,
         on_progress?: (x: InputResultPair<File, R>) => void
     ): Promise<R> {
         on_progress?.({input, result:new this.ResultClass("processing")})
@@ -23,8 +20,11 @@ export abstract class FlaskProcessing<R extends Result> extends ProcessingModule
             return new this.ResultClass('failed');
         
         
-        const raw:unknown = await util.parse_json_response(response)
-        const result: R   = await this.ResultClass.validate(raw) ?? new this.ResultClass('failed');
+        const raw:unknown   = await util.parse_json_response(response);
+        const result:R|null = await this.ResultClass.validate(raw) 
+        if(result == null)
+            return new this.ResultClass('failed');
+        
         //TODO: set inputname via validate/constructor
         result.inputname  = input.name;
         return result;

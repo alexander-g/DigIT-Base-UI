@@ -1,4 +1,4 @@
-import "../dep.ts"
+import "../dep.ts" //for jquery side-effect
 
 
 export type error_fn = (msg:string, error?:Error) => void;

@@ -118,7 +118,9 @@ export class ObjectdetectionResult extends BaseResult {
 }
 
 export class ObjectdetectionFlaskProcessing extends FlaskProcessing<ObjectdetectionResult> {
-    ResultClass: util.ClassWithValidate<ObjectdetectionResult> = ObjectdetectionResult;
+    constructor(){
+        super(ObjectdetectionResult)
+    }
 }
 
 

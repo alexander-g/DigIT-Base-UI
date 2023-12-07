@@ -6,7 +6,7 @@ import { zip_files }                from "../logic/zip.ts";
 import { ProcessingModule }         from "../logic/files.ts";
 
 type ContentMenuProps<I extends Input, R extends Result> = InputResultPair<I,R> & {
-    processingmodule:   ProcessingModule<I,R>
+    $processingmodule:  signals.ReadonlySignal< ProcessingModule<I,R>|null >
 
     /** Flag indicating whether to show the result or not. Set here. */
     $result_visible:    Signal<boolean>
@@ -26,12 +26,19 @@ type ContentMenuProps<I extends Input, R extends Result> = InputResultPair<I,R> 
 export function ContentMenu<I extends Input, R extends Result>(
     props: ContentMenuProps<I,R>
 ): JSX.Element {
+    let play_button: JSX.Element|null = null;
+    if(props.$processingmodule.value) 
+        play_button = <PlayButton 
+            inputresultpair  = {props} 
+            processingmodule = {props.$processingmodule.value}
+        />
+    
     return (
         <div
             class = "ui bottom attached secondary icon menu"
             style = "border-top-width:0px; margin-bottom:0px;"
         >
-            <PlayButton inputresultpair={props} processingmodule={props.processingmodule}/>
+            { play_button }
             {
                 //add a ViewMenu only if there are any menu items to show
                 (!props.view_menu_items?.length)
@@ -64,7 +71,9 @@ extends preact.Component<PlayButtonProps<I,R>> {
             <a
                 class           =   "process item"
                 onClick         =   {
-                    () => process_inputs([props.inputresultpair], props.processingmodule)
+                    () => process_inputs(
+                        [props.inputresultpair], props.processingmodule
+                    )
                 }
                 data-tooltip    =   "Process Image"
                 data-position   =   "bottom left"

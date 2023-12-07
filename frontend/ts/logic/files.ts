@@ -1,4 +1,5 @@
 import * as util            from "../util.ts";
+import type { Settings }    from "./settings.ts"
 
 
 /** Base input type, can be anything with a name */
@@ -35,7 +36,8 @@ export class InputFile extends File implements Input  {
     }
 }
 
-export type InputClassInterface<I extends Input> = util.ClassWithValidate<I> & { filetypes:string[] }
+export type InputClassInterface<I extends Input>
+    = util.ClassWithValidate<I> & { filetypes:string[] }
 
 
 
@@ -147,12 +149,60 @@ export function zip_inputs_and_results<I extends Input, R extends Result>(
     return pairs;
 }
 
+/** Utility type to ensure the presence of a `validate()` method.
+ *  A `Result` subclass satisfies this condition */
+type ResultValidator<R extends Result> 
+    = util.ClassWithValidate<R, ConstructorParameters<typeof Result>>
 
-export abstract class ProcessingModule<I extends Input, R extends Result> {
+/** Abstract base class for a processing backend (e.g. HTTP remote,
+ *  onnxruntime, libtorch FFI). Subclasses have to implement `process()` */
+export abstract class ProcessingModule<I extends Input, R extends Result>{
+    ResultClass: ResultValidator<R>
+
+    constructor(ResultClass:ResultValidator<R>){
+        this.ResultClass = ResultClass;
+    } 
+
+    /** @virtual Process an input and return a result (potentially with status 
+     * `failed`). Callback `on_progress()` should give intermediate results. */
     abstract process(
         input:        I, 
         on_progress?: (x:InputResultPair<I,R>) => void
     ): Promise<R> ;
+
+    async validate_result(x:unknown): Promise<R>{
+        const validationresult: R|null = await this.ResultClass.validate(x)
+        if(validationresult == null){
+            return new this.ResultClass('failed')
+        }
+        else return validationresult as R;
+    }   
+}
+
+
+export abstract class ProcessingModuleWithSettings<
+    I extends Input, R extends Result, S extends Settings
+> extends ProcessingModule<I,R> {
+    settings: S;
+
+    constructor(ResultClass:ResultValidator<R>, settings:S){
+        super(ResultClass)
+        this.settings = settings;
+    } 
+}
+
+export abstract class DetectionModule<I extends Input, R extends Result> 
+extends ProcessingModuleWithSettings<I,R,Settings<'detection'>>{}
+
+
+export class DummyProcessingModule extends ProcessingModule<File, Result> {
+    constructor(){
+        super(Result)
+    }
+
+    async process(input: File): Promise<Result> {
+        return await new Result('processing', null, input.name)
+    }
 }
 
 

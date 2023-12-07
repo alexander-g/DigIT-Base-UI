@@ -1,8 +1,10 @@
-import { preact, JSX }  from "../dep.ts"
+import { JSX, signals } from "../dep.ts"
+import type {BaseSettings}  from "../logic/settings.ts"
 import { FileTable }    from "./FileTable.tsx"
 import { AppState }     from "./state.ts"
 import { TabContent }   from "./MainContainer.tsx";
 
+import { DummyProcessingModule }            from "../logic/files.ts"
 import { ObjectdetectionFlaskProcessing }   from "../logic/objectdetection.ts";
 import { ObjectdetectionRow }               from "./FileTableRow.tsx";
 import { ObjectdetectionContent }           from "./BoxesOverlay.tsx";
@@ -35,16 +37,22 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
     file_table(): JSX.Element {
         const appstate: S = this.props.appstate;
         return <FileTable 
-            sortable        =   {false} 
-            $files          =   {appstate.$files}
-            $processing     =   {appstate.$processing}
-            processingmodule =  { new ObjectdetectionFlaskProcessing() }  //TODO: replace
+            sortable          =  {false} 
+            $files            =  {appstate.$files}
+            $processing       =  {appstate.$processing}
+            $processingmodule =  {
+                signals.computed( () => new DummyProcessingModule() )
+            }
         />; 
     }
 }
 
 
-export class ObjectDetectionTab<S extends AppState<objdet.Input, objdet.ObjectdetectionResult>>
+type ObjectdetectionAppState = AppState<
+    objdet.Input, objdet.ObjectdetectionResult, BaseSettings
+>
+
+export class ObjectDetectionTab<S extends ObjectdetectionAppState>
 extends DetectionTab<S> {
     constructor(...args:ConstructorParameters<typeof DetectionTab<S>>) {
         super(...args)
@@ -67,10 +75,16 @@ extends DetectionTab<S> {
                 {label:'Files',      width_css_class:'six'}, 
                 {label:'Detections', width_css_class:'ten'}
             ]}
-            processingmodule =  { new ObjectdetectionFlaskProcessing() }
+            $processingmodule =  { 
+                signals.computed( this.#processingmodule.bind(this) )
+            }
             FileTableRow     =  { ObjectdetectionRow }
             FileTableContent =  { ObjectdetectionContent }
         />; 
+    }
+
+    #processingmodule() {
+        return new ObjectdetectionFlaskProcessing()
     }
 }
 

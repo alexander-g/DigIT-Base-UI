@@ -1,5 +1,5 @@
 import { Point, Size }                          from "../util.ts";
-import { ModelInfo, find_modelinfo }            from "../logic/settings.ts";
+import { ModelInfo, find_modelinfo, BaseSettings }  from "../logic/settings.ts";
 import { Input, Result, ProcessingModule }      from "../logic/files.ts";
 import { ObjectdetectionResult, collect_all_classes } from "../logic/objectdetection.ts";
 import { AppState, InputResultPair }            from "./state.ts";
@@ -93,15 +93,18 @@ export function page2element_coordinates(
 
 /** Collect all possible classes from current global state.  */
 export function collect_all_classes_from_appstate(
-    appstate:AppState<Input, ObjectdetectionResult>
+    appstate:AppState<Input, ObjectdetectionResult, BaseSettings>
 ): string[] {
     const results: ObjectdetectionResult[] = appstate.$files.peek().map(
         (pair: InputResultPair<Input, ObjectdetectionResult>) => pair.$result.peek()
     )
     const model: string|undefined = appstate.$settings.peek()?.active_models?.detection
     let modelinfo: ModelInfo|undefined;
-    if(model) 
-        modelinfo = find_modelinfo(appstate.$available_models.peek()?.detection ?? [], model)
+    if(model) {
+        modelinfo = find_modelinfo(
+            appstate.$available_models.peek()?.detection ?? [], model
+        ) ?? undefined;
+    }
 
     return collect_all_classes(results, modelinfo)
 }

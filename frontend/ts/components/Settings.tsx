@@ -1,5 +1,4 @@
 import { JSX, preact, Signal }              from "../dep.ts"
-import * as util                            from "../util.ts";
 import * as settings                        from "../logic/settings.ts";
 import type { 
     ModelInfo, 
@@ -11,18 +10,18 @@ import { show_error_toast }                 from "./errors.ts";
 
 
 
-export type SettingsModalProps<S extends Settings = Settings, AM = AvailableModels> = {
+export
+type SettingsModalProps<S extends Settings> = {
     $settings:          Signal<S|undefined>;
-    $available_models:  Signal<AM|undefined>;
+    $available_models:  Signal<AvailableModels<S>|undefined>;
 
-    load_settings_fn:   () => Promise<SettingsResponse<S>|null>;
+    settingshandler:    settings.SettingsHandler<S>;
 }
 
 
 /** The main settings dialog */
-export class SettingsModal<
-    S  extends Settings = Settings, 
-    //AM extends AvailableModels = AvailableModels, 
+export abstract class SettingsModal<
+    S  extends Settings              = Settings<never>, 
     P  extends SettingsModalProps<S> = SettingsModalProps<S> > 
 extends preact.Component<P> {
     
@@ -42,28 +41,15 @@ extends preact.Component<P> {
         </div>
     }
 
-    /** @virtual */
-    form_content(): JSX.Element[] {
-        const avmodels: ModelInfo[]|undefined 
-            = this.props.$available_models.value?.detection
-        const activemodel: string|undefined 
-            = this.props.$settings.value?.active_models?.detection
-        
-        return [
-             <ModelSelection 
-                active_model     = {activemodel}
-                available_models = {avmodels}
-                ref              = {this.model_selection}
-                label            = {"Active model"}
-            />
-        ]
-    }
+    /** @virtual The main content, what to display in the modal */
+    abstract form_content(): JSX.Element[];
 
     async show_modal(): Promise<void> {
         //TODO: refactor
-        const settingsresponse:SettingsResponse<S>|null = await this.props.load_settings_fn()
-        if(settingsresponse == null){
-            show_error_toast('Could not load settings')
+        const settingsresponse:SettingsResponse<S>|Error 
+            = await this.props.settingshandler.load()
+        if(settingsresponse instanceof Error){
+            show_error_toast('Could not load settings', settingsresponse)
             return;
         }
         this.props.$settings.value = settingsresponse.settings;
@@ -76,7 +62,26 @@ extends preact.Component<P> {
 
     /** Get all values in the modal as set by user and convert to a Settings object 
      *  @virtual */
-    collect_settings_from_widgets(): Settings|null {
+    abstract collect_settings_from_widgets(): S|null;
+
+    async save_settings(): Promise<void> {
+        const settings:S|null = this.collect_settings_from_widgets()
+        if(settings == null){
+            console.error('Failed to collect settings from modal')
+            return;
+        }
+        
+        const status:true|Error = await this.props.settingshandler.store(settings)
+        if(status instanceof Error){
+            show_error_toast('Could not save settings', status as Error)
+        }
+    }
+}
+
+
+export class BaseSettingsModal extends SettingsModal<settings.BaseSettings>{
+    /** @override */
+    collect_settings_from_widgets(): settings.BaseSettings | null {
         if(!this.model_selection.current)
             return null;
 
@@ -87,30 +92,34 @@ extends preact.Component<P> {
             return null;
         }
 
-        const settings:Settings = {active_models:{detection : model.name}}
-        return settings
+        return  {active_models:{detection : model.name}}
     }
 
-    async save_settings(): Promise<void> {
-        const settings:Settings|null = this.collect_settings_from_widgets()
-        if(settings == null){
-            console.error('Failed to collect settings from modal')
-            return;
-        }
-        
-        
-        await util.fetch_with_error(
-            [new Request('settings', {method:'post', body:JSON.stringify(settings)})],
-            () => {show_error_toast('Cannot save settings.')}
-        )
+    /** @override */
+    form_content(): JSX.Element[] {
+        const avmodels: ModelInfo[]|undefined 
+            = this.props.$available_models.value?.detection
+        const activemodel: string|undefined 
+            = this.props.$settings.value?.active_models?.detection
+
+        return [
+             <ModelSelection 
+                active_model     = {activemodel}
+                available_models = {avmodels}
+                ref              = {this.model_selection}
+                label            = {"Active model"}
+            />
+        ]
     }
 }
+
+
 
 type ModelDropdownProps = {
     /** Which options to display in the model selection dropdown */
     available_models?: ModelInfo[];
     /** Which option is displayed in the model selection dropdown (not yet saved) */
-    selected_model:    Signal<string|undefined>;
+    $selected_model:   Signal<string|undefined>;
 }
 
 
@@ -155,7 +164,7 @@ class ModelDropdown extends preact.Component<ModelDropdownProps> {
                 (m:ModelInfo, index:number) => ({
                     name        : m.name, 
                     value       : index, 
-                    selected    : (m.name == props.selected_model.value ) 
+                    selected    : (m.name == props.$selected_model.value ) 
                 }) 
             ) ?? [] //TODO: display some error instead of empty
 
@@ -163,7 +172,7 @@ class ModelDropdown extends preact.Component<ModelDropdownProps> {
                 values:      dropdown_items, 
                 showOnFocus: false,
                 onChange:    (_i:number, modelname:string) => {
-                    props.selected_model.value = modelname}
+                    props.$selected_model.value = modelname}
                 ,
             })
         }
@@ -199,7 +208,7 @@ export class ModelSelection extends preact.Component<ModelSelectionProps> {
         
         let known_classes: JSX.Element|undefined;
         if(props.available_models && modelname) {
-            const active_model_info: ModelInfo|undefined
+            const active_model_info: ModelInfo|null
                 = settings.find_modelinfo(props.available_models, modelname)
             
             if(active_model_info)
@@ -211,7 +220,7 @@ export class ModelSelection extends preact.Component<ModelSelectionProps> {
             <label>{ this.props.label }</label>
             <ModelDropdown 
                 available_models = {props.available_models}
-                selected_model   = {this.selected_model}
+                $selected_model  = {this.selected_model}
                 ref              = {this.dropdown_ref}
             />
 

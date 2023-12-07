@@ -1,9 +1,9 @@
 import { JSX, preact }      from "../dep.ts"
 import { SettingsButton }   from "./Settings.tsx"
 import { page_wide_css }    from "./styles.ts";
-import * as Settings        from "./Settings.tsx"
-import * as file_input      from "./file_input.ts";
+import * as SettingsTSX     from "./Settings.tsx"
 import { Constructor }      from "../util.ts";
+import type { Settings, AvailableModels } from "../logic/settings.ts";
 
 
 function Logo(): JSX.Element {
@@ -106,15 +106,16 @@ function FileMenu(props:FileMenuProps): JSX.Element {
 }
 
 
-type TopMenuProps = Settings.SettingsModalProps & FileMenuProps;
+type TopMenuProps<S extends Settings = Settings> 
+    = SettingsTSX.SettingsModalProps<S> & FileMenuProps;
 
 
 /** Menu bar on the top of the page, containing file menu and settings button */
 export class TopMenu extends preact.Component<TopMenuProps> {
-    settings_modal: preact.RefObject<Settings.SettingsModal> = preact.createRef()
+    settings_modal: preact.RefObject<SettingsTSX.SettingsModal> = preact.createRef()
 
     /** @virtual Overwritten downstream */
-    SettingsModal: Constructor<Settings.SettingsModal>  = Settings.SettingsModal
+    SettingsModal: Constructor<SettingsTSX.SettingsModal>  = SettingsTSX.BaseSettingsModal
 
     render(): JSX.Element {
         return <>
@@ -126,14 +127,16 @@ export class TopMenu extends preact.Component<TopMenuProps> {
                     on_annotationfiles = {this.props.on_annotationfiles}
                     input_filetypes    = {this.props.input_filetypes}
                 />
-                <SettingsButton on_click={() => this.settings_modal.current?.show_modal()}/>
+                <SettingsButton on_click={
+                    () => this.settings_modal.current?.show_modal()
+                }/>
             </div>
             
             <this.SettingsModal
                 ref                 = {this.settings_modal}
                 $available_models   = {this.props.$available_models} 
                 $settings           = {this.props.$settings}
-                load_settings_fn    = {this.props.load_settings_fn}
+                settingshandler     = {this.props.settingshandler}
             />
         </>
     }

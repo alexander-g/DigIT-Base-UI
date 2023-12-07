@@ -1,4 +1,4 @@
-import { Result as BaseResult, ResultStatus } from "./files.ts";
+import { Result as BaseResult } from "./files.ts";
 import * as util                from "../util.ts"
 import { FlaskProcessing }      from "./flask_processing.ts";
 
@@ -48,6 +48,8 @@ export class SegmentationResult extends BaseResult {
 }
 
 export class SegmentationFlaskProcessing extends FlaskProcessing<SegmentationResult> {
-    ResultClass: util.ClassWithValidate<SegmentationResult> = SegmentationResult;
+    constructor(){
+        super(SegmentationResult)
+    }
 }
 
