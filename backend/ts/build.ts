@@ -23,6 +23,9 @@ type CompilationPaths = {
     /** Path to third-party dependencies/imports, relative to `frontend` */
     dep_ts:         string;
 
+    /** Paths to modules that should be replaced with empty stubs */
+    stubs?:         string[];
+
     /** Additional glob patterns relative to `frontend` to find files
      *  that need to be copied into `static` */
     copy_globs?:    string[];
@@ -33,6 +36,7 @@ export const DEFAULT_PATHS: CompilationPaths = {
     frontend        :   paths.frontend(),
     index_tsx       :   'ts/index.tsx',
     dep_ts          :   'ts/dep.ts',
+    stubs           :   ['ts/dep.deno.ts'],
     copy_globs      :   [
         'css/**/*.*',
         'thirdparty/**/*.*',
@@ -83,23 +87,27 @@ export async function compile_everything(
     //copy css, assets and thirdparty JS into the static folder
     copy_files_to_static(paths)
     
-    //transpile and bundle thirdparty dependencies to dep.ts
-    const dep_ts:string = path.join(paths.frontend, paths.dep_ts)
-    
-    //bundle third-party dependencies
+    //bundle third-party dependencies into a dep.ts
+    const dep_ts_input:string  = path.join(paths.frontend, paths.dep_ts)
+    const dep_ts_output:string = path.join(paths.static,   paths.dep_ts)
+    //except some specified modules (e.g. deno modules)
+    const stub_remap: Record<string,string> = create_stub_file(
+        paths.frontend, path.dirname(dep_ts_output), paths.stubs ?? []
+    )
     promises.push(
-        build.compile_esbuild(
-            dep_ts, 
-            path.join(paths.static,   paths.dep_ts)
-        )
+        build.compile_esbuild(dep_ts_input, dep_ts_output, stub_remap)
     )
 
     //transpile and bundle index.tsx
+    const index_remap: Record<string,string> = {
+        [dep_ts_input]: './dep.ts', 
+        ...stub_remap
+    }
     promises.push(
         build.compile_esbuild(
             path.join(paths.frontend, paths.index_tsx), 
             path.join(paths.static,   paths.index_tsx), 
-            {[dep_ts]: './dep.ts'}
+            index_remap
         )
     )
 
@@ -167,6 +175,28 @@ export function clear_folder(path:string): void {
     } catch {}
     
     fs.ensureDirSync(path)
+}
+
+/** Create an empty file in the output folder that will serve as a replacement
+ *  for `modules_to_stub`. */
+function create_stub_file(
+    inputfolder:     string,
+    outputfolder:    string, 
+    modules_to_stub: string[],
+): Record<string, string> {
+    if(modules_to_stub.length == 0)
+        return {}
+    
+    // deno-lint-ignore no-inferrable-types
+    const stubfilename:string = './stub.ts'
+    write_to_static(stubfilename, outputfolder, '')
+
+    const remap: Record<string, string> = Object.fromEntries(
+        modules_to_stub.map(
+            (p:string) => [path.join(inputfolder, p), stubfilename]
+        )
+    )
+    return remap;
 }
 
 

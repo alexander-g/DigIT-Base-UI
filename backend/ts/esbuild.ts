@@ -1,7 +1,6 @@
 #!./deno.sh run --no-prompt --allow-read --allow-write=./static --allow-env --cached-only
 
 import { esbuild, cache, path, fs } from "./dep.ts";
-import * as paths                   from "./paths.ts"
 import { fetch_no_throw }           from "../../frontend/ts/util.ts";
 
 
@@ -188,21 +187,32 @@ async function ensure_esbuild_wasm(root:string): Promise<string|Error> {
     return path_to_wasm;
 }
 
+
+function remove_file_url(x:string): string {
+    if(x.startsWith('file://')) {
+        return path.fromFileUrl(x)
+    }
+    else return x;
+}
+
 /** Make sure all required permissions are set, return instructions if not */
-function check_permissions(root:string, static_folder?:string): true|Error {
-    static_folder = static_folder ?? paths.static_folder(root)
+function check_permissions(root:string, output_folder:string): true|Error {
+    if(!path.isAbsolute(root)){
+        return new Error(`Root path must be absolute. Got:${root}`)
+    }
+
     const path_to_wasm:string = path.dirname(path_to_esbuild_wasm(root))
     if(
         Deno.permissions.querySync({name:"env", variable:'DENO_DIR'}).state != "granted"
      || Deno.permissions.querySync({name:"read", path:root}).state != "granted"
-     || Deno.permissions.querySync({name:"write", path:static_folder}).state !=  "granted"
+     || Deno.permissions.querySync({name:"write", path:output_folder}).state !=  "granted"
      || Deno.permissions.querySync({name:"write", path:path_to_wasm}).state !=  "granted"
      || Deno.permissions.querySync({name:'net', host:ESBUILD_URL.host}).state != "granted"
     )
         return new Error(`Required permissions (relative to ${root}):\n`
             +`--allow-env=DENO_DIR \n`
             +`--allow-read=./${path.relative(root, root)}\n`
-            +`--allow-write=./${path.relative(root, static_folder)},./${path.relative(root, path_to_wasm)}\n`
+            +`--allow-write=./${path.relative(root, output_folder)},./${path.relative(root, path_to_wasm)}\n`
             +`--allow-net=${ESBUILD_URL.host}`
         )
     //else
@@ -211,9 +221,9 @@ function check_permissions(root:string, static_folder?:string): true|Error {
 
 export class ESBuild {
     /** Check prerequisites and initialize esbuild if all ok */
-    static async initialize(root:string, static_folder?:string): Promise<ESBuild|Error> {
-        static_folder = static_folder ?? paths.static_folder(root)
-        const status: true|Error = check_permissions(root, static_folder)
+    static async initialize(root:string, output_folder:string): Promise<ESBuild|Error> {
+        root = remove_file_url(root)
+        const status: true|Error = check_permissions(root, output_folder)
         if(status instanceof Error)
             return status;
         
@@ -233,14 +243,3 @@ export class ESBuild {
     }
 }
 
-
-if (import.meta.main) {
-    const build:ESBuild|Error = await ESBuild.initialize(paths.root())
-    if(build instanceof Error)
-        console.log(build.message)
-    else {
-        const rootfile: string = path.join(paths.frontend(),      'dep.ts')
-        const output:   string = path.join(paths.static_folder(), 'dep.ts')
-        build.compile_esbuild(rootfile, output)
-    }
-}

@@ -1,11 +1,21 @@
-import * as canvaslib from "https://deno.land/x/canvas@v1.4.1/mod.ts"
+import { denolibs } from "../dep.ts"
+const canvaslib = denolibs.canvaslib;
+
+import type {
+    EmulatedCanvas2D, 
+    EmulatedImage,
+    EmulatedCanvasRenderingContext2D,
+    CanvasKit
+} from "../dep.ts"
 import * as util from "../util.ts"
 
-import type { 
-    EmulatedCanvas2D, 
-    Image as EmulatedImage,
-    CanvasRenderingContext2D as EmulatedCanvasRenderingContext2D
-} from "https://deno.land/x/canvas@v1.4.1/mod.ts";
+
+let _canvas:CanvasKit|undefined = undefined;
+async function _init_canvaslib() {
+    if(_canvas == undefined)
+        _canvas = await canvaslib.init()
+}
+
 
 //common types for both browser and deno
 type Image  = HTMLImageElement|EmulatedImage
@@ -28,9 +38,9 @@ export class ImageData extends Uint8ClampedArray {
 
 
 /** Create canvas of specified `size`. Native in browser or emulated in deno */
-export 
-function create_canvas(size:util.ImageSize):Canvas {
+export  async function create_canvas(size:util.ImageSize):Promise<Canvas> {
     if(util.is_deno()){
+        await _init_canvaslib()
         return canvaslib.createCanvas(size.width, size.height);
     } else {
         const canvas:HTMLCanvasElement = document.createElement('canvas')
@@ -44,6 +54,7 @@ export async function blob_to_image(blob:Blob): Promise<Image|Error> {
     if(util.is_deno()){
         const buffer:ArrayBuffer = await blob.arrayBuffer()
         try{
+            await _init_canvaslib()
             return await canvaslib.loadImage(new Uint8Array(buffer))
         } catch(error) {
             return error;
@@ -73,7 +84,7 @@ export async function blob_to_rgb(
         };
     }
 
-    const canvas:Canvas = create_canvas(targetsize)
+    const canvas:Canvas = await create_canvas(targetsize)
     const ctx:CanvasContext2D|null = canvas.getContext('2d')
     if(ctx == null){
         return new Error('Could not create a canvas context')

@@ -1,6 +1,4 @@
-//@deno-types="https://esm.sh/v135/onnxruntime-common@1.16.3/dist/esm/index.d.ts"
-import ort from "https://esm.run/onnxruntime-web@1.16.3"
-
+import { ort }   from "../dep.ts"
 import * as zip  from "./zip.ts"
 import * as util from "../util.ts"
 
