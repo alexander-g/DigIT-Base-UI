@@ -1,7 +1,11 @@
 //@deno-types="https://esm.sh/v135/onnxruntime-common@1.16.3/dist/esm/index.d.ts"
 import ort from "https://esm.run/onnxruntime-web@1.16.3"
 
+import * as zip  from "./zip.ts"
 import * as util from "../util.ts"
+
+
+
 
 const ORT_VERSION:string = ort.env.versions.common
 
@@ -79,6 +83,7 @@ function set_ort_env(wasmpath:string): true|Error {
 }
 
 
+/** Load a file from disk (in deno) or fetch it from server (in browser) */
 async function load_file(path:string): Promise<ArrayBuffer|Error> {
     if(util.is_deno()){
         try{
@@ -94,6 +99,159 @@ async function load_file(path:string): Promise<ArrayBuffer|Error> {
         }
         return await response.arrayBuffer()
     }
+}
+
+/** Supported dtypes */
+type DType = 'uint8' | 'float32' | 'int64'
+type DTypeArray = Uint8Array | Float32Array | BigInt64Array;
+
+type StateDict = Record<string, ort.Tensor>
+
+export type PT_ZIP = {
+    onnx_bytes: Uint8Array;
+    state_dict: StateDict;
+}
+
+/** Internal description of a input feed tensor. Stored in a .schema.json */
+type SchemaItem = {
+    shape: number[];
+    dtype: DType;
+    /** Path within the zip file to the file containing the weights.
+     *  If not defined, then this is a model input (e.g. image) */
+    path?: string;
+}
+
+
+/** Make sure the input is one of the supported dtype identifiers */
+function validate_dtype(x:unknown): DType|null {
+    if(util.is_string(x) 
+    && ((x == 'uint8') || ( x == 'float32') || (x == 'int64')) ) {
+        return x;
+    }
+    else return null;
+}
+
+/** Convert a buffer to a typed array or create a new one */
+function to_dtype_array(x:ArrayBuffer|number, dtype:DType): DTypeArray {
+    // NOTE: no-op to make typescript happy
+    // otherwise it complains that it cannot find a call signature
+    x = x as ArrayBuffer
+
+    if(dtype == 'float32'){
+        return new Float32Array(x)
+    } else if (dtype == 'int64') {
+        return new BigInt64Array(x)
+    }
+    else return new Uint8Array(x);
+}
+
+/** Compute the total number of elements for a shape */
+function shape_to_size(shape:number[]) {
+    return shape.reduce(
+        (previous:number, current:number) => previous*current
+    )
+}
+
+function create_ort_tensor(
+    /** Raw tensor data. If null, will create a new buffer. */
+    x:     ArrayBuffer|null, 
+    dtype: DType, 
+    shape: number[]
+): ort.Tensor|Error {
+    try{
+        const buf_or_size: ArrayBuffer|number = x ?? shape_to_size(shape)
+        const x_typed: DTypeArray = to_dtype_array(buf_or_size, dtype)
+        return new ort.Tensor(dtype, x_typed, shape)
+    } catch(error) {
+        return error;
+    }
+}
+
+function validate_schema_item(x:unknown): SchemaItem|null {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'shape', util.validate_number_array)
+    && util.has_property_of_type(x, 'dtype', validate_dtype)){
+        return x;
+    }
+    else return null;
+}
+
+async function validate_inputfeed(
+    schema:      Record<string, unknown>, 
+    zipcontents: zip.Files
+): Promise<StateDict|Error> {
+    const statedict:StateDict = {}
+    for(const name of Object.keys(schema) ){
+        const schemaitem: SchemaItem|null = validate_schema_item(schema[name])
+        if(schemaitem == null)
+            return new Error(
+                `Input schema has invalid format: ${JSON.stringify(schema[name])}`
+            )
+        
+        let buffer:ArrayBuffer|null = null;
+        if(schemaitem.path != undefined){
+            const weightfile:File|undefined = zipcontents[schemaitem.path]
+            if(weightfile == undefined)
+                return new Error(`File ${schemaitem.path} not in zip file`)
+        
+            buffer = await weightfile.arrayBuffer()
+        }
+        const tensor:ort.Tensor|Error = create_ort_tensor(
+            buffer, schemaitem.dtype, schemaitem.shape
+        )
+        if(tensor instanceof Error)
+            return tensor as Error;
+        
+        statedict[name] = tensor;
+    }
+    return statedict;
+}
+
+async function validate_pt_zip_contents(contents:zip.Files): Promise<PT_ZIP|Error> {
+    const paths:string[] = Object.keys(contents)
+    
+    //make sure we have a single top level folder
+    const top_folders:(string|undefined)[] = paths.map( 
+        (p:string) => p.split('/')[0] 
+    )
+    if(new Set(top_folders).size != 1 || top_folders[0] == undefined){
+        return new Error('.pt.zip file does not contain a single folder')
+    }
+
+    const base:string = top_folders[0];
+    // deno-lint-ignore no-inferrable-types
+    const onnxfile:string   = `${base}/onnx/inference.onnx`
+    // deno-lint-ignore no-inferrable-types
+    const schemafile:string = `${base}/onnx/inference.schema.json`
+    if(contents[onnxfile] == undefined)
+        return new Error(`.pt.zip file does not contain "${onnxfile}" `)
+    if(contents[schemafile] == undefined)
+        return new Error(`.pt.zip file does not contain "${schemafile}" `)
+    
+    const onnx_bytes:Uint8Array = new Uint8Array(
+        await contents[onnxfile]!.arrayBuffer()
+    )
+    const schema:unknown|Error = JSON.parse(await contents[schemafile]!.text())
+    if(schema instanceof Error || !util.is_object(schema))
+        return new Error('.pt.zip contains invalid inference schema')
+
+    const state_dict:StateDict|Error = await validate_inputfeed(schema, contents)
+    if(state_dict instanceof Error)
+        return state_dict as Error;
+    
+    return {onnx_bytes, state_dict}
+}
+
+export async function load_pt_zip(path:string): Promise<PT_ZIP|Error> {
+    const buffer:ArrayBuffer|Error = await load_file(path)
+    if(buffer instanceof Error)
+        return buffer as Error;
+    
+    const contents: zip.Files|Error = await zip.unzip(new Blob([buffer]))
+    if(contents instanceof Error)
+        return contents as Error;
+    
+    return await validate_pt_zip_contents(contents)
 }
 
 
@@ -115,15 +273,16 @@ export class Session {
             return status as Error;
         
         try{
-            const onnx_bytes: ArrayBuffer|Error = await load_file(modelpath);
-            if(onnx_bytes instanceof Error){
-                return onnx_bytes as Error;
+            //const onnx_bytes: ArrayBuffer|Error = await load_file(modelpath);
+            const loaded_pt_zip:PT_ZIP|Error = await load_pt_zip(modelpath)
+            if(loaded_pt_zip instanceof Error){
+                return loaded_pt_zip as Error;
             }
             const options:ort.InferenceSession.SessionOptions = {
                 executionProviders:['wasm'],
             }
             const ortsession:ort.InferenceSession 
-                = await ort.InferenceSession.create(onnx_bytes, options)
+                = await ort.InferenceSession.create(loaded_pt_zip.onnx_bytes, options)
             return new Session(ortsession)
         } catch(error) {
             return error;
