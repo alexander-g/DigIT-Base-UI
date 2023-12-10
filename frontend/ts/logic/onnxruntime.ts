@@ -1,4 +1,5 @@
 import { ort }   from "../dep.ts"
+import * as imagetools from "./imagetools.ts"
 import * as zip  from "./zip.ts"
 import * as util from "../util.ts"
 
@@ -237,6 +238,15 @@ async function validate_pt_zip_contents(contents:zip.Files): Promise<PT_ZIP|Erro
     if(state_dict instanceof Error)
         return state_dict as Error;
     
+    // currently supported input is only 1x HWC uint8 RGB
+    if(!state_dict['x']
+    || state_dict['x'].dims.length != 4
+    || state_dict['x'].dims[0] != 1
+    || state_dict['x'].dims[3] != 3
+    || state_dict['x'].type != 'uint8'){
+        return new Error('Input not in 1x HWC uint8 RGB format')
+    }
+    
     return {onnx_bytes, state_dict}
 }
 
@@ -255,9 +265,11 @@ export async function load_pt_zip(path:string): Promise<PT_ZIP|Error> {
 
 export class Session {
     #ortsession: ort.InferenceSession;
+    #state_dict: StateDict;
 
-    constructor(ortsession:ort.InferenceSession) {
+    constructor(ortsession:ort.InferenceSession, state_dict:StateDict) {
         this.#ortsession = ortsession;
+        this.#state_dict = state_dict
     }
 
     /** Factory function returning a new {@link Session} instance or `Error`.*/
@@ -270,29 +282,62 @@ export class Session {
         if(status instanceof Error)
             return status as Error;
         
+        const loaded_pt_zip:PT_ZIP|Error = await load_pt_zip(modelpath)
+        if(loaded_pt_zip instanceof Error)
+            return loaded_pt_zip as Error;
+        
+        const options:ort.InferenceSession.SessionOptions = {
+            executionProviders:['wasm'],
+        }
         try{
-            //const onnx_bytes: ArrayBuffer|Error = await load_file(modelpath);
-            const loaded_pt_zip:PT_ZIP|Error = await load_pt_zip(modelpath)
-            if(loaded_pt_zip instanceof Error){
-                return loaded_pt_zip as Error;
-            }
-            const options:ort.InferenceSession.SessionOptions = {
-                executionProviders:['wasm'],
-            }
             const ortsession:ort.InferenceSession 
-                = await ort.InferenceSession.create(loaded_pt_zip.onnx_bytes, options)
-            return new Session(ortsession)
+                = await ort.InferenceSession.create(
+                    loaded_pt_zip.onnx_bytes, options
+                )
+            //TODO: verifiy inputnames in ortsession with state_dict
+            return new Session(ortsession, loaded_pt_zip.state_dict)
         } catch(error) {
             return error;
         }
     }
 
-    async process_image_from_path(imagepath:string): Promise<unknown> {
-        return new Error('Not Implemented')
+    async process_image_from_path(imagepath:string): Promise<unknown|Error> {
+        const image_bytes: ArrayBuffer|Error = await load_file(imagepath);
+        if(image_bytes instanceof Error)
+            return image_bytes as Error;
+        
+        return this.process_image_from_blob( new Blob([image_bytes]) )
     }
 
-    async process_image_from_blob(blob:Blob): Promise<unknown> {
-        return new Error('Not Implemented')
+    async process_image_from_blob(blob:Blob): Promise<unknown|Error> {
+        const imagesize:util.ImageSize|Error = this.#input_image_size()
+        if(imagesize instanceof Error)
+            return imagesize as Error
+        
+        const rgb: imagetools.ImageData|Error 
+            = await imagetools.blob_to_rgb(blob, imagesize)  //TODO: size
+        if(rgb instanceof Error)
+            return rgb as Error;
+        
+        const x = this.#state_dict['x']!
+        const x_ = new ort.Tensor(x.type, new Uint8Array(rgb.buffer), x.dims)
+        try{
+            const out: Record<string, ort.OnnxValue> = await this.#ortsession.run(
+                {...this.#state_dict, x:x_}
+            )
+            return out
+        } catch(error) {
+            return error;
+        }
+    }
+
+    #input_image_size(): util.ImageSize|Error {
+        const height:number|undefined = this.#state_dict['x']?.dims[1]
+        const width:number|undefined  = this.#state_dict['x']?.dims[2]
+        if(height == undefined || width == undefined)
+            //should not happen if the inputfeed validation is correct
+            return new Error('Unexpected input tensor after initialization')
+        return {height, width}
     }
 }
 

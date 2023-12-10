@@ -6,7 +6,7 @@ const PTZIP_FILEPATH:string = path.fromFileUrl(
     import.meta.resolve('./assets/conv2d.pt.zip')
 )
 const TESTIMAGE_PATH:string = path.fromFileUrl(
-    import.meta.resolve('./assets/test_image2.tiff')
+    import.meta.resolve('./assets/test_image0.jpg')
 )
 
 Deno.test('load_pt_zip', async () => {
@@ -15,7 +15,7 @@ Deno.test('load_pt_zip', async () => {
 })
 
 
-Deno.test('Session.initialize', async () => {
+Deno.test('Session.basic', async () => {
     const session: ort.Session|Error 
         = await ort.Session.initialize(PTZIP_FILEPATH)
     
@@ -23,8 +23,8 @@ Deno.test('Session.initialize', async () => {
     asserts.assertNotInstanceOf(session, Error)
 
     
-    //const result = await session.process_image_from_path(TESTIMAGE_PATH)
-    //asserts.assertNotInstanceOf(result, Error)
+    const result = await session.process_image_from_path(TESTIMAGE_PATH)
+    asserts.assertNotInstanceOf(result, Error)
 
 })
 
