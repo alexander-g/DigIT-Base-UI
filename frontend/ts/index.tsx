@@ -1,18 +1,22 @@
 import { preact, JSX }      from "./dep.ts"
 import { TopMenu }          from "./components/TopMenu.tsx"
-import { MainContainer }    from "./components/MainContainer.tsx"
 import { SVGFilters }       from "./components/SVGFilters.tsx";
 
 import * as files           from "./logic/files.ts";
 import * as file_input      from "./components/file_input.ts"
 import * as settings        from "./logic/settings.ts";
+import { ORT_Processing }   from "./logic/ort_processing.ts"
 
 import * as state           from "./components/state.ts";
 import * as util            from "./util.ts";
 import { show_error_toast } from "./components/errors.ts";
 
-
-import { TrainingTab, TabContent }     from "./components/MainContainer.tsx"
+import {
+    MainContainer,
+    TrainingTab, 
+    Tabs,
+    ProcessingBackendConstructor,
+} from "./components/MainContainer.tsx"
 import { DetectionTab }    from "./components/DetectionTab.tsx"
 
 
@@ -38,8 +42,9 @@ TOPMENU         extends TopMenu,
     InputClass:     files.InputClassInterface<INPUT>,
     ResultClass:    util.ClassWithValidate<RESULT>,
     settingshandler:settings.SettingsHandler<SETTINGS>,
+    backend:        ProcessingBackendConstructor<APPSTATE>,
     TopMenu:        util.Constructor<TOPMENU>,
-    tabs:           Record<string, typeof TabContent<APPSTATE>>,
+    tabs:           Tabs<APPSTATE>,
     },
 ){
     return class App extends preact.Component {
@@ -62,9 +67,10 @@ TOPMENU         extends TopMenu,
                     on_annotationfiles  = {this.set_files.bind(this)}
                     input_filetypes     = {options.InputClass.filetypes}
                 />
-                <MainContainer<APPSTATE>
+                <MainContainer
                     appstate = {this.appstate} 
                     tabs     = {options.tabs}
+                    backend  = {options.backend}
                 />
             </body>
             )
@@ -121,12 +127,12 @@ class App extends create_App({
     InputClass:      files.InputFile,
     ResultClass:     files.Result,
     settingshandler: new settings.BaseSettingsHandler(), 
+    backend:         ORT_Processing,
     TopMenu:         TopMenu,
-
     tabs: {
-             'Detection': DetectionTab,
-             'Training':  TrainingTab,
-        },
+        'Detection': DetectionTab,
+        'Training':  TrainingTab,
+    },
 }){}
 
 
@@ -177,7 +183,7 @@ export function Head(props:HeadProps): JSX.Element {
 /** Main JSX entry point */
 export function Index(): JSX.Element {
     return <html>
-        <Head title={"Base UI"} import_src={"ts/index.tsx"} />
+        <Head title={"Base UI"} import_src={"ts/index.tsx.js"} />
         <App />
     </html>
 }

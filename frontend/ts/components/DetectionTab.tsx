@@ -84,7 +84,14 @@ extends DetectionTab<S> {
     }
 
     #processingmodule() {
-        return new ObjectdetectionFlaskProcessing()
+        const settings:BaseSettings|undefined = this.props.appstate.$settings.value
+        if(settings == undefined)
+            //TODO: should be handled differently
+            return new DummyProcessingModule();
+        
+        return new this.props.backend(
+            objdet.ObjectdetectionResult, settings
+        )
     }
 }
 

@@ -95,18 +95,18 @@ export async function compile_everything(
         paths.frontend, path.dirname(dep_ts_output), paths.stubs ?? []
     )
     promises.push(
-        build.compile_esbuild(dep_ts_input, dep_ts_output, stub_remap)
+        build.compile_esbuild(dep_ts_input, dep_ts_output+'.js', stub_remap)
     )
 
     //transpile and bundle index.tsx
     const index_remap: Record<string,string> = {
-        [dep_ts_input]: './dep.ts', 
+        [dep_ts_input]: './dep.ts.js', 
         ...stub_remap
     }
     promises.push(
         build.compile_esbuild(
             path.join(paths.frontend, paths.index_tsx), 
-            path.join(paths.static,   paths.index_tsx), 
+            path.join(paths.static,   paths.index_tsx)+'.js', 
             index_remap
         )
     )
@@ -188,7 +188,7 @@ function create_stub_file(
         return {}
     
     // deno-lint-ignore no-inferrable-types
-    const stubfilename:string = './stub.ts'
+    const stubfilename:string = './stub.ts.js'
     write_to_static(stubfilename, outputfolder, '')
 
     const remap: Record<string, string> = Object.fromEntries(

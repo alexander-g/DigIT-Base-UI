@@ -117,6 +117,9 @@ export type InputTypeOfAppState<AS extends AppState>
 export type ResultTypeOfAppState<AS extends AppState>
     = InputResultPairOfAppState<AS>['$result']['value']
 
+/** Utility type extracting the `Settings` type of a {@link AppState} */
+export type SettingsOfAppState<AS extends AppState>
+    = NonNullable<AS['$settings']['value']>
 
 
 
