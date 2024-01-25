@@ -59,8 +59,16 @@ Deno.test('ffi.error-no-permissions', {permissions:{ffi:false}}, async () => {
     )
 })
 
-Deno.test('ffi', {permissions:{ffi:true}}, async () => {
-    await 0;
+
+Deno.test(
+    'ffi', 
+    {
+        permissions:{ffi:true, read:'inherit'}, 
+        //A textdecoder gets closed and I don't know why. Might be a Deno bug.
+        sanitizeResources: false
+    }, 
+    async () => {
+    
     const lib = ts.initialize_ffi(LIB_PATH)
     asserts.assertNotInstanceOf(lib, Error, lib.toString());
 
@@ -70,9 +78,28 @@ Deno.test('ffi', {permissions:{ffi:true}}, async () => {
     asserts.assertNotEquals(
         status, 0, "Initialization of an invalid module should fail"
     )
+    
+    const status2:true|Error = ts.initialize_module(TS_TEST_MODULE_PATH, lib)
+    asserts.assertNotInstanceOf(status2, Error, 'Module initialization failed')
 
-    //TODO: Deno.readFileSync(TS_TEST_MODULE_PATH)
+    const x_u8 = common.create_tensor(null, 'uint8', [1,3,64,64])
+    asserts.assertNotInstanceOf(x_u8, Error)
+    const output:common.TensorDict|Error = await ts.run_module({x:x_u8}, lib)
+    asserts.assertInstanceOf(
+        output, Error, 'Module call with invalid dtype should not succeed'
+    )
+
+    const x_f32 = common.create_tensor(null, 'float32', [1,3,64,64])
+    asserts.assertNotInstanceOf(x_f32, Error)
+    const output2:common.TensorDict|Error = await ts.run_module({x:x_f32}, lib)
+    // //console.log(output2)
+    asserts.assertNotInstanceOf(output2, Error, 'Module call failed')
+
+    const y:common.AnyTensor|undefined = output2['y'];
+    asserts.assertExists(y)
+    asserts.assertEquals(y.dtype, 'float32')
+    asserts.assertEquals(y.shape, [1,1,64,64])
+    asserts.assertEquals(y.data.length, 1*1*64*64)
 
     lib.close()
 })
-

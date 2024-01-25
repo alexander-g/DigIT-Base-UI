@@ -18,7 +18,8 @@ export type Tensor<T extends DType> = {
     shape: number[];
 }
 
-export type TensorDict = Record<string, Tensor<DType>>;
+export type AnyTensor  = Tensor<DType>
+export type TensorDict = Record<string, AnyTensor>;
 
 
 //TODO: code re-use
