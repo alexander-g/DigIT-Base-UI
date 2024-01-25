@@ -2,7 +2,7 @@ import { ort }   from "../dep.ts"
 import * as imagetools from "./imagetools.ts"
 import * as zip  from "./zip.ts"
 import * as util from "../util.ts"
-
+import { shape_to_size, validate_schema_item, SchemaItem  } from "./backends/common.ts"
 
 
 
@@ -111,24 +111,6 @@ export type PT_ZIP = {
     state_dict: StateDict;
 }
 
-/** Internal description of a input feed tensor. Stored in a .schema.json */
-type SchemaItem = {
-    shape: number[];
-    dtype: DType;
-    /** Path within the zip file to the file containing the weights.
-     *  If not defined, then this is a model input (e.g. image) */
-    path?: string;
-}
-
-
-/** Make sure the input is one of the supported dtype identifiers */
-function validate_dtype(x:unknown): DType|null {
-    if(util.is_string(x) 
-    && ((x == 'uint8') || ( x == 'float32') || (x == 'int64')) ) {
-        return x;
-    }
-    else return null;
-}
 
 /** Convert a buffer to a typed array or create a new one */
 function to_dtype_array(x:ArrayBuffer|number, dtype:DType): DTypeArray {
@@ -144,12 +126,6 @@ function to_dtype_array(x:ArrayBuffer|number, dtype:DType): DTypeArray {
     else return new Uint8Array(x);
 }
 
-/** Compute the total number of elements for a shape */
-function shape_to_size(shape:number[]) {
-    return shape.reduce(
-        (previous:number, current:number) => previous*current
-    )
-}
 
 function create_ort_tensor(
     /** Raw tensor data. If null, will create a new buffer. */
@@ -166,14 +142,6 @@ function create_ort_tensor(
     }
 }
 
-function validate_schema_item(x:unknown): SchemaItem|null {
-    if(util.is_object(x)
-    && util.has_property_of_type(x, 'shape', util.validate_number_array)
-    && util.has_property_of_type(x, 'dtype', validate_dtype)){
-        return x;
-    }
-    else return null;
-}
 
 async function validate_inputfeed(
     schema:      Record<string, unknown>, 

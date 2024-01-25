@@ -5,13 +5,15 @@ rm -rf $COVERAGE_DIR
 
 ./deno.sh check frontend/ts/index.tsx
 ./deno.sh test                  \
-    --allow-read=.,/tmp         \
+    --allow-read=.,/tmp,./tests/testcases_deno/assets  \
     --allow-write=/tmp,./assets \
     --allow-env=DENO_DIR        \
     --allow-net=cdn.jsdelivr.net \
+    --allow-ffi                 \
     --no-prompt                 \
     --cached-only               \
     --coverage=$COVERAGE_DIR/raw    \
+    --unstable                      \
     $@
 
 NO_COLOR=1 ./deno.sh coverage --exclude=./tests $COVERAGE_DIR/raw > $COVERAGE_DIR/coverage.txt
