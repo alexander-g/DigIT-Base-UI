@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 BASE_DIR=$(realpath `dirname "$BASH_SOURCE"`)
 export DENO_DIR=$BASE_DIR/.deno
@@ -10,7 +10,7 @@ export HTTPS_PROXY=$DENO_HTTPS_PROXY
 if ! [ -e $DENO_PATH ];
 then
     echo "Downloading deno..."
-    wget  https://github.com/denoland/deno/releases/download/v1.30.3/deno-x86_64-unknown-linux-gnu.zip  -O ./deno.zip -nv
+    wget  https://github.com/denoland/deno/releases/download/v1.31.3/deno-x86_64-unknown-linux-gnu.zip  -O ./deno.zip -nv
     unzip ./deno.zip -d $DENO_DIR  && rm ./deno.zip
 fi
 
