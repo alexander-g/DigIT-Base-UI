@@ -120,3 +120,14 @@ function rgba_to_rgb(data:Uint8ClampedArray): Uint8ClampedArray {
     }
     return new_array;
 }
+
+/** Convert uint8 RGB data to float32 with values scaled from 0 to 1. */
+export
+function rgb_u8_to_f32(rgb_u8: Uint8Array|Uint8ClampedArray): Float32Array {
+    const floatData = new Float32Array(rgb_u8.length);
+    // deno-lint-ignore no-inferrable-types
+    for (let i:number = 0; i < rgb_u8.length; i++) {
+        floatData[i] = rgb_u8[i]! / 255;
+    }
+    return floatData;
+}

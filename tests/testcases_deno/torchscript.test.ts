@@ -1,7 +1,22 @@
 import * as ts from "../../frontend/ts/logic/backends/torchscript.ts";
 import * as common from "../../frontend/ts/logic/backends/common.ts";
+import * as files  from "../../frontend/ts/logic/files.ts";
 import * as zip    from "../../frontend/ts/logic/zip.ts";
 import { asserts, path } from "./dep.ts"
+
+
+
+const LIB_PATH:string = path.fromFileUrl(
+    import.meta.resolve('../../assets/libTSinterface.so')
+)
+
+const TS_TEST_MODULE_PATH:string = path.fromFileUrl(
+    import.meta.resolve('./assets/conv2d.torchscript')
+)
+
+const IMAGE_ASSET0_PATH:string = path.fromFileUrl(
+    import.meta.resolve('./assets/test_image0.jpg')
+)
 
 
 Deno.test('pack-unpack', async () =>{
@@ -35,15 +50,6 @@ Deno.test('pack-unpack', async () =>{
     asserts.assertNotInstanceOf(unpacked, Error)
 })
 
-
-
-const LIB_PATH:string = path.fromFileUrl(
-    import.meta.resolve('../../assets/libTSinterface.so')
-)
-
-const TS_TEST_MODULE_PATH:string = path.fromFileUrl(
-    import.meta.resolve('./assets/conv2d.torchscript')
-)
 
 
 Deno.test('ffi.error-no-permissions', {permissions:{ffi:false}}, async () => {
@@ -82,9 +88,9 @@ Deno.test(
     const status2:true|Error = ts.initialize_module(TS_TEST_MODULE_PATH, lib)
     asserts.assertNotInstanceOf(status2, Error, 'Module initialization failed')
 
-    const x_u8 = common.create_tensor(null, 'uint8', [1,3,64,64])
-    asserts.assertNotInstanceOf(x_u8, Error)
-    const output:common.TensorDict|Error = await ts.run_module({x:x_u8}, lib)
+    const x_i64 = common.create_tensor(null, 'int64', [1,3,64,64])
+    asserts.assertNotInstanceOf(x_i64, Error)
+    const output:common.TensorDict|Error = await ts.run_module({x:x_i64}, lib)
     asserts.assertInstanceOf(
         output, Error, 'Module call with invalid dtype should not succeed'
     )
@@ -102,4 +108,20 @@ Deno.test(
     asserts.assertEquals(y.data.length, 1*1*64*64)
 
     lib.close()
+})
+
+
+Deno.test('TS_Backend', async () => {
+    const backend = new ts.TS_Backend<files.Result>(
+        files.Result, {active_models:{detection:'conv2d'}}
+    )
+    backend.MODELS_DIR = import.meta.resolve('./assets/')
+
+    const imagedata: Uint8Array = Deno.readFileSync(IMAGE_ASSET0_PATH)
+    const imagefile             = new File([imagedata], 'image1.jpg')
+    const result: files.Result = await backend.process(imagefile)
+    
+    //console.log(result.raw)
+    asserts.assertEquals(result.status, 'processed')
+    ts.TS_Backend.lib?.close()
 })

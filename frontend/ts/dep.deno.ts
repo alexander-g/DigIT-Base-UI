@@ -10,3 +10,4 @@ export type {
 } from "https://deno.land/x/canvas@v1.4.1/src/canvas.ts";
 
 
+export * as path from "https://deno.land/std@0.176.0/path/mod.ts";

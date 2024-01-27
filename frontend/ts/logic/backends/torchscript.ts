@@ -3,14 +3,89 @@ import * as zip                         from "../zip.ts";
 import * as util                        from "../../util.ts";
 import * as common                      from "./common.ts"
 import type { TensorDict, SchemaItem  } from "./common.ts"
+import * as imagetools                  from "../imagetools.ts"
+import { denolibs }                     from "../../dep.ts"
 
 
-// export class TS_Backend<R extends Result> extends DetectionModule<File,R> {   
+export class TS_Backend<R extends Result> extends DetectionModule<File,R> {   
 
-//     /** Shared library object */
-//     static lib:TS_Lib|undefined;
+    /** Shared library object */
+    static lib:TS_Lib|undefined;
 
-// }
+    /** Flag indicating whether the module in the settings has been loaded */
+    // deno-lint-ignore no-inferrable-types
+    #module_initialized:boolean = false;
+
+    
+    //TODO: not in downstream!
+    TS_LIB_FILE_URL:string = import.meta.resolve('../../../../assets/libTSinterface.so')
+    /** Directory where models are located. Overridden in tests. */
+    MODELS_DIR:string = import.meta.resolve('../../../../models/')
+
+    // constructor(...args: ConstructorParameters<typeof DetectionModule<File,R>>){
+    //     super(...args)
+        
+    //     const modelname:string = this.settings.active_models.detection;
+
+    // }
+
+    async process(
+        input:        File, 
+        on_progress?: (x:InputResultPair<File,R>) => void,
+    ): Promise<R> {
+        if(!util.is_deno())
+            return new this.ResultClass(
+                'failed', new Error('FFI backend only supported in Deno.')
+            )
+
+        //TODO: ffi and module initialization should be performed in constructor
+        if(TS_Backend.lib == undefined){
+            const tslib_path:string = denolibs.path.fromFileUrl(this.TS_LIB_FILE_URL)
+            const lib: TS_Lib|Error = initialize_ffi(tslib_path)
+            if(lib instanceof Error){
+                return new this.ResultClass('failed', lib as Error);
+            }
+            TS_Backend.lib = lib;
+        }
+
+        if(!this.#module_initialized){
+            const modelname:string = this.settings.active_models.detection;
+            const modelpath:string = this._modelname_to_modelpath(modelname)
+            const status:true|Error 
+                = initialize_module(modelpath, TS_Backend.lib)
+            if(status instanceof Error){
+                return new this.ResultClass('failed', status as Error);
+            }
+            this.#module_initialized = true;
+        }
+
+        const imagedata: imagetools.ImageData|Error 
+            = await imagetools.blob_to_rgb(input)
+        if(imagedata instanceof Error)
+            return new this.ResultClass('failed', imagedata as Error);
+        const rgb_f32:Float32Array = imagetools.rgb_u8_to_f32(imagedata)
+        
+        const imagetensor: common.AnyTensor|Error = common.create_tensor(
+            rgb_f32, "float32", [1,3,imagedata.height, imagedata.width]
+        )
+        if(imagetensor instanceof Error)
+            return new this.ResultClass('failed', imagetensor as Error);
+        
+        const inputfeed:TensorDict = {x:imagetensor}
+        const output:TensorDict|Error 
+            = await run_module(inputfeed, TS_Backend.lib)
+        if(output instanceof Error)
+            return new this.ResultClass('failed', output as Error)
+        
+        return this.validate_result(output)
+    }
+
+    /** Convert the name of a model as stored in settings to the path to file.*/
+    _modelname_to_modelpath(modelname:string): string {
+        const modelsdir:string = denolibs.path.fromFileUrl(this.MODELS_DIR)
+        return denolibs.path.join(modelsdir, modelname+'.torchscript')
+    }
+}
 
 
 
@@ -24,8 +99,8 @@ type TS_Lib = {
             data:         ArrayBuffer, 
             size:         number, 
             outputbuffer: ArrayBuffer, 
-            outputsize:   ArrayBuffer
-            //debug
+            outputsize:   ArrayBuffer,
+            debug:        number,
         ) => number;
 
         /** Deallocate memory returned by `run_module` */
@@ -72,7 +147,7 @@ export function initialize_ffi(path:string): TS_Lib|Error {
                 },
                 "run_module":  { 
                     //TODO: async
-                    parameters: ["buffer", "usize", "buffer", "buffer"],
+                    parameters: ["buffer", "usize", "buffer", "buffer", "u8"],
                     result:     "i32" 
                 },
                 "free_memory": { 
@@ -130,7 +205,7 @@ export function initialize_module(path:string, lib:TS_Lib): true|Error {
     return true;
 }
 
-/** Perfom inference on previously initialized torchscript module */
+/** Perform inference on previously initialized torchscript module */
 export async function run_module(
     inputfeed: TensorDict, 
     lib:       TS_Lib,
@@ -147,6 +222,7 @@ export async function run_module(
         inputbuffer.length,
         p_outputbuffer,
         p_outputsize,
+        0,  //debug
     )
     if(status != 0)
         return new Error('Running module failed')
