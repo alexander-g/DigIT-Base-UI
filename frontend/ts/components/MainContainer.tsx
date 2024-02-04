@@ -41,7 +41,9 @@ export type ProcessingBackendConstructor<AS extends AppState> = util.Constructor
     ProcessingBackend<AS>,
     ConstructorParameters<
         typeof ProcessingModuleWithSettings<
-            files.Input, files.Result, state.SettingsOfAppState<AS>
+            state.InputTypeOfAppState<AS>, 
+            state.ResultTypeOfAppState<AS>, 
+            state.SettingsOfAppState<AS>
         >
     >
 >

@@ -201,7 +201,7 @@ export class DummyProcessingModule extends ProcessingModule<File, Result> {
     }
 
     async process(input: File): Promise<Result> {
-        return await new Result('processing', null, input.name)
+        return await new Result('processed', null, input.name)
     }
 }
 

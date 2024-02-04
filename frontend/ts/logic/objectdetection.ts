@@ -5,6 +5,11 @@ import * as util                    from "../util.ts"
 import * as boxes                   from "./boxes.ts";
 import { FlaskProcessing }          from "./flask_processing.ts";
 import { ModelInfo }                from "../logic/settings.ts";
+import { 
+    validate_ort_tensor, 
+    PartialTensor, 
+    SessionOutput 
+} from "../logic/onnxruntime.ts";
 
 
 /** The input for object detection is a single file */
@@ -112,6 +117,15 @@ export class ObjectdetectionResult extends BaseResult {
                 return await this.validate(jsondata)
             }
             else return null;
+        }
+
+        if(is_onnx_session_output(raw)){
+            const raw_instances: boxes.Instance[] 
+                = onnx_output_to_instances(raw.output);
+            const instances: boxes.Instance[] = boxes.resize_instances(
+                raw_instances, raw.inputsize, raw.imagesize
+            )
+            return new this('processed', raw, baseresult.inputname, instances);
         }
         else return null;
     }
@@ -238,4 +252,73 @@ export function export_results_as_csv(results:ObjectdetectionResult[]): string {
         lines.push(line)
     }
     return lines.join('\n')
+}
+
+
+
+
+/** Format returned by running object detection models in ONNX */
+export type ONNX_Output = {
+    boxes:   PartialTensor;
+    classes: PartialTensor;
+    scores:  PartialTensor;
+}
+
+export type ONNX_Session_Output = SessionOutput & {
+    output: ONNX_Output;
+}
+
+
+export function validate_onnx_output(raw:unknown): ONNX_Output|null {
+    if(util.is_object(raw)
+    && util.has_property_of_type(raw, 'boxes',   validate_ort_tensor)
+    && util.has_property_of_type(raw, 'scores',  validate_ort_tensor)
+    && util.has_property_of_type(raw, 'classes', validate_ort_tensor)){
+        if(raw.boxes.dims[0] != undefined
+        && raw.boxes.dims[1] == 4
+        && raw.boxes.dims[0] == raw.classes.dims[0] 
+        && raw.boxes.dims[0] == raw.scores.dims[0]
+        && raw.boxes.type    == 'float32'
+        && raw.classes.type  == 'int64'
+        && raw.scores.type   == 'float32'){
+            return raw as ONNX_Output;
+        }
+        else return null;
+    }
+    else return null;
+}
+
+export function validate_onnx_session_output(x:unknown): ONNX_Session_Output|null {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'output',    validate_onnx_output)
+    && util.has_property_of_type(x, 'imagesize', util.validate_imagesize)
+    && util.has_property_of_type(x, 'inputsize', util.validate_imagesize)){
+        return x;
+    }
+    else return null;
+}
+
+export function is_onnx_session_output(x:unknown): x is ONNX_Session_Output {
+    return validate_onnx_session_output(x) == x;
+}
+
+export function onnx_output_to_instances(x:ONNX_Output): boxes.Instance[] {
+    const instances:boxes.Instance[] = []
+    // NOTE: assuming all attributes have the same length
+    // as should have been verified in validate_onnx_output()
+    const n:number = x.boxes.dims[0]!;
+
+    // deno-lint-ignore no-inferrable-types
+    for(let i:number = 0; i < n; i++){
+        instances.push({
+            box: boxes.Box.from_array([
+                x.boxes.data[i*4+0] as number,
+                x.boxes.data[i*4+1] as number,
+                x.boxes.data[i*4+2] as number,
+                x.boxes.data[i*4+3] as number,
+            ]),
+            label: `${x.classes.data[i]}`,
+        })
+    }
+    return instances;
 }

@@ -71,6 +71,11 @@ class App(flask.Flask):
             print(f'Download: {get_cache_path(path)}')
             return flask.send_from_directory(self.cache_path, path)
 
+        @self.route('/models/<path:path>')
+        def models(path):
+            print(f'Model download: {path}')
+            return flask.send_from_directory(get_models_path(), path)
+
         @self.route('/file_upload', methods=['POST'])
         def file_upload():
             files = flask.request.files.getlist("files")

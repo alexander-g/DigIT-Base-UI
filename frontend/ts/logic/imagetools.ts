@@ -18,8 +18,8 @@ async function _init_canvaslib() {
 
 
 //common types for both browser and deno
-type Image  = HTMLImageElement|EmulatedImage
-type Canvas = HTMLCanvasElement|EmulatedCanvas2D;
+export type Image    = HTMLImageElement|EmulatedImage
+type Canvas          = HTMLCanvasElement|EmulatedCanvas2D;
 type CanvasContext2D = CanvasRenderingContext2D|EmulatedCanvasRenderingContext2D
 
 export class ImageData extends Uint8ClampedArray {
@@ -50,6 +50,7 @@ export  async function create_canvas(size:util.ImageSize):Promise<Canvas> {
     }
 }
 
+/** Load and decode a file/blob into an image element. */
 export async function blob_to_image(blob:Blob): Promise<Image|Error> {
     if(util.is_deno()){
         const buffer:ArrayBuffer = await blob.arrayBuffer()
@@ -68,20 +69,24 @@ export async function blob_to_image(blob:Blob): Promise<Image|Error> {
 }
 
 
-/** Load an image and return raw RGB data. Resize to `targetsize` if provided */
+/** Load an image from file/blob and return raw RGB data.
+ *  Resize to `targetsize` if provided */
 export async function blob_to_rgb(
     blob:Blob, targetsize?:util.ImageSize
 ): Promise<ImageData|Error> {
     const image:Image|Error  = await blob_to_image(blob);
     if(image instanceof Error)
         return image as Error
-    
+    else return image_to_rgb(image, targetsize);
+}
+
+/** Convert an image element to raw RGB data. Resize to `targetsize` if provided */
+export async function image_to_rgb(
+    image:Image, targetsize?:util.ImageSize
+): Promise<ImageData|Error> {
     if(!targetsize){
         //read the size from file
-        targetsize = {
-            width:  typeof image.width == 'number' ? image.width :image.width(), 
-            height: typeof image.height == 'number'? image.height:image.height()
-        };
+        targetsize = get_image_size(image);
     }
 
     const canvas:Canvas = await create_canvas(targetsize)
@@ -131,3 +136,12 @@ function rgb_u8_to_f32(rgb_u8: Uint8Array|Uint8ClampedArray): Float32Array {
     }
     return floatData;
 }
+
+/** Get the height and width of either HTMLImageElement or EmulatedImage */
+export function get_image_size(image:Image): util.ImageSize {
+    return {
+        width:  typeof image.width == 'number' ? image.width :image.width(), 
+        height: typeof image.height == 'number'? image.height:image.height()
+    };
+}
+

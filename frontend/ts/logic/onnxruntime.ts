@@ -2,8 +2,13 @@ import { ort }   from "../dep.ts"
 import * as imagetools from "./imagetools.ts"
 import * as zip  from "./zip.ts"
 import * as util from "../util.ts"
-import { shape_to_size, validate_schema_item, SchemaItem  } from "./backends/common.ts"
-
+import { 
+    shape_to_size, 
+    validate_schema_item, 
+    SchemaItem,
+    DType,
+    DTypeArray,
+} from "./backends/common.ts"
 
 
 const ORT_VERSION:string = ort.env.versions.common
@@ -100,9 +105,6 @@ async function load_file(path:string): Promise<ArrayBuffer|Error> {
     }
 }
 
-/** Supported dtypes */
-type DType = 'uint8' | 'float32' | 'int64'
-type DTypeArray = Uint8Array | Float32Array | BigInt64Array;
 
 type StateDict = Record<string, ort.Tensor>
 
@@ -230,6 +232,16 @@ export async function load_pt_zip(path:string): Promise<PT_ZIP|Error> {
     return await validate_pt_zip_contents(contents)
 }
 
+export type SessionOutput = {
+    /** The original size of the image */
+    imagesize: util.ImageSize;
+
+    /** The input size as fed to the model */
+    inputsize: util.ImageSize;
+
+    /** Raw onnx output */
+    output:    unknown;
+}
 
 export class Session {
     #ortsession: ort.InferenceSession;
@@ -269,7 +281,7 @@ export class Session {
         }
     }
 
-    async process_image_from_path(imagepath:string): Promise<unknown|Error> {
+    async process_image_from_path(imagepath:string): Promise<SessionOutput|Error> {
         const image_bytes: ArrayBuffer|Error = await load_file(imagepath);
         if(image_bytes instanceof Error)
             return image_bytes as Error;
@@ -277,23 +289,30 @@ export class Session {
         return this.process_image_from_blob( new Blob([image_bytes]) )
     }
 
-    async process_image_from_blob(blob:Blob): Promise<unknown|Error> {
+    async process_image_from_blob(blob:Blob): Promise<SessionOutput|Error> {
         const imagesize:util.ImageSize|Error = this.#input_image_size()
         if(imagesize instanceof Error)
             return imagesize as Error
         
+        const image: imagetools.Image|Error = await imagetools.blob_to_image(blob)
+        if(image instanceof Error)
+            return image as Error;
+        
         const rgb: imagetools.ImageData|Error 
-            = await imagetools.blob_to_rgb(blob, imagesize)  //TODO: size
+            = await imagetools.image_to_rgb(image, imagesize)
         if(rgb instanceof Error)
             return rgb as Error;
         
         const x = this.#state_dict['x']!
         const x_ = new ort.Tensor(x.type, new Uint8Array(rgb.buffer), x.dims)
         try{
-            const out: Record<string, ort.OnnxValue> = await this.#ortsession.run(
-                {...this.#state_dict, x:x_}
-            )
-            return out
+            const output: Record<string, ort.OnnxValue> 
+                = await this.#ortsession.run({...this.#state_dict, x:x_})
+            return {
+                output:    output, 
+                imagesize: imagetools.get_image_size(image),
+                inputsize: {width:rgb.width, height:rgb.height},
+            }
         } catch(error) {
             return error;
         }
@@ -309,3 +328,36 @@ export class Session {
     }
 }
 
+
+
+export function validate_typed_array(x:unknown): DTypeArray|null {
+    if(x instanceof Uint8Array
+    || x instanceof Float32Array
+    || x instanceof BigInt64Array){
+        return x;
+    }
+    else return null;
+}
+
+export function validate_dtype(x:unknown): DType|null {
+    if(typeof x == 'string' 
+    && (   x == 'uint8' 
+        || x == 'float32' 
+        || x == 'int64')
+    ){
+        return x;
+    }
+    else return null;
+}
+
+export type PartialTensor = Pick<ort.Tensor, 'data'|'dims'|'type'>;
+
+export function validate_ort_tensor(x:unknown): PartialTensor|null {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'type', validate_dtype)
+    && util.has_property_of_type(x, 'dims', util.validate_number_array)
+    && util.has_property_of_type(x, 'data', validate_typed_array)){
+        return x;
+    }
+    else return null;
+}

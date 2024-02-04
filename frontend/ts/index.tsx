@@ -17,7 +17,8 @@ import {
     Tabs,
     ProcessingBackendConstructor,
 } from "./components/MainContainer.tsx"
-import { DetectionTab }    from "./components/DetectionTab.tsx"
+import * as detectiontab   from "./components/DetectionTab.tsx"
+import * as objdet         from "./logic/objectdetection.ts";
 
 
 
@@ -67,7 +68,7 @@ TOPMENU         extends TopMenu,
                     on_annotationfiles  = {this.set_files.bind(this)}
                     input_filetypes     = {options.InputClass.filetypes}
                 />
-                <MainContainer
+                <MainContainer<APPSTATE>
                     appstate = {this.appstate} 
                     tabs     = {options.tabs}
                     backend  = {options.backend}
@@ -123,14 +124,18 @@ TOPMENU         extends TopMenu,
 /** Main component for the base project */
 class App extends create_App({
     id:              'base', 
-    AppState:        state.AppState, 
+    //AppState:        state.AppState, 
+    AppState:        detectiontab.ObjectdetectionAppState, 
     InputClass:      files.InputFile,
-    ResultClass:     files.Result,
+    //ResultClass:     files.Result,
+    ResultClass:     objdet.ObjectdetectionResult,
     settingshandler: new settings.BaseSettingsHandler(), 
     backend:         ORT_Processing,
     TopMenu:         TopMenu,
     tabs: {
-        'Detection': DetectionTab,
+        //'Detection': DetectionTab,
+        // deno-lint-ignore no-explicit-any
+        'Detection': detectiontab.ObjectDetectionTab as any,
         'Training':  TrainingTab,
     },
 }){}

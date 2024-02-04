@@ -1,4 +1,5 @@
 import * as ort from "../../frontend/ts/logic/onnxruntime.ts"
+import * as common from "../../frontend/ts/logic/backends/common.ts"
 import { asserts, path } from "./dep.ts";
 import * as util         from "./util.ts"
 
@@ -46,4 +47,25 @@ Deno.test('Session.initialize-non-deno', async () => {
 
 })
 
+/** Make sure all supported dtypes are validated */
+Deno.test('validate_typed_array', async (t) => {
+    for(const [key, arraytype] of Object.entries(common.DataTypeMap)){
+        await t.step(key, () => {
+            const x = new arraytype(5)
+            const result = ort.validate_typed_array(x)
+            asserts.assertExists(result)
+        })
+    }
+})
+
+/** Make sure all supported dtypes are validated */
+Deno.test('validate_dtype', async (t) => {
+    for(const [key, arraytype] of Object.entries(common.DataTypeMap)){
+        await t.step(key, () => {
+            const x = key;
+            const result = ort.validate_dtype(x)
+            asserts.assertExists(result)
+        })
+    }
+})
 

@@ -31,9 +31,10 @@ class Settings:
 
     def set_settings(self, s, save=True):
         print('Settings: ', s)
-        for modeltype, modelname in s.get('active_models', {}).items():
-            if self.active_models.get(modeltype, None) != modelname:
-                self.models[modeltype] = self.load_model(modeltype, modelname)
+        #NOTE: loading models currently disabled 
+        #for modeltype, modelname in s.get('active_models', {}).items():
+        #    if self.active_models.get(modeltype, None) != modelname:
+        #        self.models[modeltype] = self.load_model(modeltype, modelname)
         self.__dict__.update( copy.deepcopy(s) )
 
         if save:

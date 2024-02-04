@@ -93,3 +93,31 @@ export function validate_instance(x: unknown): Instance|null {
     else return null;
 }
 
+
+/** Resize a box from one image size to another */
+export function resize_box(
+    box:       Box, 
+    from_size: util.ImageSize, 
+    to_size:   util.ImageSize
+): Box {
+    return {
+        x0: box.x0 / from_size.width * to_size.width,
+        x1: box.x1 / from_size.width * to_size.width,
+        y0: box.y0 / from_size.height * to_size.height,
+        y1: box.y1 / from_size.height * to_size.height,
+    }
+}
+
+/** Resize boxes in an array of instances from one image size to another */
+export function resize_instances(
+    instances: Instance[], 
+    from_size: util.ImageSize, 
+    to_size:   util.ImageSize
+): Instance[] {
+    return instances.map(
+        (instance:Instance) => ({
+            label: instance.label, 
+            box:   resize_box(instance.box, from_size, to_size)
+        })
+    )
+}

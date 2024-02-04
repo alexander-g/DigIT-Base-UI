@@ -257,6 +257,15 @@ export function validate_file(x:unknown): File|null {
     return (x instanceof File) ? x : null;
 }
 
+export function validate_imagesize(x:unknown): ImageSize|null {
+    if(is_object(x)
+    && has_number_property(x, 'width')
+    && has_number_property(x, 'height')){
+        return x;
+    }
+    else return null;
+}
+
 
 
 

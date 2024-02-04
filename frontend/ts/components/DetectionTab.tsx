@@ -48,9 +48,9 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
 }
 
 
-type ObjectdetectionAppState = AppState<
+export class ObjectdetectionAppState extends AppState<
     objdet.Input, objdet.ObjectdetectionResult, BaseSettings
->
+>{}
 
 export class ObjectDetectionTab<S extends ObjectdetectionAppState>
 extends DetectionTab<S> {
