@@ -12,7 +12,7 @@ const TESTIMAGE_PATH:string = path.fromFileUrl(
 
 Deno.test('load_pt_zip', async () => {
     const loaded: ort.PT_ZIP|Error = await ort.load_pt_zip(PTZIP_FILEPATH)
-    console.log(loaded)
+    //console.log(loaded)
     asserts.assertNotInstanceOf(loaded, Error)
 })
 

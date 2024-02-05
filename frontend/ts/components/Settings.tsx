@@ -44,16 +44,22 @@ extends preact.Component<P> {
     /** @virtual The main content, what to display in the modal */
     abstract form_content(): JSX.Element[];
 
-    async show_modal(): Promise<void> {
-        //TODO: refactor
+    async #load_settings(): Promise<true|Error> {
         const settingsresponse:SettingsResponse<S>|Error 
             = await this.props.settingshandler.load()
         if(settingsresponse instanceof Error){
             show_error_toast('Could not load settings', settingsresponse)
-            return;
+            return settingsresponse as Error;
         }
         this.props.$settings.value = settingsresponse.settings;
         this.props.$available_models.value = settingsresponse.available_models;
+        return true;
+    }
+
+    async show_modal(): Promise<void> {
+        const status: true|Error = await this.#load_settings()
+        if(status instanceof Error)
+            return
 
         $(this.ref.current).modal({
             onApprove: this.save_settings.bind(this)
@@ -62,34 +68,37 @@ extends preact.Component<P> {
 
     /** Get all values in the modal as set by user and convert to a Settings object 
      *  @virtual */
-    abstract collect_settings_from_widgets(): S|null;
+    abstract collect_settings_from_widgets(): S|Error;
 
-    async save_settings(): Promise<void> {
-        const settings:S|null = this.collect_settings_from_widgets()
-        if(settings == null){
-            console.error('Failed to collect settings from modal')
-            return;
+    async save_settings(): Promise<true|Error> {
+        const settings:S|Error = this.collect_settings_from_widgets()
+        if(settings instanceof Error){
+            console.error(settings.message)
+            return settings as Error;
         }
         
         const status:true|Error = await this.props.settingshandler.store(settings)
         if(status instanceof Error){
             show_error_toast('Could not save settings', status as Error)
         }
+        await this.#load_settings()
+        return true;
     }
 }
 
 
 export class BaseSettingsModal extends SettingsModal<settings.BaseSettings>{
     /** @override */
-    collect_settings_from_widgets(): settings.BaseSettings | null {
+    collect_settings_from_widgets(): settings.BaseSettings|Error {
         if(!this.model_selection.current)
-            return null;
+            return new Error('Unexpected error');
 
         const model:ModelInfo|undefined = this.model_selection.current?.get_selected()
         if(!model) {
             //TODO: return new Error() instead
-            show_error_toast('Cannot save settings: No model selected')
-            return null;
+            const error = new Error('Cannot save settings: No model selected')
+            show_error_toast(error.message)
+            return error;
         }
 
         return  {active_models:{detection : model.name}}
