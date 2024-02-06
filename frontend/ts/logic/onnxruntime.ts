@@ -241,15 +241,20 @@ export type SessionOutput = {
 
     /** Raw onnx output */
     output:    unknown;
+
+    /** Time it took to run the model */
+    processing_time?: number;
 }
 
 export class Session {
     #ortsession: ort.InferenceSession;
     #state_dict: StateDict;
+    #onnx_bytes: Uint8Array;
 
-    constructor(ortsession:ort.InferenceSession, state_dict:StateDict) {
+    constructor(ortsession:ort.InferenceSession, state_dict:StateDict, onnx_bytes:Uint8Array) {
         this.#ortsession = ortsession;
         this.#state_dict = state_dict
+        this.#onnx_bytes = onnx_bytes
     }
 
     /** Factory function returning a new {@link Session} instance or `Error`.*/
@@ -267,7 +272,8 @@ export class Session {
             return loaded_pt_zip as Error;
         
         const options:ort.InferenceSession.SessionOptions = {
-            executionProviders:['wasm'],
+            executionProviders: ['wasm'],
+            logSeverityLevel:   3,
         }
         try{
             const ortsession:ort.InferenceSession 
@@ -275,8 +281,9 @@ export class Session {
                     loaded_pt_zip.onnx_bytes, options
                 )
             //TODO: verifiy inputnames in ortsession with state_dict
-            return new Session(ortsession, loaded_pt_zip.state_dict)
+            return new Session(ortsession, loaded_pt_zip.state_dict, loaded_pt_zip.onnx_bytes)
         } catch(error) {
+            console.warn(error)
             return error;
         }
     }
@@ -306,14 +313,22 @@ export class Session {
         const x = this.#state_dict['x']!
         const x_ = new ort.Tensor(x.type, new Uint8Array(rgb.buffer), x.dims)
         try{
-            const output: Record<string, ort.OnnxValue> 
-                = await this.#ortsession.run({...this.#state_dict, x:x_})
+            const t0:number = performance.now()
+            let output: unknown;
+            if(util.is_deno()){
+                output = await this.#ortsession.run({...this.#state_dict, x:x_})
+            } else {
+                output = await run_in_worker(this.#onnx_bytes, {...this.#state_dict, x:x_})
+            }
+            const t1:number = performance.now()
             return {
                 output:    output, 
                 imagesize: imagetools.get_image_size(image),
                 inputsize: {width:rgb.width, height:rgb.height},
+                processing_time: (t1 - t0),
             }
         } catch(error) {
+            console.error(error)
             return error;
         }
     }
@@ -361,3 +376,62 @@ export function validate_ort_tensor(x:unknown): PartialTensor|null {
     }
     else return null;
 }
+
+
+type WorkerMessage = {
+    status: 'ready'|'completed',
+    result?: unknown
+}
+
+function run_in_worker(
+    onnx_bytes: Uint8Array, 
+    inputs:     StateDict,
+): Promise< unknown > {
+    const worker_src = new Blob([worker_js], {type:'text/javascript'})
+    const worker = new Worker(URL.createObjectURL(worker_src), {type:'module'})
+
+    return new Promise((
+        resolve: (x:unknown) => void,
+        reject:  (error:ErrorEvent) => void
+    ) => {
+        worker.onmessage = (event:MessageEvent<WorkerMessage>) => {
+            
+            if(event.data.status == 'ready') { 
+                worker.postMessage({onnx_bytes, inputs});
+            } else {
+                resolve(event.data.result);
+                worker.terminate();
+            }
+        };
+    
+        worker.onerror = (error:ErrorEvent) => {
+            reject(error);
+            worker.terminate();
+        };
+      });
+}
+
+
+const worker_js = `
+const ort = (await import("https://esm.run/onnxruntime-web@1.16.3")).default
+ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/";
+
+self.onmessage = async function(event) {
+    const onnx_bytes = event.data["onnx_bytes"];
+    const inputs     = event.data["inputs"];
+
+    const options = {
+        executionProviders: ['wasm'],
+        logSeverityLevel:   3,
+    }
+    const session = await ort.InferenceSession.create(onnx_bytes, options)
+    const output  = await session.run(inputs)
+
+    self.postMessage({
+        status: 'completed',
+        result: output
+    });
+}
+
+self.postMessage({status: 'ready'});
+`
