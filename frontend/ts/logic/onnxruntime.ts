@@ -129,7 +129,7 @@ function to_dtype_array(x:ArrayBuffer|number, dtype:DType): DTypeArray {
 }
 
 
-function create_ort_tensor(
+export function create_ort_tensor(
     /** Raw tensor data. If null, will create a new buffer. */
     x:     ArrayBuffer|null, 
     dtype: DType, 

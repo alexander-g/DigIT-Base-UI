@@ -139,6 +139,10 @@ export function create_tensor(
 
 /** Compute the total number of elements for a shape */
 export function shape_to_size(shape:number[]) {
+    if(shape.length == 0)
+        //scalar
+        return 1;
+    
     return shape.reduce(
         (previous:number, current:number) => previous*current
     )

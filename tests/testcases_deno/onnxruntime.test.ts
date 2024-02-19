@@ -69,3 +69,8 @@ Deno.test('validate_dtype', async (t) => {
     }
 })
 
+
+Deno.test('create_ort_tensor.scalar', () => {
+    const t = ort.create_ort_tensor(null, 'float32', [])
+    asserts.assertNotInstanceOf(t, Error)
+})
