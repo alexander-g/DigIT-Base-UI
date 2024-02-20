@@ -106,7 +106,7 @@ async function load_file(path:string): Promise<ArrayBuffer|Error> {
 }
 
 
-type StateDict = Record<string, ort.Tensor>
+export type StateDict = Record<string, ort.Tensor>
 
 export type PT_ZIP = {
     onnx_bytes: Uint8Array;
@@ -239,7 +239,7 @@ export type SessionOutput = {
     /** The input size as fed to the model */
     inputsize: util.ImageSize;
 
-    /** Raw onnx output */
+    /** Raw onnx output */ //TODO: rename to 'raw' or something like that
     output:    unknown;
 
     /** Time it took to run the model */
@@ -310,22 +310,35 @@ export class Session {
         if(rgb instanceof Error)
             return rgb as Error;
         
-        const x = this.#state_dict['x']!
+        const x:ort.Tensor = this.#state_dict['x']!
         const x_ = new ort.Tensor(x.type, new Uint8Array(rgb.buffer), x.dims)
-        try{
+        const inputfeed:StateDict = {...this.#state_dict, x:x_}
+        return this.process_image_from_statedict(
+            inputfeed,
+            {
+                imagesize: imagetools.get_image_size(image),
+                inputsize: {width:rgb.width, height:rgb.height},
+            }
+        )
+    }
+
+    async process_image_from_statedict(
+        inputfeed: StateDict,
+        extras:    Pick<SessionOutput, 'imagesize'|'inputsize'>
+    ): Promise<SessionOutput|Error> {
+        try {
             const t0:number = performance.now()
             let output: unknown;
             if(util.is_deno()){
-                output = await this.#ortsession.run({...this.#state_dict, x:x_})
+                output = await this.#ortsession.run(inputfeed)
             } else {
-                output = await run_in_worker(this.#onnx_bytes, {...this.#state_dict, x:x_})
+                output = await run_in_worker(this.#onnx_bytes, inputfeed)
             }
             const t1:number = performance.now()
             return {
-                output:    output, 
-                imagesize: imagetools.get_image_size(image),
-                inputsize: {width:rgb.width, height:rgb.height},
+                output:    output,
                 processing_time: (t1 - t0),
+                ...extras,
             }
         } catch(error) {
             console.error(error)
@@ -357,6 +370,7 @@ export function validate_typed_array(x:unknown): DTypeArray|null {
 export function validate_dtype(x:unknown): DType|null {
     if(typeof x == 'string' 
     && (   x == 'uint8' 
+        || x == 'bool'
         || x == 'float32' 
         || x == 'int64')
     ){

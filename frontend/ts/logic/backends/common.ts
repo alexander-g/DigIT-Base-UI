@@ -2,6 +2,7 @@ import { type Files }  from "../zip.ts"
 import * as util       from "../../util.ts"
 
 export const DataTypeMap  = {
+    bool:    Uint8Array,
     uint8:   Uint8Array,
     int64:   BigInt64Array,
     float32: Float32Array,

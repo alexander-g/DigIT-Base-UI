@@ -137,6 +137,38 @@ function rgb_u8_to_f32(rgb_u8: Uint8Array|Uint8ClampedArray): Float32Array {
     return floatData;
 }
 
+export function f32_mono_to_rgba_u8(f32:Float32Array): Uint8ClampedArray {
+    const u8 = new Uint8ClampedArray(f32.length * 4)
+
+    // deno-lint-ignore no-inferrable-types
+    for(let i:number = 0; i < f32.length; i++) {
+        u8[i+0] = f32[i]! * 255;
+        u8[i+1] = f32[i]! * 255;
+        u8[i+2] = f32[i]! * 255;
+        u8[i+3] = 255;
+    }
+    return u8;
+}
+
+export 
+async function imagedata_to_dataurl(data:ImageData): Promise<string|Error> {
+    if(data.length != 4 * data.width * data.height){
+        return new Error('RGBA data required')
+    }
+    const size:util.ImageSize      = {width:data.width, height:data.height}
+    const canvas:Canvas            = await create_canvas(size)
+    const ctx:CanvasContext2D|null = canvas.getContext('2d')
+    if(ctx == null){
+        return new Error('Could not create a canvas context')
+    }
+    ctx.putImageData(
+        {data, height:data.height, width:data.width, colorSpace:"srgb"}, 0, 0
+    )
+    return canvas.toDataURL('image/png');
+}
+
+
+
 /** Get the height and width of either HTMLImageElement or EmulatedImage */
 export function get_image_size(image:Image): util.ImageSize {
     return {
