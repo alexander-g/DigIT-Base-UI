@@ -3,9 +3,12 @@ import * as imagetools from "./imagetools.ts"
 import * as zip  from "./zip.ts"
 import * as util from "../util.ts"
 import { 
-    shape_to_size, 
-    validate_schema_item, 
-    SchemaItem,
+    shape_to_size,
+    validate_dtype,
+    validate_inference_schema, 
+    load_tensors_from_zipcontents,
+    InferenceSchema,
+    InputSchemaItem,
     DType,
     DTypeArray,
 } from "./backends/common.ts"
@@ -33,9 +36,9 @@ function check_permissions(): true|Error {
     ){
         return new Error(
             `Required permissions:\n`
-            +`--allow-net=${WASM_URL.host}`
-            +`--allow-read=${ASSET_DIR}`
-            +`--allow-write=${ASSET_DIR}`
+            +` --allow-net=${WASM_URL.host}`
+            +` --allow-read=${ASSET_DIR}`
+            +` --allow-write=${ASSET_DIR}`
         );
     }
     else return true;
@@ -106,11 +109,12 @@ async function load_file(path:string): Promise<ArrayBuffer|Error> {
 }
 
 
-export type StateDict = Record<string, ort.Tensor>
+export type TensorDict = Record<string, ort.Tensor>
 
 export type PT_ZIP = {
-    onnx_bytes: Uint8Array;
-    state_dict: StateDict;
+    onnx_bytes:  Uint8Array;
+    state_dict:  TensorDict;
+    inputschema: Record<string, InputSchemaItem>
 }
 
 
@@ -145,36 +149,6 @@ export function create_ort_tensor(
 }
 
 
-async function validate_inputfeed(
-    schema:      Record<string, unknown>, 
-    zipcontents: zip.Files
-): Promise<StateDict|Error> {
-    const statedict:StateDict = {}
-    for(const name of Object.keys(schema) ){
-        const schemaitem: SchemaItem|null = validate_schema_item(schema[name])
-        if(schemaitem == null)
-            return new Error(
-                `Input schema has invalid format: ${JSON.stringify(schema[name])}`
-            )
-        
-        let buffer:ArrayBuffer|null = null;
-        if(schemaitem.path != undefined){
-            const weightfile:File|undefined = zipcontents[schemaitem.path]
-            if(weightfile == undefined)
-                return new Error(`File ${schemaitem.path} not in zip file`)
-        
-            buffer = await weightfile.arrayBuffer()
-        }
-        const tensor:ort.Tensor|Error = create_ort_tensor(
-            buffer, schemaitem.dtype, schemaitem.shape
-        )
-        if(tensor instanceof Error)
-            return tensor as Error;
-        
-        statedict[name] = tensor;
-    }
-    return statedict;
-}
 
 async function validate_pt_zip_contents(contents:zip.Files): Promise<PT_ZIP|Error> {
     const paths:string[] = Object.keys(contents)
@@ -200,24 +174,28 @@ async function validate_pt_zip_contents(contents:zip.Files): Promise<PT_ZIP|Erro
     const onnx_bytes:Uint8Array = new Uint8Array(
         await contents[onnxfile]!.arrayBuffer()
     )
-    const schema:unknown|Error = JSON.parse(await contents[schemafile]!.text())
-    if(schema instanceof Error || !util.is_object(schema))
-        return new Error('.pt.zip contains invalid inference schema')
+    const json:unknown|Error = JSON.parse(await contents[schemafile]!.text())
+    const schema: InferenceSchema|Error = validate_inference_schema(json)
+    if(schema instanceof Error)
+        return schema as Error;
 
-    const state_dict:StateDict|Error = await validate_inputfeed(schema, contents)
+    const state_dict:TensorDict|Error = await load_tensors_from_zipcontents(
+        schema.state_schema, contents, create_ort_tensor
+    )
     if(state_dict instanceof Error)
         return state_dict as Error;
     
     // currently supported input is only 1x HWC uint8 RGB
-    if(!state_dict['x']
-    || state_dict['x'].dims.length != 4
-    || state_dict['x'].dims[0] != 1
-    || state_dict['x'].dims[3] != 3
-    || state_dict['x'].type != 'uint8'){
+    const input_x:InputSchemaItem|undefined = schema.input_schema['x']
+    if(!input_x
+    || input_x.shape.length != 4
+    || input_x.shape[0] != 1
+    || input_x.shape[3] != 3
+    || input_x.dtype != 'uint8'){
         return new Error('Input not in 1x HWC uint8 RGB format')
     }
     
-    return {onnx_bytes, state_dict}
+    return {onnx_bytes, state_dict, inputschema:schema.input_schema}
 }
 
 export async function load_pt_zip(path:string): Promise<PT_ZIP|Error> {
@@ -247,14 +225,19 @@ export type SessionOutput = {
 }
 
 export class Session {
-    #ortsession: ort.InferenceSession;
-    #state_dict: StateDict;
-    #onnx_bytes: Uint8Array;
+    #ortsession:  ort.InferenceSession;
+    #state_dict:  TensorDict;
+    #onnx_bytes:  Uint8Array;
+    #inputschema: Record<string, InputSchemaItem>;
 
-    constructor(ortsession:ort.InferenceSession, state_dict:StateDict, onnx_bytes:Uint8Array) {
-        this.#ortsession = ortsession;
-        this.#state_dict = state_dict
-        this.#onnx_bytes = onnx_bytes
+    constructor(
+        ortsession:   ort.InferenceSession, 
+        loaded_ptzip: PT_ZIP
+    ) {
+        this.#ortsession  = ortsession;
+        this.#state_dict  = loaded_ptzip.state_dict
+        this.#onnx_bytes  = loaded_ptzip.onnx_bytes
+        this.#inputschema = loaded_ptzip.inputschema
     }
 
     /** Factory function returning a new {@link Session} instance or `Error`.*/
@@ -281,7 +264,7 @@ export class Session {
                     loaded_pt_zip.onnx_bytes, options
                 )
             //TODO: verifiy inputnames in ortsession with state_dict
-            return new Session(ortsession, loaded_pt_zip.state_dict, loaded_pt_zip.onnx_bytes)
+            return new Session(ortsession, loaded_pt_zip)
         } catch(error) {
             console.warn(error)
             return error;
@@ -297,22 +280,30 @@ export class Session {
     }
 
     async process_image_from_blob(blob:Blob): Promise<SessionOutput|Error> {
-        const imagesize:util.ImageSize|Error = this.#input_image_size()
-        if(imagesize instanceof Error)
-            return imagesize as Error
-        
         const image: imagetools.Image|Error = await imagetools.blob_to_image(blob)
         if(image instanceof Error)
             return image as Error;
+        
+        const imagesize:util.ImageSize|null|Error = this.#input_image_size()
+        if(imagesize instanceof Error)
+            return imagesize as Error
         
         const rgb: imagetools.ImageData|Error 
             = await imagetools.image_to_rgb(image, imagesize)
         if(rgb instanceof Error)
             return rgb as Error;
         
-        const x:ort.Tensor = this.#state_dict['x']!
-        const x_ = new ort.Tensor(x.type, new Uint8Array(rgb.buffer), x.dims)
-        const inputfeed:StateDict = {...this.#state_dict, x:x_}
+        const xshape: number[] = [1,rgb.height,rgb.width,3]
+        const x: ort.Tensor|Error 
+            = create_ort_tensor(new Uint8Array(rgb.buffer), 'uint8', xshape)
+        if(x instanceof Error)
+            return x as Error;
+
+        const extras:TensorDict|Error = this.#empty_tensors_for_extra_inputs()
+        if(extras instanceof Error)
+            return extras as Error;
+
+        const inputfeed:TensorDict = {...{x}, ...extras};
         return this.process_image_from_statedict(
             inputfeed,
             {
@@ -323,9 +314,10 @@ export class Session {
     }
 
     async process_image_from_statedict(
-        inputfeed: StateDict,
+        inputfeed: TensorDict,
         extras:    Pick<SessionOutput, 'imagesize'|'inputsize'>
     ): Promise<SessionOutput|Error> {
+        inputfeed = {...this.#state_dict, ...inputfeed};
         try {
             const t0:number = performance.now()
             let output: unknown;
@@ -341,18 +333,41 @@ export class Session {
                 ...extras,
             }
         } catch(error) {
-            console.error(error)
+            console.error('ONNX runtime error: ', error)
             return error;
         }
     }
 
-    #input_image_size(): util.ImageSize|Error {
-        const height:number|undefined = this.#state_dict['x']?.dims[1]
-        const width:number|undefined  = this.#state_dict['x']?.dims[2]
-        if(height == undefined || width == undefined)
+    /** Return either the height and width that is expected by the onnx model,
+     *  or null if both are expected to be dynamic, or else an error. */
+    #input_image_size(): util.ImageSize|null|Error {
+        const height:number|null|undefined = this.#inputschema['x']?.shape[1]
+        const width:number|null|undefined  = this.#inputschema['x']?.shape[2]
+        if(height === undefined || width === undefined)
             //should not happen if the inputfeed validation is correct
             return new Error('Unexpected input tensor after initialization')
-        return {height, width}
+        else if(height == null && width == null)
+            return null
+        else if(height == null || width == null)
+            return new Error('Unsupported: height or width is dynamic but not both')
+        else return {height, width}
+    }
+
+    #empty_tensors_for_extra_inputs(): TensorDict|Error {
+        const tensors: TensorDict = {}
+        for(const [name, schema] of Object.entries(this.#inputschema)) {
+            if(name == 'x')
+                continue;
+            
+            // convert nulls to zeros
+            const shape:number[]|null = schema.shape.map( Number )
+            const t:ort.Tensor|Error = create_ort_tensor(null, schema.dtype, shape)
+            if(t instanceof Error)
+                return t as Error;
+            
+            tensors[name] = t;
+        }
+        return tensors;
     }
 }
 
@@ -362,18 +377,6 @@ export function validate_typed_array(x:unknown): DTypeArray|null {
     if(x instanceof Uint8Array
     || x instanceof Float32Array
     || x instanceof BigInt64Array){
-        return x;
-    }
-    else return null;
-}
-
-export function validate_dtype(x:unknown): DType|null {
-    if(typeof x == 'string' 
-    && (   x == 'uint8' 
-        || x == 'bool'
-        || x == 'float32' 
-        || x == 'int64')
-    ){
         return x;
     }
     else return null;
@@ -399,7 +402,7 @@ type WorkerMessage = {
 
 function run_in_worker(
     onnx_bytes: Uint8Array, 
-    inputs:     StateDict,
+    inputs:     TensorDict,
 ): Promise< unknown > {
     const worker_src = new Blob([worker_js], {type:'text/javascript'})
     const worker = new Worker(URL.createObjectURL(worker_src), {type:'module'})

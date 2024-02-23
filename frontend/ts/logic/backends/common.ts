@@ -23,17 +23,31 @@ export type AnyTensor  = Tensor<DType>
 export type TensorDict = Record<string, AnyTensor>;
 
 
-//TODO: code re-use
-
-
-/** Internal description of an input feed or state (e.g. weights) tensor. 
- *  Stored in a .schema.json */
-export type SchemaItem = {
+/** Internal description of a state tensor as stored in a .schema.json file.
+*   Tensor data is stored in the .pt.zip file as indicated by `path`. */
+export type StateSchemaItem = {
     shape: number[];
     dtype: DType;
-    /** Path within the zip file to the file containing the weights.
-     *  If not defined, then this is a model input (e.g. image) */
-    path?: string;
+    /** Path within the zip file to the file containing the weights. **/
+    path:  string;
+}
+
+/** Internal description of an input tensor as stored in a .schema.json file.
+ *  Tensor data itself is not stored in the .pt.zip file. */
+export type InputSchemaItem = {
+    /** Shape of the tensor. `null` means dynamic dimension. */
+    shape: (number|null)[];
+    dtype: DType;
+    //no path
+}
+
+export type SchemaItem = StateSchemaItem | InputSchemaItem;
+
+export type InferenceSchema = {
+    /** Tensors stored in pt zip */
+    state_schema: Record<string, StateSchemaItem>;
+    /** Tensors provided as input */
+    input_schema: Record<string, InputSchemaItem>;
 }
 
 
@@ -56,44 +70,59 @@ export async function unpack_tensordict_from_zip_contents(
     if(contents[schemafile] == undefined)
         return new Error(`.pt.zip file does not contain "${schemafile}" `)
     
-    const schema:unknown|Error = JSON.parse(await contents[schemafile]!.text())
-    if(schema instanceof Error || !util.is_object(schema))
-        return new Error('.pt.zip contains invalid inference schema')
+    const jsonschema:unknown|Error 
+        = util.parse_json_no_throw(await contents[schemafile]!.text())
+    const schema:InferenceSchema|Error = validate_inference_schema(jsonschema)
+    if(schema instanceof Error)
+        return schema as Error;
+    
+    if(Object.keys(schema.input_schema).length > 0)
+        return new Error('Expected all schema items to be stored in zip file')
 
-    const tensors:TensorDict|Error 
-        = await validate_tensordict(schema, contents, true)
+    const tensors:TensorDict|Error = await load_tensors_from_zipcontents(
+        schema.state_schema, contents, create_tensor
+    )
     if(tensors instanceof Error)
         return tensors as Error;
 
     return tensors as TensorDict;
 }
 
+export function validate_inference_schema(x:unknown): InferenceSchema|Error {
+    if(!util.is_object(x))
+        return new Error(`Not an inference schema: ${x}`);
+    
+    const schema:InferenceSchema = {input_schema:{}, state_schema:{}}
+    for(const [k,v] of Object.entries(x)) {
+        const stateschemaitem:StateSchemaItem|null = validate_state_schema_item(v)
+        const inputschemaitem:InputSchemaItem|null = validate_input_schema_item(v)
+        if(stateschemaitem != null)
+            schema.state_schema[k] = stateschemaitem;
+        else if(inputschemaitem != null)
+            schema.input_schema[k] = inputschemaitem;
+        else
+            return new Error(`Invalid schema item: ${v}`)
+    }
+    return schema;
+}
 
-async function validate_tensordict(
-    schema:      Record<string, unknown>, 
+
+type TensorFactory<T> = (buffer:ArrayBuffer, dtype:DType, shape:number[]) => T|Error;
+
+export async function load_tensors_from_zipcontents<T>(
+    stateschema: Record<string, StateSchemaItem>, 
     zipcontents: Files,
-    strict:      boolean,
-): Promise<TensorDict|Error> {
-    const tensordict:TensorDict = {}
-    for(const name of Object.keys(schema) ){
-        const schemaitem: SchemaItem|null = validate_schema_item(schema[name])
-        if(schemaitem == null)
-            return new Error(
-                `Input schema has invalid format: ${JSON.stringify(schema[name])}`
-            )
-        
-        let buffer:ArrayBuffer|null = null;
-        if(schemaitem.path != undefined){
-            const weightfile:File|undefined = zipcontents[schemaitem.path]
-            if(weightfile == undefined)
-                return new Error(`File ${schemaitem.path} not in zip file`)
-        
-            buffer = await weightfile.arrayBuffer()
-        } else if (strict) {
-            return new Error(`Schema item ${name} not stored in zip file`)
-        }
+    factoryfunc: TensorFactory<T>,
+): Promise<Record<string,T>|Error> {
+    const tensordict:Record<string,T> = {}
 
-        const tensor:Tensor<DType>|Error = create_tensor(
+    for(const [name, schemaitem] of Object.entries(stateschema)) {
+        const weightfile:File|undefined = zipcontents[schemaitem.path]
+        if(weightfile == undefined)
+            return new Error(`File ${schemaitem.path} not in zip file`)
+        
+        const buffer:ArrayBuffer = await weightfile.arrayBuffer()
+        const tensor:T|Error = factoryfunc(
             buffer, schemaitem.dtype, schemaitem.shape
         )
         if(tensor instanceof Error)
@@ -105,9 +134,19 @@ async function validate_tensordict(
 }
 
 
-export function validate_schema_item(x:unknown): SchemaItem|null {
+function validate_state_schema_item(x:unknown): StateSchemaItem|null {
     if(util.is_object(x)
     && util.has_property_of_type(x, 'shape', util.validate_number_array)
+    && util.has_property_of_type(x, 'dtype', validate_dtype)
+    && util.has_string_property(x, 'path')){
+        return x;
+    }
+    else return null;
+}
+
+function validate_input_schema_item(x:unknown): InputSchemaItem|null {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'shape', validate_number_or_null_array)
     && util.has_property_of_type(x, 'dtype', validate_dtype)){
         return x;
     }
@@ -115,13 +154,31 @@ export function validate_schema_item(x:unknown): SchemaItem|null {
 }
 
 /** Make sure the input is one of the supported dtype identifiers */
-function validate_dtype(x:unknown): DType|null {
+export function validate_dtype(x:unknown): DType|null {
     if(util.is_string(x) 
-    && ((x == 'uint8') || ( x == 'float32') || (x == 'int64')) ) {
+    && (   (x == 'bool') 
+        || (x == 'uint8') 
+        || (x == 'float32') 
+        || (x == 'int64')) 
+    ) {
         return x;
     }
     else return null;
 }
+
+function is_number_or_null_array(x:unknown): x is (number|null)[] {
+    if (!Array.isArray(x)) {
+        return false;
+    }
+    return x.every(
+        (x:unknown) => (x==null || util.validate_number(x)!=null)
+    )
+}
+function validate_number_or_null_array(x:unknown): (number|null)[]|null {
+    return is_number_or_null_array(x)? x : null;
+}
+
+
 
 export function create_tensor(
     /** Raw tensor data. If null, will create a new buffer. */

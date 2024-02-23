@@ -232,8 +232,7 @@ export function is_array_of_type<T>(
     if (!Array.isArray(x)) {
         return false;
     }
-    // deno-lint-ignore no-explicit-any
-    return x.every( (x:any) => validate_fn(x) != null)
+    return x.every( (x:unknown) => validate_fn(x) != null)
 }
 
 export function is_number_array(x: unknown): x is number[] {

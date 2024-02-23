@@ -55,8 +55,8 @@ export class SegmentationResult extends BaseResult {
                 raw.output["y.output"].data as Float32Array
             )
             const size:util.ImageSize = {
-                width:  raw.output['y.output'].dims[2]!,
-                height: raw.output['y.output'].dims[3]!,
+                height: raw.output['y.output'].dims[2]!,
+                width:  raw.output['y.output'].dims[3]!,
             }
             const imagedata: imagetools.ImageData 
                 = new imagetools.ImageData(y_rgba, size.height, size.width)

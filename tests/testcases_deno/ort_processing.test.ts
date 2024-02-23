@@ -46,7 +46,7 @@ Deno.test('ONNX_multistep_inference', async () => {
     const imagefile             = new File([imagedata], 'image0.jpg')
     const result = await backend.process(imagefile)
 
-    //console.log(result.raw)
+    //console.trace(result.raw)
     asserts.assertEquals(result.status, 'processed')
     asserts.assertExists(result.classmap)
     asserts.assertMatch(result.classmap, /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/)

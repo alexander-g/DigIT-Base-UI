@@ -47,3 +47,13 @@ Deno.test("imagetools.load-invalid", async() => {
     asserts.assertInstanceOf(data, Error)
 })
 
+Deno.test("f32_mono_to_rgba_u8", () => {
+    const f32:Float32Array = new Float32Array([1.0, 0.5, 0.1])
+    const u8 = imagetools.f32_mono_to_rgba_u8(f32)
+    asserts.assertEquals(u8.length, f32.length*4)
+    asserts.assertEquals(
+        Array.from(u8), 
+        [255,255,255,255,  128,128,128,255,  26,26,26,255]
+    )
+})
+

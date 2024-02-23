@@ -63,7 +63,7 @@ Deno.test('validate_dtype', async (t) => {
     for(const [key, arraytype] of Object.entries(common.DataTypeMap)){
         await t.step(key, () => {
             const x = key;
-            const result = ort.validate_dtype(x)
+            const result = common.validate_dtype(x)
             asserts.assertExists(result)
         })
     }

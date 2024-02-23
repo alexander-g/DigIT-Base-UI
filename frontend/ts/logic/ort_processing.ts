@@ -35,7 +35,7 @@ extends DetectionModule<File,R> {
         while(!(output instanceof Error) 
         && is_multistep_output(output.output)
         && (output.output.completed.data[0] != 1) ) {
-            const inputfeed: ort.StateDict = onnx_output_to_multistep_input(
+            const inputfeed: ort.TensorDict = onnx_output_to_multistep_input(
                 output.output as UnknownOutput
             )
             output = await this.#session.process_image_from_statedict(
@@ -85,7 +85,7 @@ function validate_multistep_output(x:unknown): MultistepOutput|null {
 }
 
 function is_multistep_output(x:unknown): x is MultistepOutput {
-    return (validate_multistep_output(x) == x);
+    return (validate_multistep_output(x) === x);
 }
 
 
@@ -93,8 +93,8 @@ function is_multistep_output(x:unknown): x is MultistepOutput {
 type UnknownOutput = Omit<MultistepOutput, 'completed'>
 
 
-function onnx_output_to_multistep_input(x:ort.StateDict): ort.StateDict {
-    const result:ort.StateDict = {}
+function onnx_output_to_multistep_input(x:ort.TensorDict): ort.TensorDict {
+    const result:ort.TensorDict = {}
     for(const [k, v] of Object.entries(x)) {
         if(k != "completed")
             result[k.replace(/\.output$/, '')] = v;
