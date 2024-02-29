@@ -317,6 +317,7 @@ export class Session {
         inputfeed: TensorDict,
         extras:    Pick<SessionOutput, 'imagesize'|'inputsize'>
     ): Promise<SessionOutput|Error> {
+        inputfeed = this.#filter_inputfeed(inputfeed)
         inputfeed = {...this.#state_dict, ...inputfeed};
         try {
             const t0:number = performance.now()
@@ -369,6 +370,17 @@ export class Session {
         }
         return tensors;
     }
+
+    #filter_inputfeed(feed:TensorDict): TensorDict {
+        const schemakeys:string[] = Object.keys(this.#inputschema)
+        const filtered:TensorDict = {}
+        for(const [name, tensor] of Object.entries(feed)) {
+            if(schemakeys.includes(name)) {
+                filtered[name] = tensor;
+            }
+        }
+        return filtered;
+    }
 }
 
 
@@ -396,7 +408,7 @@ export function validate_ort_tensor(x:unknown): PartialTensor|null {
 
 
 type WorkerMessage = {
-    status: 'ready'|'completed',
+    status: 'ready'|'completed'|'error',
     result?: unknown
 }
 
@@ -415,6 +427,10 @@ function run_in_worker(
             
             if(event.data.status == 'ready') { 
                 worker.postMessage({onnx_bytes, inputs});
+            } else if(event.data.status == 'error') {
+                console.error('Worker error:', event.data.result)
+                reject(event.data.result as ErrorEvent)
+                worker.terminate()
             } else {
                 resolve(event.data.result);
                 worker.terminate();
@@ -441,8 +457,18 @@ self.onmessage = async function(event) {
         executionProviders: ['wasm'],
         logSeverityLevel:   3,
     }
-    const session = await ort.InferenceSession.create(onnx_bytes, options)
-    const output  = await session.run(inputs)
+
+    let output;
+    try {
+        const session = await ort.InferenceSession.create(onnx_bytes, options)
+        output  = await session.run(inputs)
+    } catch (error) {
+        self.postMessage({
+            status: 'error',
+            result: error
+        })
+        return;
+    }
 
     self.postMessage({
         status: 'completed',
