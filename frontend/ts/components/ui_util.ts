@@ -182,10 +182,14 @@ export async function process_inputs<I extends Input, R extends Result>(
 ): Promise<void> {
     for(const pair of pairs){
         //TODO: cancel
-        const result:R = await processingmodule.process(
-            pair.input, 
-            ({result}) => { pair.$result.value = result } 
-        )
-        pair.$result.value = result;
+        try {
+            const result:R = await processingmodule.process(
+                pair.input, 
+                ({result}) => { pair.$result.value = result } 
+            )
+            pair.$result.value = result;
+        } catch (error) {
+            pair.$result.value = new Result('failed', error) as R;
+        }
     }
 }
