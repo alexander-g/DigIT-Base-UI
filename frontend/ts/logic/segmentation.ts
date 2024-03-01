@@ -1,4 +1,5 @@
 import { Result as BaseResult } from "./files.ts";
+import { InputFile }            from "./files.ts";
 import * as util                from "../util.ts"
 import { FlaskProcessing }      from "./flask_processing.ts";
 import { 
@@ -9,17 +10,17 @@ import {
 import * as imagetools from "./imagetools.ts";
 
 
-export class Input extends File {}
+export class SegmentationInput extends InputFile {}
 
 
 export class SegmentationResult extends BaseResult {
     /** URL to a classmap (segmentation result) */
-    classmap: string|null = null;
+    classmap: Blob|string|null = null;
 
     constructor(
         ...args:[
             ...baseargs:  ConstructorParameters<typeof BaseResult>, 
-            classmap?:     string,
+            classmap?:     string|Blob,
         ]
     ){
         super(args[0], args[1], args[2])
@@ -30,7 +31,12 @@ export class SegmentationResult extends BaseResult {
         const exports: Record<string, File>|null = await super.export() ?? {}
         
         if(this.classmap != null) {
-            const classmap: Blob|Error = await util.fetch_image_as_blob(this.classmap)
+            let classmap: Blob|Error;
+            if(this.classmap instanceof Blob)
+                classmap = this.classmap;
+            else {
+                classmap = await util.fetch_image_as_blob(this.classmap)
+            }
             if(!(classmap instanceof Error))
                 exports['classmap.png'] = new File([classmap], 'classmap.png')
         }
@@ -60,12 +66,12 @@ export class SegmentationResult extends BaseResult {
             }
             const imagedata: imagetools.ImageData 
                 = new imagetools.ImageData(y_rgba, size.height, size.width)
-            const dataurl:string|Error 
-                = await imagetools.imagedata_to_dataurl(imagedata)
-            if(dataurl instanceof Error){
+            const datablob:Blob|Error 
+                = await imagetools.imagedata_to_blob(imagedata)
+            if(datablob instanceof Error){
                 return null
             }
-            return new this('processed', raw, baseresult.inputname, dataurl)
+            return new this('processed', raw, baseresult.inputname, datablob)
         }
         else return null;
     }

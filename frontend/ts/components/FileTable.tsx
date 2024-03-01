@@ -208,7 +208,7 @@ class FileTableItem<I extends Input, R extends Result> extends preact.Component<
 
 
 
-type FileTableProps<I extends Input, R extends Result> = {
+export type FileTableProps<I extends Input, R extends Result> = {
     /** The list of files that this file table should display */
     $files:     InputFileList<I,R>
     
@@ -237,8 +237,9 @@ type FileTableProps<I extends Input, R extends Result> = {
 export 
 class FileTable<I extends Input, R extends Result> extends preact.Component<FileTableProps<I,R>> {
     //Single column 'Files' by default
-    static defaultProps: Pick<FileTableProps<never, never>, 'columns'> = {
-        columns: [{label:'Files', width_css_class:'sixteen'}]
+    static defaultProps: Pick<FileTableProps<never, never>, 'columns'|'sortable'> = {
+        columns:  [{label:'Files', width_css_class:'sixteen'}],
+        sortable: false,
     }
 
     /** The currently displayed filename. null if all closed. */

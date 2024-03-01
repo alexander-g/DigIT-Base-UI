@@ -1,7 +1,7 @@
 import { JSX, UTIF }    from "../dep.ts"
 import * as util        from "../util.ts"
 import { Input, Result, InputResultPair } from "../logic/files.ts"
-import { zip_inputs_and_results }         from "../logic/files.ts"
+import * as files       from "../logic/files.ts"
 
 /** Event handler for file drag events */
 export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
@@ -59,19 +59,19 @@ export function load_resultfiles(file_list:FileList|File[]): void {
  *    then will use these previous inputs.
  *  @returns list of input-result pairs */
 export async function load_list_of_files<I extends Input, R extends Result>(
-    files:             FileList|File[],
-    InputClass:        util.ClassWithValidate<I>,
-    ResultClass:       util.ClassWithValidate<R, ConstructorParameters<typeof Result> >,
+    list_of_files:     FileList|File[],
+    InputClass:        files.InputClassInterface<I>,
+    ResultClass:       files.ResultClassInterface<R>,
     previous_pairs?:   InputResultPair<I,R>[],
 ): Promise<InputResultPair<I, R>[]> {
-    let {inputs, resultfiles:mayberesultfiles} = await categorize_files(files, InputClass)
+    let {inputs, resultfiles:mayberesultfiles} = await categorize_files(list_of_files, InputClass)
     if(inputs.length == 0 && previous_pairs?.length != undefined){
         //use already loaded inputs and try to assign results to them
         inputs = previous_pairs.map(p => p.input)
     }
 
     const results:R[] = await try_load_results(inputs, mayberesultfiles, ResultClass)
-    const pairs:InputResultPair<I,R>[] = zip_inputs_and_results(inputs, results)
+    const pairs:InputResultPair<I,R>[] = files.zip_inputs_and_results(inputs, results)
     return pairs;
 }
 
@@ -79,7 +79,7 @@ export async function load_list_of_files<I extends Input, R extends Result>(
 export async function try_load_results<R extends Result>(
     inputs:           readonly Input[],
     mayberesultfiles: readonly File[],
-    ResultClass:      util.ClassWithValidate<R, ConstructorParameters<typeof Result> >,
+    ResultClass:      files.ResultClassInterface<R>,
 ): Promise<R[]> {
     const results: R[] =[]
     for(const input of inputs){

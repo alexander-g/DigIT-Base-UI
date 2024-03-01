@@ -1,18 +1,30 @@
 import { JSX, signals } from "../dep.ts"
-import type {BaseSettings}  from "../logic/settings.ts"
-import { FileTable }    from "./FileTable.tsx"
+import type {BaseSettings}   from "../logic/settings.ts"
+import { FileTable }         from "./FileTable.tsx"
+import { FileTableProps }    from "./FileTable.tsx"
 import { AppState }     from "./state.ts"
+import * as state       from "./state.ts"
 import { TabContent }   from "./MainContainer.tsx";
 
-import { DummyProcessingModule }            from "../logic/files.ts"
-import { ObjectdetectionFlaskProcessing }   from "../logic/objectdetection.ts";
+import { DummyProcessingModule, ProcessingModule }            from "../logic/files.ts"
 import { ObjectdetectionRow }               from "./FileTableRow.tsx";
+import { SegmentationContent }              from "./ImageOverlay.tsx"
 import { ObjectdetectionContent }           from "./BoxesOverlay.tsx";
 import { LabelDropdown }                    from "./BoxesOverlay.tsx";
 import { FileTableMenu, DownloadAllWithCSVAndAnnotations } from "./FileTableMenu.tsx";
 import { collect_all_classes_from_appstate } from "./ui_util.ts";
 import * as objdet                          from "../logic/objectdetection.ts";
+import * as segm                            from "../logic/segmentation.ts";
 
+
+
+type ProcessingModuleOfAppState<S extends AppState> 
+    = ProcessingModule<state.InputTypeOfAppState<S>, state.ResultTypeOfAppState<S>>
+
+type FileTableContent<S extends AppState>
+    = FileTableProps<
+        state.InputTypeOfAppState<S>, state.ResultTypeOfAppState<S>
+    >['FileTableContent']
 
 export class DetectionTab<S extends AppState> extends TabContent<S> {
     /** Flag indicating that this tab is the first one. Speeds up rendering.
@@ -41,9 +53,20 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
             $files            =  {appstate.$files}
             $processing       =  {appstate.$processing}
             $processingmodule =  {
-                signals.computed( () => new DummyProcessingModule() )
+                signals.computed( this.processingmodule.bind(this) )
             }
+            FileTableContent  = { this.file_table_content() }
         />; 
+    }
+
+    /** @virtual */
+    processingmodule(): ProcessingModuleOfAppState<S>|null {
+        return new DummyProcessingModule()
+    }
+
+    /** @virtual */
+    file_table_content(): FileTableContent<S>  {
+        return undefined;
     }
 }
 
@@ -76,22 +99,46 @@ extends DetectionTab<S> {
                 {label:'Detections', width_css_class:'ten'}
             ]}
             $processingmodule =  { 
-                signals.computed( this.#processingmodule.bind(this) )
+                //TODO: does not seem to get updated
+                signals.computed( this.processingmodule.bind(this) )
             }
             FileTableRow     =  { ObjectdetectionRow }
             FileTableContent =  { ObjectdetectionContent }
         />; 
     }
 
-    #processingmodule() {
+    /** @override */
+    processingmodule(): ProcessingModuleOfAppState<S>|null {
         const settings:BaseSettings|undefined = this.props.appstate.$settings.value
         if(settings == undefined)
-            //TODO: should be handled differently
-            return new DummyProcessingModule();
+            return null
         
-        return new this.props.backend(
-            objdet.ObjectdetectionResult, settings
-        )
+        return new this.props.backend(objdet.ObjectdetectionResult, settings)
+    }
+}
+
+
+
+export class SegmentationAppState extends AppState<
+    segm.SegmentationInput, segm.SegmentationResult, BaseSettings
+>{}
+
+
+export
+class SegmentationTab<S extends SegmentationAppState> extends DetectionTab<S> {
+
+    /** @override */
+    processingmodule(): ProcessingModuleOfAppState<S>|null {
+        const settings:BaseSettings|undefined = this.props.appstate.$settings.value;
+        if(settings == undefined)
+            return null;
+        
+        return new this.props.backend(segm.SegmentationResult, settings)
+    }
+
+    /** @override */
+    file_table_content(): FileTableContent<S> {
+        return SegmentationContent;
     }
 }
 

@@ -19,6 +19,7 @@ import {
 } from "./components/MainContainer.tsx"
 import * as detectiontab   from "./components/DetectionTab.tsx"
 import * as objdet         from "./logic/objectdetection.ts";
+import * as segm           from "./logic/segmentation.ts";
 
 
 
@@ -32,20 +33,25 @@ import * as objdet         from "./logic/objectdetection.ts";
  * @param tabs          - Dict mapping tab name to tab JSX component */
 export function create_App<
 INPUT           extends files.Input,
+INPUTCLASS      extends files.InputClassInterface<INPUT>,
 RESULT          extends files.Result,
+RESULTCLASS     extends files.ResultClassInterface<RESULT>,
 SETTINGS        extends settings.Settings,
-APPSTATE        extends state.AppState<INPUT, RESULT, SETTINGS>,
+// NOTE: using RESULT instead of InstanceType<RESULTCLASS> is not type-safe for some reason
+APPSTATE        extends state.AppState<
+    InstanceType<INPUTCLASS>, InstanceType<RESULTCLASS>, SETTINGS
+>,
 TOPMENU         extends TopMenu,
 >(
     options: {
-    id:             string, 
-    AppState:       util.Constructor<APPSTATE>,
-    InputClass:     files.InputClassInterface<INPUT>,
-    ResultClass:    util.ClassWithValidate<RESULT>,
-    settingshandler:settings.SettingsHandler<SETTINGS>,
-    backend:        ProcessingBackendConstructor<APPSTATE>,
-    TopMenu:        util.Constructor<TOPMENU>,
-    tabs:           Tabs<APPSTATE>,
+    id:              string, 
+    AppState:        util.Constructor<APPSTATE>,
+    InputClass:      INPUTCLASS,
+    ResultClass:     RESULTCLASS,
+    settingshandler: settings.SettingsHandler<SETTINGS>,
+    backend:         ProcessingBackendConstructor<APPSTATE>,
+    TopMenu:         util.Constructor<TOPMENU>,
+    tabs:            Tabs<APPSTATE>,
     },
 ){
     return class App extends preact.Component {
@@ -125,17 +131,24 @@ TOPMENU         extends TopMenu,
 class App extends create_App({
     id:              'base', 
     //AppState:        state.AppState, 
-    AppState:        detectiontab.ObjectdetectionAppState, 
+    //AppState:        detectiontab.ObjectdetectionAppState, 
+    AppState:        detectiontab.SegmentationAppState, 
+
     InputClass:      files.InputFile,
+
     //ResultClass:     files.Result,
-    ResultClass:     objdet.ObjectdetectionResult,
-    settingshandler: new settings.BaseSettingsHandler(), 
+    //ResultClass:     objdet.ObjectdetectionResult,
+    ResultClass:     segm.SegmentationResult,
+
+    //settingshandler: new settings.BaseSettingsHandler(), 
+    settingshandler: new settings.StaticPageBaseSettingsHandler(), 
+    
     backend:         ORT_Processing,
     TopMenu:         TopMenu,
     tabs: {
-        //'Detection': DetectionTab,
-        // deno-lint-ignore no-explicit-any
-        'Detection': detectiontab.ObjectDetectionTab as any,
+        //'Detection': detectiontab.DetectionTab,
+        //'Detection': detectiontab.ObjectDetectionTab,
+        'Detection': detectiontab.SegmentationTab,
         'Training':  TrainingTab,
     },
 }){}

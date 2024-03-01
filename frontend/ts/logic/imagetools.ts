@@ -151,7 +151,7 @@ export function f32_mono_to_rgba_u8(f32:Float32Array): Uint8ClampedArray {
 }
 
 export 
-async function imagedata_to_dataurl(data:ImageData): Promise<string|Error> {
+async function imagedata_to_blob(data:ImageData): Promise<Blob|Error> {
     if(data.length != 4 * data.width * data.height){
         return new Error('RGBA data required')
     }
@@ -161,10 +161,29 @@ async function imagedata_to_dataurl(data:ImageData): Promise<string|Error> {
     if(ctx == null){
         return new Error('Could not create a canvas context')
     }
-    ctx.putImageData(
-        {data, height:data.height, width:data.width, colorSpace:"srgb"}, 0, 0
-    )
-    return canvas.toDataURL('image/png');
+    const imagedata:globalThis.ImageData
+        = util.is_deno()
+            ? {data, height:data.height, width:data.width, colorSpace:"srgb"}
+            : new globalThis.ImageData(data, data.width, data.height)
+    ctx.putImageData(imagedata, 0, 0)
+    return canvas_to_blob(canvas)
+}
+
+/** Get image data from either HTMLImageElement or EmulatedImage as a blob  */
+async function canvas_to_blob(canvas:Canvas): Promise<Blob|Error> {
+    if('toBlob' in canvas) {
+        return new Promise( (resolve: (b:Blob|Error) => void ) => {
+            canvas.toBlob((b:Blob|null) => {
+                if(b == null)
+                    resolve(new Error('Failed to convert image data to blob'))
+                else 
+                    resolve(b)
+            }, 'image/png')
+        } )
+        
+    } else {
+        return await new Blob([canvas.toBuffer('image/png')])
+    }
 }
 
 

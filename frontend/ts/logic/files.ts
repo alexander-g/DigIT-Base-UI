@@ -115,7 +115,7 @@ export class Result {
     /** @virtual Convert an object to a new result or null if invalid. 
      * This includes importing a previously exported result. */
     static async validate<T extends Result>(
-        this: new (...args:ConstructorParameters<typeof Result>) => T, 
+        this: util.Class<T, ConstructorParameters<typeof Result> >, 
         raw:  unknown
     ): Promise<T|null> {
         if(util.is_object(raw)){
@@ -127,7 +127,8 @@ export class Result {
     }
 }
 
-
+export type ResultClassInterface<R extends Result>
+    = util.ClassWithValidate<R, ConstructorParameters<typeof Result> >
 
 export type InputResultPair<I extends Input, R extends Result> = {
     input:  I;
