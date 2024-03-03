@@ -11,6 +11,9 @@ export * as preact_ssr          from "https://esm.sh/preact-render-to-string@5.2
 export * as cache               from 'https://raw.githubusercontent.com/denoland/deno_cache/bc03f82bbda192228d7090b803fb1dd8e7f1d7ff/mod.ts'
 
 
+export * as file_server from "https://deno.land/std@0.176.0/http/file_server.ts";
+
+
 //required to prevent net-access on dynamic import()
 import "../../frontend/ts/dep.ts"
 
