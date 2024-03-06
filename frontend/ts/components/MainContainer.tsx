@@ -80,7 +80,8 @@ extends preact.Component<MainContainerProps<AS>> {
         const tab_contents: JSX.Element[] = []
         for(const [tabname, TabClass] of Object.entries(this.props.tabs)){
             tab_contents.push(
-                <TabClass 
+                // @ts-ignore [deno-ts(2789)]
+                <TabClass
                     name     = {tabname} 
                     appstate = {this.props.appstate}
                     backend  = {this.props.backend}

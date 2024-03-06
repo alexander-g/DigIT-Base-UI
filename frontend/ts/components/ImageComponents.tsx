@@ -81,7 +81,7 @@ export class InputImage extends preact.Component<InputImageProps> {
 
 
 type ImageControlsProps = {
-    children:       preact.ComponentChildren;
+    children?:      preact.ComponentChildren;
     /** The natural/original size of the displayed image */
     $imagesize:     signals.ReadonlySignal<ImageSize|null>;
 

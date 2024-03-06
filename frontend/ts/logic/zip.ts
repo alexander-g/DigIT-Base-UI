@@ -42,8 +42,10 @@ export function zip_files(data:Files, filename:string): Promise<File|Error> {
 
 
 
-export async function unzip(file:Blob): Promise<Files|Error> {
-    const data:Uint8Array = new Uint8Array( await file.arrayBuffer() )
+export async function unzip(data:Blob|Uint8Array): Promise<Files|Error> {
+    if(data instanceof Blob)
+        data = new Uint8Array( await data.arrayBuffer() )
+    
     let unzipped:fflate.Unzipped;
     try {
         unzipped = fflate.unzipSync(data)

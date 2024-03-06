@@ -5,7 +5,8 @@ import * as util from "../util.ts"
 import { 
     shape_to_size,
     validate_dtype,
-    validate_inference_schema, 
+    validate_inference_schema,
+    validate_typed_array,
     load_tensors_from_zipcontents,
     InferenceSchema,
     InputSchemaItem,
@@ -385,14 +386,6 @@ export class Session {
 
 
 
-export function validate_typed_array(x:unknown): DTypeArray|null {
-    if(x instanceof Uint8Array
-    || x instanceof Float32Array
-    || x instanceof BigInt64Array){
-        return x;
-    }
-    else return null;
-}
 
 export type PartialTensor = Pick<ort.Tensor, 'data'|'dims'|'type'>;
 

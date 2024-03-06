@@ -2,7 +2,7 @@ import { DetectionModule, InputResultPair, Result } from "../files.ts";
 import * as zip                         from "../zip.ts";
 import * as util                        from "../../util.ts";
 import * as common                      from "./common.ts"
-import type { TensorDict, SchemaItem  } from "./common.ts"
+import type { TensorDict  }             from "./common.ts"
 import * as imagetools                  from "../imagetools.ts"
 import { denolibs }                     from "../../dep.ts"
 
@@ -12,10 +12,9 @@ export class TS_Backend<R extends Result> extends DetectionModule<File,R> {
     /** Shared library object */
     static lib:TS_Lib|undefined;
 
-    /** Flag indicating whether the module in the settings has been loaded */
-    // deno-lint-ignore no-inferrable-types
-    #module_initialized:boolean = false;
-
+    /** Internal information about the currently loaded module
+     *  or null if none loaded */
+    #module_info:PT_ZIP|null = null;
     
     //TODO: not in downstream!
     TS_LIB_FILE_URL:string = import.meta.resolve('../../../../assets/libTSinterface.so')
@@ -48,42 +47,49 @@ export class TS_Backend<R extends Result> extends DetectionModule<File,R> {
             TS_Backend.lib = lib;
         }
 
-        if(!this.#module_initialized){
+        if(!this.#module_info){
             const modelname:string = this.settings.active_models.detection;
             const modelpath:string = this._modelname_to_modelpath(modelname)
-            const status:true|Error 
-                = initialize_module(modelpath, TS_Backend.lib)
+            const status:PT_ZIP|Error 
+                = await initialize_module(modelpath, TS_Backend.lib)
             if(status instanceof Error){
                 return new this.ResultClass('failed', status as Error);
             }
-            this.#module_initialized = true;
+            this.#module_info = status as PT_ZIP;
         }
 
-        const imagedata: imagetools.ImageData|Error 
-            = await imagetools.blob_to_rgb(input)
-        if(imagedata instanceof Error)
-            return new this.ResultClass('failed', imagedata as Error);
-        const rgb_f32:Float32Array = imagetools.rgb_u8_to_f32(imagedata)
+        const inputfeed:TensorDict|Error 
+            = await inputfeed_from_imageblob(input, this.#module_info)
+        if(inputfeed instanceof Error)
+            return new this.ResultClass('failed', inputfeed as Error);;
         
-        const imagetensor: common.AnyTensor|Error = common.create_tensor(
-            rgb_f32, "float32", [1,3,imagedata.height, imagedata.width]
-        )
-        if(imagetensor instanceof Error)
-            return new this.ResultClass('failed', imagetensor as Error);
-        
-        const inputfeed:TensorDict = {x:imagetensor}
-        const output:TensorDict|Error 
+        let output:RunModuleOutput|Error 
             = await run_module(inputfeed, TS_Backend.lib)
-        if(output instanceof Error)
-            return new this.ResultClass('failed', output as Error)
+        
+        // run again if this is an multistep/iterative model
+        while(!(output instanceof Error) 
+        && is_multistep_output(output.output)
+        && (output.output.completed.data[0] != 1) ) {
+            const inputfeed: TensorDict = ts_output_to_multistep_input(
+                output.output as UnknownOutput
+            )
+            output = await run_module(inputfeed, TS_Backend.lib)
+            //console.log(output.output['i'])
+        }
+        // if(output instanceof Error)
+        //     return new this.ResultClass('failed', output as Error)
         
         return this.validate_result(output)
     }
 
-    /** Convert the name of a model as stored in settings to the path to file.*/
-    _modelname_to_modelpath(modelname:string): string {
+    /** Try to guess if the argument is a path, otherwise construct one.
+     *  TODO: code re-use with ort_processing.ts */
+    _modelname_to_modelpath(name:string): string {
+        if(name.includes('/') && name.endsWith('.pt.zip')){
+            return name;
+        }
         const modelsdir:string = denolibs.path.fromFileUrl(this.MODELS_DIR)
-        return denolibs.path.join(modelsdir, modelname+'.torchscript')
+        return denolibs.path.join(modelsdir, name+'.torchscript')
     }
 }
 
@@ -119,11 +125,14 @@ declare global {
         const dlopen: ((path:string, def:any) => any) | undefined;
       
         const UnsafePointer: {
-            create: (p:number|bigint) => unknown;
+            create: (p:number|bigint)     => unknown;
+            of:     (value: BufferSource) => unknown;
+            value:  (p:unknown)           => number|bigint;
         }
 
         const UnsafePointerView: new (p:unknown) => {
             getArrayBuffer: (size:number|bigint) => ArrayBuffer;
+            copyInto(destination: BufferSource, offset?: number): void;
         };
     }
 }
@@ -163,58 +172,129 @@ export function initialize_ffi(path:string): TS_Lib|Error {
 }
 
 
-/** Convert inputs into a zipfile format, as expected by the backend. */
-export
-async function pack_tensordict(tensordict:TensorDict): Promise<File|Error> {
-    const files:  zip.Files = {};
-    const schema: Record<string, SchemaItem> = {};
 
-    // deno-lint-ignore no-inferrable-types
-    let i:number = 0;
+/** Internal description of a tensor as stored in a .schema.json file.
+*   Tensor data is provided via a memory address. */
+type PointerSchemaItem = {
+    shape:   number[];
+    dtype:   common.DType;
+    address: number|bigint; 
+}
+
+/** Convert inputs to a json format, as expected by the backend */
+export function encode_tensordict_as_json(tensordict:TensorDict): string {
+    const schema: Record<string, PointerSchemaItem> = {}
     for(const [key, tensor] of Object.entries(tensordict)){
-        // deno-lint-ignore no-inferrable-types
-        const path:string = `./.data/${i}.storage`
+        const pointer:unknown = Deno.UnsafePointer.of(tensor.data);
         schema[key] = {
-            dtype: tensor.dtype,
-            shape: tensor.shape,
-            path:  path,
+            dtype:   tensor.dtype,
+            shape:   tensor.shape, 
+            address: Deno.UnsafePointer.value(pointer)
         }
-
-        files[path] = new File([tensor.data.buffer], path)
-        i++;
     }
-    files['./onnx/inference.schema.json'] = new File(
-        [JSON.stringify(schema)], 'inference.schema.json'
-    )
-    return await zip.zip_files(files, 'inputfeed.zip')
+    return JSON.stringify(schema)
+}
+
+function validate_number_or_bigint(x:unknown): number|bigint|null {
+    return util.validate_number(x) ?? ((typeof x == 'bigint') ? x: null)
+}
+
+function validate_pointer_schema_item(x:unknown): PointerSchemaItem|null {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'shape', util.validate_number_array)
+    && util.has_property_of_type(x, 'dtype', common.validate_dtype)
+    && util.has_property_of_type(x, 'address', validate_number_or_bigint)){
+        return x;
+    }
+    else return null;
+}
+
+function validate_tensor_from_json(x:unknown): common.AnyTensor|null {
+    const schemaitem: PointerSchemaItem|null = validate_pointer_schema_item(x)
+    if(schemaitem == null)
+        return null;
+    
+    const itemsize:number = common.DataTypeMap[schemaitem.dtype].BYTES_PER_ELEMENT;
+    const nbytes:number = common.shape_to_size(schemaitem.shape) * itemsize;
+    const buffer:ArrayBuffer = new ArrayBuffer(nbytes);
+    new Deno.UnsafePointerView(
+        Deno.UnsafePointer.create(schemaitem.address)
+    ).copyInto(buffer)
+
+    return {
+        dtype: schemaitem.dtype,
+        shape: schemaitem.shape,
+        data:  new common.DataTypeMap[schemaitem.dtype](buffer),
+    }
+}
+
+/** Convert the output returned from the interface library into tensors. */
+export function decode_tensordict_from_json(jsondata:string): TensorDict|Error {
+    const jsonobject:unknown|Error = util.parse_json_no_throw(jsondata)
+    const tensordict:TensorDict = {};
+    if(util.is_object(jsonobject)){
+        for(const [key, value] of Object.entries(jsonobject)){
+            const tensor:common.AnyTensor|null = validate_tensor_from_json(value)
+            if(tensor == null)
+                return new Error('Invalid schema item')
+            
+            tensordict[key] = tensor;
+        }
+        return tensordict;
+    }
+    else return jsonobject as Error;
 }
 
 
 /** Initialize a torchscript module in the backend lib */
-export function initialize_module(path:string, lib:TS_Lib): true|Error {
+export 
+async function initialize_module(path:string, lib:TS_Lib): Promise<PT_ZIP|Error> {
     //should be deno anyway, but better safe than sorry
     if(!util.is_deno())
         return new Error('FFI backend only supported in Deno.')
     
-    const modulebytes:Uint8Array = Deno.readFileSync(path);
+    if(!path.endsWith('.pt.zip')){
+        return new Error('Non .pt.zip currently not allowed.')
+        //modulebytes = Deno.readFileSync(path);
+        
+    }
+    const pt_zip:PT_ZIP|Error = await load_pt_zip(path)
+    if(pt_zip instanceof Error)
+        return pt_zip as Error;
+    const modulebytes:Uint8Array = pt_zip.torchscript_bytes;
+    
     const status:number = 
         lib.symbols.initialize_module(modulebytes, modulebytes.length)
     if(status != 0)
         return new Error(`Could not initialize module ${path}`)
     
-    return true;
+    return pt_zip;
 }
+
+
+//TODO: code re-use with onnxruntime.ts
+export type RunModuleOutput = {
+    /** The original size of the image */
+    imagesize: util.ImageSize;
+
+    /** The input size as fed to the model */
+    inputsize: util.ImageSize;
+
+    /** Raw torchscript output */
+    output:    unknown;
+}
+
 
 /** Perform inference on previously initialized torchscript module */
 export async function run_module(
     inputfeed: TensorDict, 
     lib:       TS_Lib,
-): Promise<TensorDict|Error> {
-    const packed:File|Error = await pack_tensordict(inputfeed)
-    if(packed instanceof Error)
-        return packed as Error;
+): Promise<RunModuleOutput|Error> {
+    const encoded:string|Error = encode_tensordict_as_json(inputfeed)
+    if(typeof encoded != 'string')
+        return encoded as Error;
     
-    const inputbuffer:Uint8Array = new Uint8Array(await packed.arrayBuffer())
+    const inputbuffer:Uint8Array = new TextEncoder().encode(encoded)
     const p_outputbuffer = new BigUint64Array(1)
     const p_outputsize   = new BigUint64Array(1)
     const status:number  = lib.symbols.run_module(
@@ -222,20 +302,158 @@ export async function run_module(
         inputbuffer.length,
         p_outputbuffer,
         p_outputsize,
-        0,  //debug
+        0//,  //debug
     )
     if(status != 0)
         return new Error('Running module failed')
 
     const unsafe_p:unknown = Deno.UnsafePointer.create(p_outputbuffer[0]!)
-    const arraybuffer:ArrayBuffer = 
-        new Deno.UnsafePointerView(unsafe_p).getArrayBuffer(p_outputsize[0]!)
+    const arraybuffer:ArrayBuffer = new ArrayBuffer(Number(p_outputsize[0]!))
+    new Deno.UnsafePointerView(unsafe_p).copyInto(arraybuffer);
 
-    const unzipped: zip.Files|Error = await zip.unzip(new Blob([arraybuffer]))
-    if(unzipped instanceof Error)
-        return unzipped as Error;
+    const json_encoded_output:string = new TextDecoder().decode(arraybuffer)
+    const tensordict_output:TensorDict|Error = 
+        decode_tensordict_from_json(json_encoded_output)
     
     lib.symbols.free_memory( p_outputbuffer[0]! )
 
-    return common.unpack_tensordict_from_zip_contents(unzipped)
+    //return tensordict_output;
+    return {
+        output:     tensordict_output,
+        //TODO: currently unused
+        inputsize:  {width: -1, height:-1},
+        imagesize:  {width: -1, height:-1},
+    }
 }
+
+
+export type PT_ZIP = {
+    torchscript_bytes:  Uint8Array;
+    state_dict:  TensorDict;
+    inputschema: Record<string, common.InputSchemaItem>
+}
+
+//TODO: code re-use with onnxruntime.ts
+async function load_pt_zip(path:string): Promise<PT_ZIP|Error> {
+    const zipdata:Uint8Array    = Deno.readFileSync(path)
+    const files:zip.Files|Error = await zip.unzip(zipdata);
+    if(files instanceof Error)
+        return files as Error;
+    const ts_filepaths:string[] = Object.keys(files).filter(
+        (path:string) => path.endsWith('.torchscript')
+    )
+    if(ts_filepaths.length == 0)
+        return new Error(`${path} contains no .torchscript files`)
+    if(ts_filepaths.length > 1)
+        return new Error(`${path} contains multiple .torchscript files`)
+    
+    const ts_filepath:string = ts_filepaths[0]!
+    const schemafile:string = ts_filepath.replace(
+        new RegExp(`.torchscript$`), '.schema.json'
+    )
+    if(files[schemafile] == undefined)
+        return new Error(`.pt.zip file does not contain "${schemafile}" `)
+    const ts_bytes = new Uint8Array(await files[ts_filepath]!.arrayBuffer())
+    
+    const json:unknown|Error = JSON.parse(await files[schemafile]!.text())
+    const schema: common.InferenceSchema|Error 
+        = common.validate_inference_schema(json)
+    if(schema instanceof Error)
+        return schema as Error;
+
+    const state_dict:TensorDict|Error = await common.load_tensors_from_zipcontents(
+        schema.state_schema, files, common.create_tensor
+    )
+    if(state_dict instanceof Error)
+        return state_dict as Error;
+    
+    // currently supported input is only 1x HWC uint8 RGB
+    const input_x:common.InputSchemaItem|undefined = schema.input_schema['x']
+    if(!input_x
+    || input_x.shape.length != 4
+    || input_x.shape[0] != 1
+    || input_x.shape[3] != 3
+    || input_x.dtype != 'uint8'){
+        return new Error('Input not in 1x HWC uint8 RGB format')
+    }
+    
+    return {torchscript_bytes:ts_bytes, state_dict, inputschema:schema.input_schema}
+}
+
+
+async function inputfeed_from_imageblob(
+    image:     Blob, 
+    modelinfo: PT_ZIP,
+): Promise<TensorDict|Error> {
+    const imagedata_rgb: imagetools.ImageData|Error 
+        = await imagetools.blob_to_rgb(image);
+    if(imagedata_rgb instanceof Error)
+        return imagedata_rgb as Error;
+    
+    const imagetensor: common.AnyTensor|Error = common.create_tensor(
+        imagedata_rgb, "uint8", [1,imagedata_rgb.height, imagedata_rgb.width,3]
+    )
+    if(imagetensor instanceof Error)
+        return imagetensor as Error;
+
+    const inputfeed:TensorDict = {};
+    inputfeed['x'] = imagetensor;
+
+    //empty tensors for the remaining inputs
+    for(const [name, schema] of Object.entries(modelinfo.inputschema)){
+        if(name == 'x')
+            continue;
+        
+        // convert nulls to zeros
+        const shape:number[]|null = schema.shape.map( Number )
+        const t:common.AnyTensor|Error 
+            = common.create_tensor(null, schema.dtype, shape)
+        if(t instanceof Error)
+            return t as Error;
+        
+        inputfeed[name] = t;
+    }
+
+    return inputfeed;
+}
+
+
+//TODO: code re-use with ort_processing.ts
+
+/** An output of a model that is meant to be executed in multiple steps */
+type MultistepOutput = {
+    /** Flag indicating whether the to run the model again or not */
+    completed: common.AnyTensor;
+}
+
+function validate_multistep_output(x:unknown): MultistepOutput|null {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'completed', common.validate_tensor)){
+        if(x.completed.dtype == 'bool'
+        && x.completed.shape.length == 0
+        && x.completed.data.length == 1) {
+            return x;
+        }
+        else return null;
+    }
+    else return null;
+}
+
+function is_multistep_output(x:unknown): x is MultistepOutput {
+    return (validate_multistep_output(x) === x);
+}
+
+
+/** Utility type to make TypScript happy */
+type UnknownOutput = Omit<MultistepOutput, 'completed'>
+
+
+function ts_output_to_multistep_input(x:TensorDict): TensorDict {
+    const result:TensorDict = {}
+    for(const [k, v] of Object.entries(x)) {
+        if(k != "completed")
+            result[k.replace(/\.output$/, '')] = v;
+    }
+    return result;
+}
+

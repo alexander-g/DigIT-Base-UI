@@ -214,3 +214,22 @@ function to_dtype_array(x:ArrayBuffer|number, dtype:DType): DTypeArray {
 
     return new DataTypeMap[dtype](x);
 }
+
+export function validate_typed_array(x:unknown): DTypeArray|null {
+    if(x instanceof Uint8Array      //for uint8 and bool
+    || x instanceof Float32Array
+    || x instanceof BigInt64Array){
+        return x;
+    }
+    else return null;
+}
+
+export function validate_tensor(x:unknown): AnyTensor|null {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'shape', util.validate_number_array)
+    && util.has_property_of_type(x, 'dtype', validate_dtype)
+    && util.has_property_of_type(x, 'data',  validate_typed_array)){
+        return x;
+    }
+    else return null;
+}

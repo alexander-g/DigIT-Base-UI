@@ -52,7 +52,7 @@ Deno.test('validate_typed_array', async (t) => {
     for(const [key, arraytype] of Object.entries(common.DataTypeMap)){
         await t.step(key, () => {
             const x = new arraytype(5)
-            const result = ort.validate_typed_array(x)
+            const result = common.validate_typed_array(x)
             asserts.assertExists(result)
         })
     }

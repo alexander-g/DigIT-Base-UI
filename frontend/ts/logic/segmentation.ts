@@ -7,6 +7,7 @@ import {
     PartialTensor, 
     SessionOutput 
 } from "./onnxruntime.ts";
+import * as backend_common from "./backends/common.ts"
 import * as imagetools from "./imagetools.ts";
 
 
@@ -57,12 +58,16 @@ export class SegmentationResult extends BaseResult {
         }
 
         if(is_onnx_session_output(raw)){
+            const y_raw:backend_common.AnyTensor|PartialTensor 
+                = ('y' in raw.output)? raw.output.y : raw.output["y.output"]
             const y_rgba:Uint8ClampedArray = imagetools.f32_mono_to_rgba_u8(
-                raw.output["y.output"].data as Float32Array
+                y_raw.data as Float32Array
             )
+            const shape: readonly number[] 
+                = ('shape' in y_raw)? y_raw.shape : y_raw.dims;
             const size:util.ImageSize = {
-                height: raw.output['y.output'].dims[2]!,
-                width:  raw.output['y.output'].dims[3]!,
+                height: shape[2]!,
+                width:  shape[3]!,
             }
             const imagedata: imagetools.ImageData 
                 = new imagetools.ImageData(y_rgba, size.height, size.width)
@@ -90,8 +95,13 @@ export type ONNX_Output = {
     "y.output":   PartialTensor;
 }
 
+/** Format returned by running segmentation models in TorchScript */
+export type TS_Output = {
+    y: backend_common.AnyTensor;
+}
+
 export type ONNX_Session_Output = SessionOutput & {
-    output: ONNX_Output;
+    output: ONNX_Output|TS_Output;
 }
 
 export function validate_onnx_output(raw:unknown): ONNX_Output|null {
@@ -108,10 +118,27 @@ export function validate_onnx_output(raw:unknown): ONNX_Output|null {
     else return null;
 }
 
+export function validate_ts_output(raw:unknown): TS_Output|null {
+    if(util.is_object(raw)
+    && util.has_property_of_type(raw, 'y', backend_common.validate_tensor)){
+        if(raw.y.shape.length == 4
+        && raw.y.shape[0]     == 1
+        && raw.y.shape[1]     == 1
+        && raw.y.dtype        == 'float32'){
+            return raw as TS_Output;
+        }
+        else return null;
+    }
+    else return null;
+}
+
 export function validate_onnx_session_output(x:unknown): ONNX_Session_Output|null {
     //TODO: code duplication with objectdetection.ts
     if(util.is_object(x)
-    && util.has_property_of_type(x, 'output',    validate_onnx_output)
+    && (
+        util.has_property_of_type(x, 'output',    validate_onnx_output)
+        || util.has_property_of_type(x, 'output', validate_ts_output)
+    )
     && util.has_property_of_type(x, 'imagesize', util.validate_imagesize)
     && util.has_property_of_type(x, 'inputsize', util.validate_imagesize)){
         return x;
