@@ -6,6 +6,7 @@ import * as files           from "./logic/files.ts";
 import * as file_input      from "./components/file_input.ts"
 import * as settings        from "./logic/settings.ts";
 import { ORT_Processing }   from "./logic/ort_processing.ts"
+import { RemoteProcessing } from "./logic/backends/remote.ts"
 
 import * as state           from "./components/state.ts";
 import * as util            from "./util.ts";
@@ -143,7 +144,9 @@ class App extends create_App({
     //settingshandler: new settings.BaseSettingsHandler(), 
     settingshandler: new settings.StaticPageBaseSettingsHandler(), 
     
-    backend:         ORT_Processing,
+    //backend:         ORT_Processing,
+    backend:         RemoteProcessing,
+
     TopMenu:         TopMenu,
     tabs: {
         //'Detection': detectiontab.DetectionTab,

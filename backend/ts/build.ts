@@ -69,7 +69,7 @@ function check_paths(paths: CompilationPaths): void {
 export async function compile_everything(
     paths: CompilationPaths, 
     clear: boolean
-): Promise<void|Error> {
+): Promise<true|Error> {
     check_paths(paths)
 
     if(clear)
@@ -117,11 +117,12 @@ export async function compile_everything(
     )
     
     await Promise.all(promises)
+    return true;
 }
 
 export async function compile_default(
     overrides:Partial<CompilationPaths> = {}
-): Promise<void|Error> {
+): Promise<true|Error> {
     return await compile_everything({...DEFAULT_PATHS, ...overrides}, true)
 }
 
@@ -200,6 +201,24 @@ function create_stub_file(
 }
 
 
+export async function compile_and_copy_default(
+    overrides:Partial<CompilationPaths> = {}
+): Promise<true|Error> {
+    const paths:CompilationPaths = {...DEFAULT_PATHS, ...overrides};
+
+    clear_folder(paths.static);
+    //copy assets/thirdparty files even from downstream //TODO: need some kind of flag
+    copy_files_to_static({
+        frontend:   DEFAULT_PATHS.frontend,   //!
+        copy_globs: DEFAULT_PATHS.copy_globs, //!
+        static:     paths.static,
+    })
+
+    const status:true|Error = await compile_everything(paths, false)
+    return status;
+}
+
+
 function parse_args(): Record<string, string> & {copy_globs:string[]} {
     const args:Record<string, string>  = flags.parse(
         Deno.args, {default: {...DEFAULT_PATHS, copy_globs:undefined} }
@@ -213,17 +232,9 @@ if(import.meta.main){
     const args: Record<string,string> = parse_args()
 
     const paths:CompilationPaths = {...DEFAULT_PATHS, ...args}
-    clear_folder(paths.static)
-    //copy assets/thirdparty files even from downstream //TODO: need some kind of flag
-    copy_files_to_static({
-        frontend:   DEFAULT_PATHS.frontend,   //!
-        copy_globs: DEFAULT_PATHS.copy_globs, //!
-        static:     paths.static,
-    })
-    
-    const rc: void|Error = await compile_everything(paths, false)
-    if(rc instanceof Error){
-        console.log(rc.message+'\n')
+    const status: true|Error = await compile_and_copy_default(paths)
+    if(status instanceof Error){
+        console.log(status.message+'\n')
         Deno.exit(1)
     }
 }

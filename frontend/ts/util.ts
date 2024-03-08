@@ -8,38 +8,10 @@ export function deepcopy<T extends Record<string|number, unknown>>(x:T): T {
 }
 
 /** Send a file to the flask backend */
-export function upload_file(
-    file        :   File, 
-    error_fn    :   () => void,
-    // deno-lint-ignore no-inferrable-types
-    url         :   string  = 'file_upload',
-): Promise<Response> {
-    const data = new FormData()
-    data.append('files', file);
-
-    return fetch_with_error([url, {method: 'POST', body: data}], error_fn)
-}
-
-/** fetch() that calls an error callback */
-export async function fetch_with_error(
-    x:          Parameters<typeof fetch>, 
-    error_fn:   () => void,
-): Promise<Response> {
-    const maybe_response: Response|Error = await fetch_no_throw(...x)
-    if('ok' in maybe_response)
-        return maybe_response;
-    
-    const error: Error = maybe_response
-    error_fn()
-    throw(error)
-}
-
-
-/** Send a file to the flask backend */  //TODO: make this the default function
 export function upload_file_no_throw(
-    file        :   File, 
+    file: File, 
     // deno-lint-ignore no-inferrable-types
-    url         :   string  = 'file_upload',
+    url:  string  = 'file_upload',
 ): Promise<Response|Error> {
     const data = new FormData()
     data.append('files', file);
