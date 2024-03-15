@@ -1,4 +1,5 @@
 import * as util            from "../util.ts";
+import * as zip             from "./zip.ts";
 import type { Settings }    from "./settings.ts"
 
 
@@ -127,9 +128,6 @@ export class Result {
     }
 }
 
-export type ResultClassInterface<R extends Result>
-    = util.ClassWithValidate<R, ConstructorParameters<typeof Result> >
-
 export type InputResultPair<I extends Input, R extends Result> = {
     input:  I;
     result: R;
@@ -152,8 +150,11 @@ export function zip_inputs_and_results<I extends Input, R extends Result>(
 
 /** Utility type to ensure the presence of a `validate()` method.
  *  A `Result` subclass satisfies this condition */
-type ResultValidator<R extends Result> 
+export type ResultValidator<R extends Result> 
     = util.ClassWithValidate<R, ConstructorParameters<typeof Result>>
+
+export type ResultClassInterface<R extends Result> = ResultValidator<R>;
+
 
 /** Abstract base class for a processing backend (e.g. HTTP remote,
  *  onnxruntime, libtorch FFI). Subclasses have to implement `process()` */
@@ -207,6 +208,23 @@ export class DummyProcessingModule extends ProcessingModule<File, Result> {
 }
 
 
+/** Combine single exported files into one, or return the only file. */
+export async function combine_exports(
+    raw_exports: Record<string, File>,
+    inputname:   string,
+    // deno-lint-ignore no-inferrable-types
+    force_zip:   boolean = false,
+): Promise<File|Error> {
+    if(Object.keys(raw_exports).length == 1 && !force_zip){
+        //single file, leave it as is
+        return Object.values(raw_exports)[0]!
+    } else {
+        //multiple files, zip into an archive first
+        const archivename = `${inputname}.zip`
+        return await zip.zip_files(raw_exports, archivename)
+    }
+}
+
 /** Return true if the result file matches the input file */
 export function match_resultfile_to_inputfile(
     inputfile:        Input,
@@ -230,3 +248,22 @@ export function validate_baseinput_type(x:unknown): Input|null {
     else return null;
 }
 
+/** An input and a file. 
+ *  Used during file loading to match inputs to potential result files */
+type InputAndFilePair = {
+    input: Input;
+    file:  File;
+}
+
+function validate_input_and_file_pair(x:unknown): InputAndFilePair|null {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'file',  util.validate_file)
+    && util.has_property_of_type(x, 'input', validate_baseinput_type)){
+        return x;
+    }
+    else return null;
+}
+
+export function is_input_and_file_pair(x:unknown): x is InputAndFilePair{
+    return validate_input_and_file_pair(x) === x;
+}

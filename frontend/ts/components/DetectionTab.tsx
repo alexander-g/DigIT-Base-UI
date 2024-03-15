@@ -7,14 +7,18 @@ import * as state       from "./state.ts"
 import { TabContent }   from "./MainContainer.tsx";
 
 import { DummyProcessingModule, ProcessingModule }            from "../logic/files.ts"
+import * as files       from "../logic/files.ts"
+
 import { ObjectdetectionRow }               from "./FileTableRow.tsx";
 import { SegmentationContent }              from "./ImageOverlay.tsx"
+import { InstanceSegmentationContent }      from "./ImageOverlay.tsx"
 import { ObjectdetectionContent }           from "./BoxesOverlay.tsx";
 import { LabelDropdown }                    from "./BoxesOverlay.tsx";
 import { FileTableMenu, DownloadAllWithCSVAndAnnotations } from "./FileTableMenu.tsx";
 import { collect_all_classes_from_appstate } from "./ui_util.ts";
 import * as objdet                          from "../logic/objectdetection.ts";
 import * as segm                            from "../logic/segmentation.ts";
+import * as instseg                         from "../logic/instancesegmentation.ts";
 
 
 
@@ -60,8 +64,18 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
     }
 
     /** @virtual */
+    resultclass(): files.ResultValidator<state.ResultTypeOfAppState<S>> {
+        return files.Result;
+    }
+
+    /** @virtual */
     processingmodule(): ProcessingModuleOfAppState<S>|null {
-        return new DummyProcessingModule()
+        const settings:state.SettingsOfAppState<S>|undefined 
+            = this.props.appstate.$settings.value;
+        if(settings == undefined)
+            return null
+        
+        return new this.props.backend(this.resultclass(), settings)
     }
 
     /** @virtual */
@@ -107,13 +121,18 @@ extends DetectionTab<S> {
         />; 
     }
 
-    /** @override */
-    processingmodule(): ProcessingModuleOfAppState<S>|null {
-        const settings:BaseSettings|undefined = this.props.appstate.$settings.value
-        if(settings == undefined)
-            return null
+    // /** @override */
+    // processingmodule(): ProcessingModuleOfAppState<S>|null {
+    //     const settings:BaseSettings|undefined = this.props.appstate.$settings.value
+    //     if(settings == undefined)
+    //         return null
         
-        return new this.props.backend(objdet.ObjectdetectionResult, settings)
+    //     return new this.props.backend(objdet.ObjectdetectionResult, settings)
+    // }
+
+    /** @override */
+    resultclass() {
+        return objdet.ObjectdetectionResult;
     }
 }
 
@@ -128,12 +147,17 @@ export
 class SegmentationTab<S extends SegmentationAppState> extends DetectionTab<S> {
 
     /** @override */
-    processingmodule(): ProcessingModuleOfAppState<S>|null {
-        const settings:BaseSettings|undefined = this.props.appstate.$settings.value;
-        if(settings == undefined)
-            return null;
+    // processingmodule(): ProcessingModuleOfAppState<S>|null {
+    //     const settings:BaseSettings|undefined = this.props.appstate.$settings.value;
+    //     if(settings == undefined)
+    //         return null;
         
-        return new this.props.backend(segm.SegmentationResult, settings)
+    //     return new this.props.backend(segm.SegmentationResult, settings)
+    // }
+
+    /** @override */
+    resultclass() {
+        return segm.SegmentationResult;
     }
 
     /** @override */
@@ -142,3 +166,20 @@ class SegmentationTab<S extends SegmentationAppState> extends DetectionTab<S> {
     }
 }
 
+
+export class InstanceSegmentationAppState extends AppState<
+    instseg.InstanceSegmentationInput, instseg.InstanceSegmentationResult, BaseSettings
+>{}
+
+export class InstanceSegmentationTab<S extends InstanceSegmentationAppState> 
+extends SegmentationTab<S> {
+    /** @override */
+    resultclass() {
+        return instseg.InstanceSegmentationResult;
+    }
+
+    /** @override */
+    file_table_content(): FileTableContent<S> {
+        return InstanceSegmentationContent;
+    }
+}

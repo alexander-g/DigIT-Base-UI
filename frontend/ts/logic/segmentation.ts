@@ -1,5 +1,5 @@
 import { Result as BaseResult } from "./files.ts";
-import { InputFile }            from "./files.ts";
+import * as files               from "./files.ts";
 import * as util                from "../util.ts"
 import { FlaskProcessing }      from "./flask_processing.ts";
 import { 
@@ -9,13 +9,14 @@ import {
 } from "./onnxruntime.ts";
 import * as backend_common from "./backends/common.ts"
 import * as imagetools from "./imagetools.ts";
+import * as zip        from "./zip.ts"
 
 
-export class SegmentationInput extends InputFile {}
+export class SegmentationInput extends files.InputFile {}
 
 
 export class SegmentationResult extends BaseResult {
-    /** URL to a classmap (segmentation result) */
+    /** URL/Blob to a classmap (segmentation result) */
     classmap: Blob|string|null = null;
 
     constructor(
@@ -45,21 +46,30 @@ export class SegmentationResult extends BaseResult {
     }
 
     static async validate<T extends BaseResult>(
-        this: new (...args:ConstructorParameters<typeof SegmentationResult>) => T, 
+        this: util.ClassWithValidate<
+            T & SegmentationResult, 
+            ConstructorParameters<typeof SegmentationResult>
+        >,
         raw:  unknown
     ): Promise<T|null> {
         const baseresult:BaseResult|null = await super.validate(raw)
         if(baseresult == null)
             return null;
+
+        if(raw instanceof Response){
+            //raw = await raw.json()
+            raw  = await raw.blob()
+        }
         
         if(util.is_object(raw)
         && util.has_string_property(raw, 'classmap')) {
             return new this('processed', raw, baseresult.inputname, raw.classmap)
         }
 
+        //onnx or torchscript raw output
         if(is_onnx_session_output(raw)){
             const y_raw:backend_common.AnyTensor|PartialTensor 
-                = ('y' in raw.output)? raw.output.y : raw.output["y.output"]
+                = raw.output["y.output"];
             const y_rgba:Uint8ClampedArray = imagetools.f32_mono_to_rgba_u8(
                 y_raw.data as Float32Array
             )
@@ -78,6 +88,30 @@ export class SegmentationResult extends BaseResult {
             }
             return new this('processed', raw, baseresult.inputname, datablob)
         }
+
+        
+        if(files.is_input_and_file_pair(raw)){
+            const match:boolean 
+                = files.match_resultfile_to_inputfile(raw.input, raw.file, ['.zip'])
+            if(!match)
+                return null;
+            //else
+            raw = raw.file;
+            //continue below
+        }
+
+        if(raw instanceof Blob) {
+            const zipcontents:zip.Files|Error = await zip.unzip(raw)
+            if(zipcontents instanceof Error)
+                return null;
+            
+            if('classmap.png' in zipcontents){
+                const classmap_file:File = zipcontents['classmap.png'];
+                return new this('processed', raw, baseresult.inputname, classmap_file)
+            }
+            else return null;
+        }
+
         else return null;
     }
 }
@@ -97,7 +131,7 @@ export type ONNX_Output = {
 
 /** Format returned by running segmentation models in TorchScript */
 export type TS_Output = {
-    y: backend_common.AnyTensor;
+    "y.output": backend_common.AnyTensor;
 }
 
 export type ONNX_Session_Output = SessionOutput & {
@@ -120,11 +154,11 @@ export function validate_onnx_output(raw:unknown): ONNX_Output|null {
 
 export function validate_ts_output(raw:unknown): TS_Output|null {
     if(util.is_object(raw)
-    && util.has_property_of_type(raw, 'y', backend_common.validate_tensor)){
-        if(raw.y.shape.length == 4
-        && raw.y.shape[0]     == 1
-        && raw.y.shape[1]     == 1
-        && raw.y.dtype        == 'float32'){
+    && util.has_property_of_type(raw, 'y.output', backend_common.validate_tensor)){
+        if(raw['y.output'].shape.length == 4
+        && raw['y.output'].shape[0]     == 1
+        && raw['y.output'].shape[1]     == 1
+        && raw['y.output'].dtype        == 'float32'){
             return raw as TS_Output;
         }
         else return null;

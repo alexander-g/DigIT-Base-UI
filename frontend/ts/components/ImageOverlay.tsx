@@ -6,7 +6,8 @@ import { black_to_transparent_css }             from "./SVGFilters.tsx";
 
 import { SingleFileContent }                    from "./FileTable.tsx";
 import { set_image_src }                        from "./file_input.ts";
-import { SegmentationResult }                   from "../logic/segmentation.ts";
+import { type SegmentationResult }              from "../logic/segmentation.ts";
+import { type InstanceSegmentationResult }      from "../logic/instancesegmentation.ts";
 
 
 export class SegmentationContent<R extends SegmentationResult = SegmentationResult> 
@@ -20,6 +21,19 @@ extends SingleFileContent<R> {
         )
     }
 }
+
+export class InstanceSegmentationContent<R extends InstanceSegmentationResult> 
+extends SingleFileContent<R> {
+    result_overlays(): JSX.Element {
+        return (
+            <ImageOverlay 
+                image     = {this.props.$result.value.instancemap}        
+                $visible  = {this.$result_visible}
+            />
+        )
+    }
+}
+
 
 
 

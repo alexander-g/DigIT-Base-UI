@@ -21,6 +21,7 @@ import {
 import * as detectiontab   from "./components/DetectionTab.tsx"
 import * as objdet         from "./logic/objectdetection.ts";
 import * as segm           from "./logic/segmentation.ts";
+import * as instseg        from "./logic/instancesegmentation.ts";
 
 
 
@@ -133,16 +134,18 @@ class App extends create_App({
     id:              'base', 
     //AppState:        state.AppState, 
     //AppState:        detectiontab.ObjectdetectionAppState, 
-    AppState:        detectiontab.SegmentationAppState, 
+    //AppState:        detectiontab.SegmentationAppState, 
+    AppState:        detectiontab.InstanceSegmentationAppState, 
 
     InputClass:      files.InputFile,
 
     //ResultClass:     files.Result,
     //ResultClass:     objdet.ObjectdetectionResult,
-    ResultClass:     segm.SegmentationResult,
+    //ResultClass:     segm.SegmentationResult,
+    ResultClass:     instseg.InstanceSegmentationResult,
 
-    //settingshandler: new settings.BaseSettingsHandler(), 
-    settingshandler: new settings.StaticPageBaseSettingsHandler(), 
+    settingshandler: new settings.BaseSettingsHandler(), 
+    //settingshandler: new settings.StaticPageBaseSettingsHandler(), 
     
     //backend:         ORT_Processing,
     backend:         RemoteProcessing,
@@ -151,7 +154,8 @@ class App extends create_App({
     tabs: {
         //'Detection': detectiontab.DetectionTab,
         //'Detection': detectiontab.ObjectDetectionTab,
-        'Detection': detectiontab.SegmentationTab,
+        //'Detection': detectiontab.SegmentationTab,
+        'Detection': detectiontab.InstanceSegmentationTab,
         'Training':  TrainingTab,
     },
 }){}

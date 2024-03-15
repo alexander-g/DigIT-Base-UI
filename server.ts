@@ -2,10 +2,13 @@
 
 import { file_server } from "./backend/ts/dep.ts"
 import * as build     from "./backend/ts/build.ts"
+
 import { TS_Backend } from "./frontend/ts/logic/backends/torchscript.ts";
 import * as util      from "./frontend/ts/util.ts";
+import * as files     from "./frontend/ts/logic/files.ts";
 
 import * as segm      from "./frontend/ts/logic/segmentation.ts"
+import * as instseg   from "./frontend/ts/logic/instancesegmentation.ts"
 
 
 const port = 5050;
@@ -30,20 +33,16 @@ function handle_static(request:Request): Promise<Response> {
 
 async function handle_process_image(request:Request): Promise<Response> {
     // - get image from request and cache (for debugging or i dont know)
-    const files:FormDataEntryValue[] = (await request.formData()).getAll('files')
-    if(files.length == 0)
+    const files_fs:FormDataEntryValue[] = (await request.formData()).getAll('files')
+    if(files_fs.length == 0)
         return new Response('No input files provided', {status:400})
-    else if (files.length > 1)
+    else if (files_fs.length > 1)
         return new Response('Cannot process more than one file', {status:500})
-    const file:FormDataEntryValue = files[0]!
-    if(!(file instanceof File))
+    const inputfile:FormDataEntryValue = files_fs[0]!
+    if(!(inputfile instanceof File))
         return new Response('Expected a file as input', {status:400})
     
-    console.log('>> Processing file: ', file.name)
-    const data:Uint8Array = new Uint8Array(await file.arrayBuffer())
-    Deno.writeFileSync(`request.DELETE.jpg`, data)
-
-    //return new Response(null, {status:501})
+    console.log('>> Processing file: ', inputfile.name)
 
     // - TODO: get options/model
     const settings = {
@@ -53,28 +52,45 @@ async function handle_process_image(request:Request): Promise<Response> {
     }
 
     // - process
-    const backend = new TS_Backend(segm.SegmentationResult, settings)
-    const result = await backend.process(file)
-    if(result.status == 'processed'){
-        console.log('Processing succeeded')
-        const exported:Record<string,File>|null = await result.export()!
-
-        // - save in cache folder for debugging
-        // - zip
-        // deno-lint-ignore no-inferrable-types
-        const classmap_path:string = `${file.name}.classmap.png`
-        Deno.writeFileSync(
-            `static/${classmap_path}`,
-            new Uint8Array(await (exported!['classmap.png']!).arrayBuffer())
-        )
-        const responsedata = {
-            classmap: classmap_path
-        }
-        return new Response(JSON.stringify(responsedata), {status:200})
-    } else {
-        console.log('Processing failed: ', result.raw)
+    //const backend = new TS_Backend(segm.SegmentationResult, settings)
+    const backend = new TS_Backend(instseg.InstanceSegmentationResult, settings)
+    const result = await backend.process(inputfile)
+    if(result.status != 'processed'){
+        console.log('>> Processing failed: ', result.raw)
         return new Response(null, {status:500})
     }
+    //else
+
+    console.log('>> Processing succeeded')
+
+    //TODO: result.export('httpresponse')
+    const exported:Record<string,File>|null = await result.export();
+    if(exported === null)
+        return new Response("Result export error", {status:500});
+
+    const zipped:File|Error 
+        = await files.combine_exports(exported, inputfile.name, true);
+    if(zipped instanceof Error)
+        return new Response((zipped as Error).message, {status:500});
+    
+    return new Response(zipped, {status:200})
+
+    // - save in cache folder for debugging
+    // - zip
+}
+
+function handle_settings(_request:Request): Response {
+    //TODO:
+    const settings = {
+        active_models: {
+            detection:"../../traininglib.onnx/agar.inference.ts.pt.zip"
+        }
+    }
+    const available_models = {
+        detection: [{name:'agar.inference.ts'}]
+    }
+    const payload = {settings, available_models}
+    return new Response(JSON.stringify(payload), {status:200})
 }
 
 function handle_404(_request:Request): Response {
@@ -87,7 +103,7 @@ type ServeHandler = (request:Request) => Response|Promise<Response>;
 const ROUTING_TABLE: Record<string, ServeHandler > = {
     '^/$':                handle_index,
     '^/process_image/?$': handle_process_image,
-    //settings?
+    '^/settings/?$':      handle_settings,
     //clear_cache?
     //training (+cancel/save?)
     ///models/ & available_models.txt/json
@@ -127,4 +143,5 @@ if(import.meta.main){
     console.log('Exit')
     Deno.exit()
 }
+
 

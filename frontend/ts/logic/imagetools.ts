@@ -37,17 +37,35 @@ export class ImageData extends Uint8ClampedArray {
 }
 
 
+const _canvaslist: Canvas[] = []
+
+function _clean_up_canvaslist() {
+    let i:number;
+    for(i = _canvaslist.length - 1; i >=0; i--){
+        const canvas:Canvas = _canvaslist[i]!
+        if('dispose' in canvas)
+            canvas.dispose();
+        
+        _canvaslist.splice(i, 1);
+    }
+}
+
+
 /** Create canvas of specified `size`. Native in browser or emulated in deno */
 export  async function create_canvas(size:util.ImageSize):Promise<Canvas> {
+    _clean_up_canvaslist()
+
+    let canvas: Canvas;
     if(util.is_deno()){
         await _init_canvaslib()
-        return canvaslib.createCanvas(size.width, size.height);
+        canvas = canvaslib.createCanvas(size.width, size.height);
     } else {
-        const canvas:HTMLCanvasElement = document.createElement('canvas')
+        canvas = document.createElement('canvas')
         canvas.width  = size.width;
         canvas.height = size.height;
-        return canvas;
     }
+    _canvaslist.push(canvas);
+    return canvas;
 }
 
 /** Load and decode a file/blob into an image element. */
@@ -89,7 +107,7 @@ export async function image_to_rgb(
         targetsize = get_image_size(image);
     }
 
-    const canvas:Canvas = await create_canvas(targetsize)
+    const canvas:Canvas = await create_canvas(targetsize)  //TODO: canvas.dispose()
     const ctx:CanvasContext2D|null = canvas.getContext('2d')
     if(ctx == null){
         return new Error('Could not create a canvas context')
@@ -137,6 +155,21 @@ function rgb_u8_to_f32(rgb_u8: Uint8Array|Uint8ClampedArray): Float32Array {
     return floatData;
 }
 
+/** Convert uint8 RGB data to uint8 RGBA */
+export
+function rgb_u8_to_rgba(rgb_u8: Uint8Array|Uint8ClampedArray): Uint8ClampedArray {
+    const rgba_size:number = rgb_u8.length / 3 * 4
+    const rgba_data = new Uint8ClampedArray(rgba_size);
+    // deno-lint-ignore no-inferrable-types
+    for (let i:number = 0, j:number=0; i < rgb_u8.length; i+=3, j+=4) {
+        rgba_data[j+0] = rgb_u8[i+0]!;
+        rgba_data[j+1] = rgb_u8[i+1]!;
+        rgba_data[j+2] = rgb_u8[i+2]!;
+        rgba_data[j+3] = 255;
+    }
+    return rgba_data;
+}
+
 export function f32_mono_to_rgba_u8(f32:Float32Array): Uint8ClampedArray {
     const u8 = new Uint8ClampedArray(f32.length * 4)
 
@@ -165,8 +198,12 @@ async function imagedata_to_blob(data:ImageData): Promise<Blob|Error> {
         = util.is_deno()
             ? {data, height:data.height, width:data.width, colorSpace:"srgb"}
             : new globalThis.ImageData(data, data.width, data.height)
+    //TODO: memory access out of bounds after several calls
     ctx.putImageData(imagedata, 0, 0)
-    return canvas_to_blob(canvas)
+    const resultblob:Blob|Error = await canvas_to_blob(canvas)
+    // if('dispose' in canvas)
+    //     canvas.dispose();
+    return resultblob;
 }
 
 /** Get image data from either HTMLImageElement or EmulatedImage as a blob  */
