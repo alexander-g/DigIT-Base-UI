@@ -130,9 +130,15 @@ Deno.test('ffi.error-no-permissions', {permissions:{ffi:false}}, async () => {
 
 Deno.test('TS_Backend.multistep-inference', async () => {
     const backend = new ts.TS_Backend<files.Result>(
-        files.Result, {active_models:{detection:TS_MULTISTEP_MODULE_PATH}}
+        files.Result, 
+        {active_models:{detection:TS_MULTISTEP_MODULE_PATH}},
+        path.fromFileUrl(
+            import.meta.resolve('../../assets/libTSinterface.so')
+        ),
+        path.fromFileUrl(
+            import.meta.resolve('../../models/')
+        ),
     )
-    backend.MODELS_DIR = import.meta.resolve('./assets/')
 
     const imagedata: Uint8Array = Deno.readFileSync(IMAGE_ASSET0_PATH)
     const imagefile             = new File([imagedata], 'image1.jpg')

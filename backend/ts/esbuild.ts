@@ -151,6 +151,9 @@ async function compile_esbuild(
         minify:         false,
         sourcemap:      true,
         plugins:        [CustomResolvePlugin(remap)],
+        logOverride:{
+            'direct-eval':'debug'
+        }
     })
 
     const decoder = new TextDecoder("utf-8");
@@ -168,7 +171,7 @@ const ESBUILD_URL = new URL(
 )
 
 function path_to_esbuild_wasm(root:string): string {
-    return path.join(root, "assets/esbuild.wasm")
+    return path.join(root, "assets/esbuild.wasm")      //TOO hardcoded
 }
 
 /** Check that `esbuild.wasm` exists, download if necessary */

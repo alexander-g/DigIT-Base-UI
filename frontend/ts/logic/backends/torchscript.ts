@@ -17,16 +17,28 @@ export class TS_Backend<R extends Result> extends DetectionModule<File,R> {
     #module_info:PT_ZIP|null = null;
     
     //TODO: not in downstream!
-    TS_LIB_FILE_URL:string = import.meta.resolve('../../../../assets/libTSinterface.so')
+    //TS_LIB_FILE_URL:string = import.meta.resolve('../../../../assets/libTSinterface.so')
     /** Directory where models are located. Overridden in tests. */
-    MODELS_DIR:string = import.meta.resolve('../../../../models/')
+    //MODELS_DIR:string = import.meta.resolve('../../../../models/')
 
-    // constructor(...args: ConstructorParameters<typeof DetectionModule<File,R>>){
-    //     super(...args)
+    /** Path to the c++ interface library */
+    readonly ts_lib_path: string;
+    /** Path to the folder with models */
+    readonly models_dir:  string;
+
+    constructor(...args: [
+        ...ConstructorParameters<typeof DetectionModule<File,R>>,
+        /** Path to the c++ interface library */
+        path_to_ts_lib: string,
+        /** Path to the folder with models */
+        models_dir:     string,
+    ]){
+        const [resultclass, settings] = [args[0], args[1]]
+        super(resultclass, settings)
         
-    //     const modelname:string = this.settings.active_models.detection;
-
-    // }
+        this.ts_lib_path = args[2];
+        this.models_dir  = args[3];
+    }
 
     async process(
         input:        File, 
@@ -39,8 +51,7 @@ export class TS_Backend<R extends Result> extends DetectionModule<File,R> {
 
         //TODO: ffi and module initialization should be performed in constructor
         if(TS_Backend.lib == undefined){
-            const tslib_path:string = denolibs.path.fromFileUrl(this.TS_LIB_FILE_URL)
-            const lib: TS_Lib|Error = initialize_ffi(tslib_path)
+            const lib: TS_Lib|Error = initialize_ffi(this.ts_lib_path)
             if(lib instanceof Error){
                 return new this.ResultClass('failed', lib as Error);
             }
@@ -76,10 +87,11 @@ export class TS_Backend<R extends Result> extends DetectionModule<File,R> {
             output = await run_module(inputfeed, TS_Backend.lib)
             //console.log(output.output['i'])
         }
-        // if(output instanceof Error)
-        //     return new this.ResultClass('failed', output as Error)
         
-        return this.validate_result(output)
+        const result:R = await this.validate_result(output)
+        //TODO: not here
+        result.inputname = input.name
+        return result;
     }
 
     /** Try to guess if the argument is a path, otherwise construct one.
@@ -88,8 +100,7 @@ export class TS_Backend<R extends Result> extends DetectionModule<File,R> {
         if(name.includes('/') && name.endsWith('.pt.zip')){
             return name;
         }
-        const modelsdir:string = denolibs.path.fromFileUrl(this.MODELS_DIR)
-        return denolibs.path.join(modelsdir, name+'.torchscript')
+        return denolibs.path.join(this.models_dir, name+'.torchscript')
     }
 }
 

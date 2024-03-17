@@ -23,7 +23,8 @@ type CompilationPaths = {
     /** Path to third-party dependencies/imports, relative to `frontend` */
     dep_ts:         string;
 
-    /** Paths to modules that should be replaced with empty stubs */
+    /** Paths to modules that should be replaced with empty stubs.
+     *  Relative to `frontend` or absolute path */
     stubs?:         string[];
 
     /** Additional glob patterns relative to `frontend` to find files
@@ -31,12 +32,17 @@ type CompilationPaths = {
     copy_globs?:    string[];
 }
 
+/** This stub is local to this repo and should be always included */
+const DENO_DEP_DEFAULT_STUB:string = path.fromFileUrl(
+    import.meta.resolve('../../frontend/ts/dep.deno.ts')
+)
+
 export const DEFAULT_PATHS: CompilationPaths = {
     static          :   paths.static_folder(),
     frontend        :   paths.frontend(),
     index_tsx       :   'ts/index.tsx',
     dep_ts          :   'ts/dep.ts',
-    stubs           :   ['ts/dep.deno.ts'],
+    stubs           :   [DENO_DEP_DEFAULT_STUB],
     copy_globs      :   [
         'css/**/*.*',
         'thirdparty/**/*.*',
@@ -76,7 +82,8 @@ export async function compile_everything(
         clear_folder(paths.static)
     
     const build:esbuild.ESBuild|Error = await esbuild.ESBuild.initialize(
-        path.dirname(paths.frontend), paths.static
+        path.dirname(paths.frontend),   // too hard-coded
+        paths.static
     )
     if(build instanceof Error){
         return build;
@@ -178,6 +185,17 @@ export function clear_folder(path:string): void {
     fs.ensureDirSync(path)
 }
 
+function join_if_relative(...paths:string[]): string {
+    if(paths.length == 0)
+        return '';
+    
+    const lastpath:string = paths[paths.length-1]!;
+    if(path.isAbsolute(lastpath))
+        return lastpath;
+    //else
+    return path.join(...paths);
+}
+
 /** Create an empty file in the output folder that will serve as a replacement
  *  for `modules_to_stub`. */
 function create_stub_file(
@@ -194,7 +212,7 @@ function create_stub_file(
 
     const remap: Record<string, string> = Object.fromEntries(
         modules_to_stub.map(
-            (p:string) => [path.join(inputfolder, p), stubfilename]
+            (p:string) => [join_if_relative(inputfolder, p), stubfilename]
         )
     )
     return remap;

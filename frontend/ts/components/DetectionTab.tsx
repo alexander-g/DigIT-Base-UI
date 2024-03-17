@@ -25,7 +25,7 @@ import * as instseg                         from "../logic/instancesegmentation.
 type ProcessingModuleOfAppState<S extends AppState> 
     = ProcessingModule<state.InputTypeOfAppState<S>, state.ResultTypeOfAppState<S>>
 
-type FileTableContent<S extends AppState>
+export type FileTableContent<S extends AppState>
     = FileTableProps<
         state.InputTypeOfAppState<S>, state.ResultTypeOfAppState<S>
     >['FileTableContent']
