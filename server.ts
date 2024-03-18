@@ -14,23 +14,6 @@ import * as instseg   from "./frontend/ts/logic/instancesegmentation.ts"
 const port = 5050;
 
 
-async function handle_index(request:Request): Promise<Response> {
-    //TODO: re-compile index only if this is dev mode
-    const buildstatus: true|Error = await build.compile_and_copy_default()
-    if(buildstatus instanceof Error){
-        console.log('Failed to build:\n', buildstatus)
-        return new Response(null, {status:500})
-    }
-    return file_server.serveFile(request, 'static/index.html')
-}
-
-function handle_static(request:Request): Promise<Response> {
-    return file_server.serveDir(request, {
-        fsRoot:  "static",
-        //urlRoot: "",
-    })
-}
-
 function handle_404(_request:Request): Response {
     return new Response(null, {status:404})
 }
@@ -45,7 +28,7 @@ type ServeHandler = (request:Request) => Response|Promise<Response>;
 
 export class App<R extends files.Result> {
     ROUTING_TABLE: Record<string, ServeHandler > = {
-        '^/$':                handle_index,
+        '^/$':                this.handle_index.bind(this),
         '^/process_image/?$': this.handle_process_image.bind(this),
         '^/settings/?$':      this.handle_settings.bind(this),
         //clear_cache?
@@ -53,12 +36,13 @@ export class App<R extends files.Result> {
         ///models/ & available_models.txt/json
     
         // everything else interpreted as a static file
-        '^/':                 handle_static,
+        '^/':                 this.handle_static.bind(this),
     
     }
 
     constructor(
-        private rootpath:    string,
+        //private rootpath:    string,
+        private paths:       build.CompilationPaths,
         private ResultClass: files.ResultClassInterface<R>,
         private ts_lib_path: string,
         private models_dir:  string,
@@ -151,6 +135,32 @@ export class App<R extends files.Result> {
         return new Response(JSON.stringify(payload), {status:200})
     }
 
+    async handle_index(request:Request): Promise<Response> {
+        //TODO: re-compile index only if this is dev mode
+        //TODO: path.resolve will this will fail if no permission is given
+        // const static_folder:string = path.resolve(
+        //     path.join(this.rootpath, 'static')
+        // )
+        console.log('Compiling into:', this.paths.static)
+        const buildstatus: true|Error = await build.compile_and_copy(this.paths)
+        if(buildstatus instanceof Error){
+            console.log('Failed to build:\n', buildstatus)
+            return new Response(null, {status:500})
+        }
+        return file_server.serveFile(
+            request, 
+            path.join(this.paths.static, "index.html"),
+        )
+    }
+    
+    handle_static(request:Request): Promise<Response> {
+        return file_server.serveDir(request, {
+            fsRoot:  this.paths.static,
+            //urlRoot: "",
+        })
+    }
+    
+
     async route_request(request: Request): Promise<Response> {
         const url = new URL(request.url)
         for( const [pattern, handler] of Object.entries(this.ROUTING_TABLE) ){
@@ -195,7 +205,8 @@ async function _result_to_response(result:files.Result): Promise<Response> {
 
 if(import.meta.main){
     const app = new App(
-        "./", 
+        //"./", 
+        build.DEFAULT_PATHS,
         instseg.InstanceSegmentationResult,
         path.fromFileUrl(
             import.meta.resolve('./assets/libTSinterface.so'),

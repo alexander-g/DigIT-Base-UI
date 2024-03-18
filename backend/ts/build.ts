@@ -8,7 +8,7 @@ import * as paths                       from "./paths.ts"
 
 
 
-type CompilationPaths = {
+export type CompilationPaths = {
     /** The destination folder */
     static:         string;
     
@@ -37,6 +37,7 @@ const DENO_DEP_DEFAULT_STUB:string = path.fromFileUrl(
     import.meta.resolve('../../frontend/ts/dep.deno.ts')
 )
 
+//TODO: too many assumptions, at least rename to BASE_PATHS
 export const DEFAULT_PATHS: CompilationPaths = {
     static          :   paths.static_folder(),
     frontend        :   paths.frontend(),
@@ -219,11 +220,9 @@ function create_stub_file(
 }
 
 
-export async function compile_and_copy_default(
-    overrides:Partial<CompilationPaths> = {}
+export async function compile_and_copy(
+    paths: CompilationPaths,
 ): Promise<true|Error> {
-    const paths:CompilationPaths = {...DEFAULT_PATHS, ...overrides};
-
     clear_folder(paths.static);
     //copy assets/thirdparty files even from downstream //TODO: need some kind of flag
     copy_files_to_static({
@@ -250,7 +249,7 @@ if(import.meta.main){
     const args: Record<string,string> = parse_args()
 
     const paths:CompilationPaths = {...DEFAULT_PATHS, ...args}
-    const status: true|Error = await compile_and_copy_default(paths)
+    const status: true|Error = await compile_and_copy(paths)
     if(status instanceof Error){
         console.log(status.message+'\n')
         Deno.exit(1)

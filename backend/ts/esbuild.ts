@@ -223,6 +223,8 @@ function check_permissions(root:string, output_folder:string): true|Error {
 }
 
 export class ESBuild {
+    static #esbuild_initialized:boolean = false;
+
     /** Check prerequisites and initialize esbuild if all ok */
     static async initialize(root:string, output_folder:string): Promise<ESBuild|Error> {
         root = remove_file_url(root)
@@ -236,7 +238,13 @@ export class ESBuild {
         
         const esbuild_wasm_module
             = new WebAssembly.Module(Deno.readFileSync(path_to_wasm))
-        await esbuild.initialize({ wasmModule: esbuild_wasm_module, worker: false })
+        if(!this.#esbuild_initialized) {
+            //only allowed to be called once
+            await esbuild.initialize(
+                { wasmModule: esbuild_wasm_module, worker: false }
+            )
+            this.#esbuild_initialized = true;
+        }
 
         return new ESBuild;
     }
@@ -245,4 +253,5 @@ export class ESBuild {
         return await compile_esbuild(...args)
     }
 }
+
 
