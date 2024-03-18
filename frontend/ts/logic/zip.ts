@@ -7,9 +7,15 @@ export type Files = Record<string, File>
  *  @param data - Key-value pairs with keys the paths inside the resulting 
  *  archive and value is the file itself.
  *  @param filename - Name for the output zip archive
+ *  @param compress - Whether or not to compress the data with DEFLATE. (Default: false)
  * 
  *  @returns Promise that resolves with the zip archive file object or an error. */
-export function zip_files(data:Files, filename:string): Promise<File|Error> {
+export function zip_files(
+    data:     Files, 
+    filename: string, 
+    // deno-lint-ignore no-inferrable-types
+    compress: boolean = false
+): Promise<File|Error> {
 
     // deno-lint-ignore no-async-promise-executor
     const promise = new Promise<File|Error>( async (resolve:(x:File|Error) => void) => {
@@ -29,9 +35,12 @@ export function zip_files(data:Files, filename:string): Promise<File|Error> {
         
         const zip = new fflate.Zip(progress_cb)
         for(const [path, file] of Object.entries(data)) {
-            const zippath = new fflate.ZipPassThrough(path);
-            zip.add(zippath);
-            zippath.push(
+            const zipstream: fflate.ZipPassThrough|fflate.ZipDeflate 
+                = compress? 
+                    new fflate.ZipDeflate(path, {level:9}) 
+                    : new fflate.ZipPassThrough(path);
+            zip.add(zipstream);
+            zipstream.push(
                 new Uint8Array( await file.arrayBuffer() ), true
             );
         }
