@@ -1,7 +1,8 @@
-import { JSX, UTIF }    from "../dep.ts"
+import { JSX }          from "../dep.ts"
 import * as util        from "../util.ts"
 import { Input, Result, InputResultPair } from "../logic/files.ts"
 import * as files       from "../logic/files.ts"
+import { load_tiff_file } from "../logic/imagetools.ts"
 
 /** Event handler for file drag events */
 export function on_drag(event:JSX.TargetedDragEvent<HTMLElement>): void {
@@ -122,34 +123,6 @@ export function set_image_src(img:HTMLImageElement, input:Blob|string|null): voi
     }
 }
 
-export async function load_tiff_file(file:File, page_nr = 0): Promise<ImageData|null> {
-    const buffer: ArrayBuffer = await file.arrayBuffer()
-    const pages: UTIF.IFD[]   = UTIF.decode(buffer)
-    if(pages.length > page_nr){
-        const page: UTIF.IFD    = pages[page_nr]!
-        // deno-lint-ignore no-explicit-any
-        const console_log:any = console.log;
-        try {
-            //replacing console.log because UTIF doesnt care about logging
-            console.log = () => {}
-            UTIF.decodeImage(buffer, page)
-        } finally {
-            console.log = console_log
-        }
-        const rgba: Uint8ClampedArray  = Uint8ClampedArray.from(UTIF.toRGBA8(page));
-        if(globalThis.ImageData)
-            return new ImageData(rgba, page.width, page.height)
-        else
-            //deno
-            return {
-                data:   Uint8ClampedArray.from(rgba),
-                width:  page.width,
-                height: page.height,
-                colorSpace: 'srgb',
-            }
-    }
-    return null;
-}
 
 export async function load_tiff_file_as_blob(file:File, page_nr = 0): Promise<Blob|null> {
     const rgba: ImageData|null = await load_tiff_file(file, page_nr)

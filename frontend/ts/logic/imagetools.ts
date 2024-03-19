@@ -1,4 +1,4 @@
-import { denolibs } from "../dep.ts"
+import { denolibs, UTIF } from "../dep.ts"
 const canvaslib = denolibs.canvaslib;
 
 import type {
@@ -90,8 +90,23 @@ export async function blob_to_image(blob:Blob): Promise<Image|Error> {
 /** Load an image from file/blob and return raw RGB data.
  *  Resize to `targetsize` if provided */
 export async function blob_to_rgb(
-    blob:Blob, targetsize?:util.ImageSize
+    blob:        Blob|File, 
+    targetsize?: util.ImageSize
 ): Promise<ImageData|Error> {
+    if(is_tiff_file(blob)){
+        if(targetsize != undefined)
+            return new Error(
+                'Cannot specify a target size for tiff images (not implemented)'
+            )
+        
+        const imagedata:globalThis.ImageData|null = await load_tiff_file(blob);
+        if(imagedata == null)
+            return new Error('Could not load tiff image')
+        
+        const rgb:Uint8ClampedArray = rgba_to_rgb(imagedata.data)
+        return new ImageData(rgb, imagedata.height, imagedata.width, 'HWC')
+    }
+
     const image:Image|Error  = await blob_to_image(blob);
     if(image instanceof Error)
         return image as Error
@@ -231,5 +246,49 @@ export function get_image_size(image:Image): util.ImageSize {
         width:  typeof image.width == 'number' ? image.width :image.width(), 
         height: typeof image.height == 'number'? image.height:image.height()
     };
+}
+
+
+
+function is_tiff_file(x:Blob|File): boolean {
+    return (
+        x.type == 'image/tiff' 
+        || 'name' in x && (/\.tif[f]?$/).test(x.name)
+    )
+}
+
+export async function load_tiff_file(
+    file:    Blob, 
+    // deno-lint-ignore no-inferrable-types
+    page_nr: number = 0,
+): Promise<globalThis.ImageData|null> {
+    const buffer: ArrayBuffer = await file.arrayBuffer()
+    const pages: UTIF.IFD[]   = UTIF.decode(buffer)
+    if(pages.length > page_nr){
+        const page: UTIF.IFD  = pages[page_nr]!
+        // deno-lint-ignore no-explicit-any
+        const console_log:any = console.log;
+        try {
+            //replacing console.log because UTIF doesnt care about logging
+            console.log = () => {}
+            UTIF.decodeImage(buffer, page)
+        } catch(_error) {
+            return null;
+        } finally {
+            console.log = console_log
+        }
+        const rgba: Uint8ClampedArray  = Uint8ClampedArray.from(UTIF.toRGBA8(page));
+        if(globalThis.ImageData)
+            return new globalThis.ImageData(rgba, page.width, page.height)
+        else
+            //deno
+            return {
+                data:   Uint8ClampedArray.from(rgba),
+                width:  page.width,
+                height: page.height,
+                colorSpace: 'srgb',
+            }
+    }
+    return null;
 }
 

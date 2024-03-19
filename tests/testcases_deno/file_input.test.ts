@@ -1,4 +1,5 @@
 import * as file_input          from "../../frontend/ts/components/file_input.ts"
+import * as imagetools          from "../../frontend/ts/logic/imagetools.ts"
 import { Result, InputFile }    from "../../frontend/ts/logic/files.ts"
 import { asserts, path, mock }  from "./dep.ts"
 
@@ -8,7 +9,7 @@ const IMAGE_ASSET1_PATH: string
 Deno.test("imagetools.load_tiff", async () => {
     const tiffdata: Uint8Array          = Deno.readFileSync(IMAGE_ASSET1_PATH)
     const tifffile                      = new File([tiffdata], 'image1.tiff')
-    const decoded_data:ImageData|null   = await file_input.load_tiff_file(tifffile)
+    const decoded_data:ImageData|null   = await imagetools.load_tiff_file(tifffile)
     asserts.assertExists(decoded_data)
 
     const rgba: Uint8ClampedArray = decoded_data.data
