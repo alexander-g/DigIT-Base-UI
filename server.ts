@@ -47,13 +47,17 @@ export class App<R extends files.Result> {
         private ts_lib_path: string,
         private models_dir:  string,
         private recompile:   boolean = true,
+        private browser:     boolean = false,
     ){}
 
     async run(): Promise<void> {
         //TODO: check permissions
         //TODO: try/catch?
         const server:Deno.HttpServer = Deno.serve(
-            { port }, 
+            { 
+                port:     port, 
+                onListen: this.#on_listen.bind(this),
+            }, 
             this.route_request.bind(this)
         );
 
@@ -68,6 +72,13 @@ export class App<R extends files.Result> {
         await server.finished;
         console.log('Exit')
         Deno.exit()
+    }
+
+    #on_listen(): void {
+        if(this.browser)
+            open_webbrowser(
+                new URL(`http://localhost:${port}/`)
+            );
     }
 
     async handle_process_image(request:Request): Promise<Response> {
@@ -197,7 +208,17 @@ async function _result_to_response(result:files.Result): Promise<Response> {
         return new Response((zipped as Error).message, {status:500});
     
     return new Response(zipped, {status:200})
+}
 
+function open_webbrowser(url:URL): void {
+    const cmd:string = (Deno.build.os == 'windows')? 'start' : 'xdg-open';
+    try {
+        new Deno.Command(cmd, {args:[url.href]}).spawn()
+    } catch (_error) {
+        console.log(
+            `Could not open a web browser. Please navigate manually to: ${url.href}`
+        )
+    }
 }
 
 
