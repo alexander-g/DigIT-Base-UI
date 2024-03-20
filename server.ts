@@ -46,6 +46,7 @@ export class App<R extends files.Result> {
         private ResultClass: files.ResultClassInterface<R>,
         private ts_lib_path: string,
         private models_dir:  string,
+        private recompile:   boolean = true,
     ){}
 
     async run(): Promise<void> {
@@ -107,7 +108,6 @@ export class App<R extends files.Result> {
         }
         //else
     
-        console.log('>> Processing succeeded')
         return _result_to_response(result)
     }
 
@@ -136,16 +136,14 @@ export class App<R extends files.Result> {
     }
 
     async handle_index(request:Request): Promise<Response> {
-        //TODO: re-compile index only if this is dev mode
-        //TODO: path.resolve will this will fail if no permission is given
-        // const static_folder:string = path.resolve(
-        //     path.join(this.rootpath, 'static')
-        // )
-        console.log('Compiling into:', this.paths.static)
-        const buildstatus: true|Error = await build.compile_and_copy(this.paths)
-        if(buildstatus instanceof Error){
-            console.log('Failed to build:\n', buildstatus)
-            return new Response(null, {status:500})
+        if(this.recompile){
+            console.log('Compiling into:', this.paths.static)
+            const buildstatus: true|Error 
+                = await build.compile_and_copy(this.paths)
+            if(buildstatus instanceof Error){
+                console.log('Failed to build:\n', buildstatus)
+                return new Response(null, {status:500})
+            }
         }
         return file_server.serveFile(
             request, 
