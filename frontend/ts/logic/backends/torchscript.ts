@@ -97,7 +97,7 @@ export class TS_Backend<R extends Result> extends DetectionModule<File,R> {
     /** Try to guess if the argument is a path, otherwise construct one.
      *  TODO: code re-use with ort_processing.ts */
     _modelname_to_modelpath(name:string): string {
-        if(name.includes('/') && name.endsWith('.pt.zip')){
+        if((name.includes('/') || name.includes('\\') ) && name.endsWith('.pt.zip')){
             return name;
         }
         return denolibs.path.join(this.models_dir, name+'.torchscript')
@@ -158,6 +158,7 @@ export function initialize_ffi(path:string): TS_Lib|Error {
         return new Error(`No FFI permissions to open ${path} (--allow-ffi).`);
 
     try {
+        _preload_torch_libs(path)
         const lib:TS_Lib = Deno.dlopen(
             path,
             {
@@ -179,6 +180,23 @@ export function initialize_ffi(path:string): TS_Lib|Error {
         return lib;
     } catch (e) {
         return e;
+    }
+}
+
+
+/** I get 'Could not open library' errors although all dlls are present.
+ *  As a workaround load all required libs manually before the main dll */
+function _preload_torch_libs(path_to_ts_lib:string): void {
+    if(Deno.build.os != 'windows')
+        return;
+    
+    for(const libname of ['c10', 'uv', 'asmjit', 'libiomp5md', 'fbgemm', 'torch_cpu']){
+        const libpath:string = denolibs.path.join(
+            denolibs.path.dirname(path_to_ts_lib), `${libname}.dll`
+        )
+        try { Deno.dlopen!(libpath, {})} 
+        // deno-lint-ignore no-empty
+        catch (_error) { }
     }
 }
 
