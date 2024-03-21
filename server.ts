@@ -148,9 +148,7 @@ export class App<R extends files.Result> {
 
     async handle_index(request:Request): Promise<Response> {
         if(this.recompile){
-            console.log('Compiling into:', this.paths.static)
-            const buildstatus: true|Error 
-                = await build.compile_and_copy(this.paths)
+            const buildstatus: true|Error = await this.recompile_ui();
             if(buildstatus instanceof Error){
                 console.log('Failed to build:\n', buildstatus)
                 return new Response(null, {status:500})
@@ -168,8 +166,12 @@ export class App<R extends files.Result> {
             //urlRoot: "",
         })
     }
-    
 
+    recompile_ui(): Promise<true|Error> {
+        //console.log('Compiling into:', this.paths.static)
+        return build.compile_and_copy(this.paths)
+    }
+    
     async route_request(request: Request): Promise<Response> {
         const url = new URL(request.url)
         for( const [pattern, handler] of Object.entries(this.ROUTING_TABLE) ){
@@ -213,8 +215,10 @@ async function _result_to_response(result:files.Result): Promise<Response> {
 function open_webbrowser(url:URL): void {
     const cmd:string = (Deno.build.os == 'windows')? 'start' : 'xdg-open';
     try {
-        new Deno.Command(cmd, {args:[url.href]}).spawn()
+        //new Deno.Command(cmd, {args:[url.href]}).spawn()
+        new Deno.Command('cmd.exe', {args:['/c', 'start', url.href]}).spawn()
     } catch (_error) {
+        console.log(_error)
         console.log(
             `Could not open a web browser. Please navigate manually to: ${url.href}`
         )
