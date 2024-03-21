@@ -35,7 +35,7 @@ export class InstanceSegmentationResult extends segm.SegmentationResult {
         }
 
         const baseexport: Record<string, File>|null = await super.export()
-        if(util.is_object(baseexport)){
+        if(baseexport != null){
             baseexport['instancemap.png'] 
                 = new File([this.instancemap], 'instancemap.png');
         }

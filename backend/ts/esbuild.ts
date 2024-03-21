@@ -24,10 +24,14 @@ function CustomResolvePlugin(remap:Record<string, string> = {}): esbuild.Plugin 
         /** Resolve local to absolute paths */
         build.onResolve({ filter: /^\./ }, (args:esbuild.OnResolveArgs) => {
             const abspath:string = path.join( path.dirname(args.importer), args.path )
+            //for some reason the paths in windows are messed up
+            //and start with something like \Y:
+            const abspath_fixed:string = abspath.replace(/^\\([A-Z]):/, '$1:')
+            
             let result:esbuild.OnResolveResult = {}
-            if(Object.keys(remap).includes(abspath)){
+            if(Object.keys(remap).includes(abspath_fixed)){
                 result = {
-                    path:       remap[abspath],
+                    path:       remap[abspath_fixed],
                     external:   true,
                 }
             }
