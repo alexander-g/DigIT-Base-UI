@@ -56,7 +56,7 @@ Deno.test('encode-decode-tensors', async () =>{
 
 Deno.test('ffi.error-no-permissions', {permissions:{ffi:false}}, async () => {
     await 0;
-    const lib = ts.initialize_ffi(LIB_PATH)
+    const lib = await ts.initialize_ffi(LIB_PATH)
     asserts.assertInstanceOf(
         lib, Error, "FFI initialization should not succeed without --allow-ffi"
     );

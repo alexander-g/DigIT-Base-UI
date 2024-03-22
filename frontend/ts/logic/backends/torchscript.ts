@@ -6,6 +6,8 @@ import type { TensorDict  }             from "./common.ts"
 import * as imagetools                  from "../imagetools.ts"
 import { denolibs }                     from "../../dep.ts"
 
+import * as crypto                      from "../../../../backend/ts/crypto.ts"
+
 
 export class TS_Backend<R extends Result> extends DetectionModule<File,R> {   
 
@@ -51,7 +53,7 @@ export class TS_Backend<R extends Result> extends DetectionModule<File,R> {
 
         //TODO: ffi and module initialization should be performed in constructor
         if(TS_Backend.lib == undefined){
-            const lib: TS_Lib|Error = initialize_ffi(this.ts_lib_path)
+            const lib: TS_Lib|Error = await initialize_ffi(this.ts_lib_path)
             if(lib instanceof Error){
                 return new this.ResultClass('failed', lib as Error);
             }
@@ -148,8 +150,25 @@ declare global {
     }
 }
 
+const DLOPEN_SYMBOLS = {
+    "initialize_module": { 
+        parameters: ["buffer", "usize"], 
+        result:     "i32" 
+    },
+    "run_module":  { 
+        //TODO: async
+        parameters: ["buffer", "usize", "buffer", "buffer", "u8"],
+        result:     "i32" 
+    },
+    "free_memory": { 
+        parameters: ["u64"], 
+        result:     "void" 
+    },
+} as const
+
+
 /** Load the shared library libTSinterface.so, as an interface to torchscript */
-export function initialize_ffi(path:string): TS_Lib|Error {
+export async function initialize_ffi(path:string): Promise<TS_Lib|Error> {
     if(!util.is_deno())
         return new Error('FFI backend only supported in Deno.')
     if(Deno.dlopen == undefined)
@@ -158,30 +177,56 @@ export function initialize_ffi(path:string): TS_Lib|Error {
         return new Error(`No FFI permissions to open ${path} (--allow-ffi).`);
 
     try {
-        _preload_torch_libs(path)
-        const lib:TS_Lib = Deno.dlopen(
-            path,
-            {
-                "initialize_module": { 
-                    parameters: ["buffer", "usize"], 
-                    result:     "i32" 
-                },
-                "run_module":  { 
-                    //TODO: async
-                    parameters: ["buffer", "usize", "buffer", "buffer", "u8"],
-                    result:     "i32" 
-                },
-                "free_memory": { 
-                    parameters: ["u64"], 
-                    result:     "void" 
-                },
-            } as const,
-        );
+        const lib:TS_Lib|Error = await _dlopen_maybe_encrypted(path)
+        if(lib instanceof Error)
+            return lib as Error;
+        
         return lib;
     } catch (e) {
         return e;
     }
 }
+
+
+export async function _dlopen_maybe_encrypted(path:string): Promise<TS_Lib|Error> {
+    const filepattern = /\.enc$/
+    if(filepattern.test(path)){
+        //encrypted
+        return _dlopen_encrypted(path, path.replace(filepattern, ''))
+    } else {
+        //not encrypted
+        try {
+            return Deno.dlopen!(path, DLOPEN_SYMBOLS) as TS_Lib
+        } catch(error) {
+            return error;
+        }
+    }
+}
+
+
+/** `dlopen()` an encrypted dll/so library file. 
+ *  Encrypted to prevent deletion by anti-virus software. */
+async function _dlopen_encrypted(
+    path_to_enc_tslib:string,
+    destination_path: string,
+): Promise<TS_Lib|Error> {
+    _preload_torch_libs(path_to_enc_tslib)
+
+    try{
+        await crypto.decrypt_file(path_to_enc_tslib, destination_path, crypto.DEFAULT_KEY)
+        const lib:TS_Lib = Deno.dlopen!(destination_path, DLOPEN_SYMBOLS)
+        //clean up
+        try {
+            Deno.removeSync(destination_path)
+        } catch (_error) {
+            //ignore, permission denied while opened on windows
+        }
+        return lib;
+    } catch(_error) {
+        return _error;
+    }
+}
+
 
 
 /** I get 'Could not open library' errors although all dlls are present.
