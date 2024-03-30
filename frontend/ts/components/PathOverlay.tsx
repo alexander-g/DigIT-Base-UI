@@ -3,9 +3,14 @@ import * as styles                              from "./styles.ts";
 import * as util                                from "../util.ts";
 import * as ui_util                             from "./ui_util.ts";
 
+type RGBA = `rgba(${number}, ${number}, ${number}, ${number})`;
 
+type PathNode = util.Point & {
+    width: number;
+    color: RGBA;  //TODO: probably not per node but per path
+}
 
-type Path = util.Point[];
+type Path = PathNode[];
 
 
 type PathOverlayProps = ui_util.MaybeHiddenProps & {
@@ -57,8 +62,9 @@ export class PathOverlay<P extends PathOverlayProps> extends ui_util.MaybeHidden
             this.ref.current,
             //targetsize
         )
+        const node:PathNode = {...p, width:10, color:'rgba(200, 200, 200, 255)'}
 
-        const path:Path = (this.$paths.value.pop() ?? []).concat([p]);
+        const path:Path = (this.$paths.value.pop() ?? []).concat([node]);
         this.$paths.value = this.$paths.value.concat([path])
     }
 
@@ -80,16 +86,47 @@ function paths_to_polylines_svg(paths:Path[]): JSX.Element[] {
 }
 
 function path_to_polyline_svg(path:Path): JSX.Element {
-    const points_str:string = path.map(
-        (p:util.Point) => `${p.x},${p.y}`
-    ).join(' ')
+    const polygons:JSX.Element[] = []
+    // deno-lint-ignore no-inferrable-types
+    for(let i:number = 1; i < path.length; i++){
+        polygons.push(
+            polygon_from_two_nodes(path[i-1]!, path[i]!)
+        )
+    }
+    const circles: JSX.Element[] 
+        = path.map( (p:PathNode) => <circle 
+            r    = {p.width/2} 
+            cx   = {p.x} 
+            cy   = {p.y} 
+            fill = "rgba(250, 100, 0, 64)"
+            fill-opacity = {0.5}
+            stroke       = "black"
+        /> )
 
     return <>
-    <polyline 
-        stroke = "black"
-        fill   = "none"
-        points = {points_str}
-    />
-    { path.map( p => <circle r={5} cx={p.x} cy={p.y} /> ) }
+        { polygons }
+        { circles }
     </>
 }
+
+function polygon_from_two_nodes(n0:PathNode, n1:PathNode): JSX.Element {
+    const direction:util.Vector = util.direction_vector(n0, n1);
+    const normal:util.Vector 
+        = util.normalize_vector(util.orthogonal_vector(direction));
+
+    const p0 = {x:n0.x+normal.x/2*n0.width, y:n0.y+normal.y/2*n0.width}
+    const p1 = {x:n0.x-normal.x/2*n0.width, y:n0.y-normal.y/2*n0.width}
+    const p2 = {x:n1.x-normal.x/2*n1.width, y:n1.y-normal.y/2*n1.width}
+    const p3 = {x:n1.x+normal.x/2*n1.width, y:n1.y+normal.y/2*n1.width}
+
+    const points_str:string = [p0,p1,p2,p3].map(
+        (p:util.Point) => `${p.x},${p.y}`
+    ).join(' ')
+    return <polygon 
+        points = {points_str}
+        stroke = "black"
+        fill   = "rgba(250, 100, 0, 64)"
+        fill-opacity = {0.5}
+    />
+}
+

@@ -38,3 +38,28 @@ Deno.test('is_object', () => {
     asserts.assertFalse( util.is_object(['an array is not an object']) )
     asserts.assert(      util.is_object({'an object':'is an object'}) )
 })
+
+Deno.test('normalize_vector', () => {
+    const v0:util.Vector = {x:50, y:20}
+    const n0:util.Vector = util.normalize_vector(v0)
+    asserts.assertAlmostEquals(n0.x, 0.9284768, 1e-5)
+    asserts.assertAlmostEquals(n0.y, 0.3713907, 1e-5)
+
+    asserts.assertAlmostEquals(util.vector_length(n0), 1.0)
+})
+
+Deno.test('orthogonal_vector', () => {
+    const v0:util.Vector = {x:50, y:20}
+    const o0:util.Vector = util.orthogonal_vector(v0)
+    asserts.assertEquals(o0.x, 20)
+    asserts.assertEquals(o0.y, -50)
+})
+
+Deno.test('direction_vector', () => {
+    const n0:util.Vector = {x:50, y:20}
+    const n1:util.Vector = {x:40, y:70}
+    const d0:util.Vector = util.direction_vector(n0, n1)
+    asserts.assertEquals(d0.x, -10)
+    asserts.assertEquals(d0.y, 50)
+})
+

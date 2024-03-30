@@ -81,12 +81,40 @@ export type Point = {
     y:number
 };
 
+export type Vector = Point;
+
 export type Size = {
     width:  number;
     height: number;
 }
 
 export type ImageSize = Size;
+
+
+/** Compute the euclidean length of a vector */
+export function vector_length(v:Vector): number {
+    return Math.sqrt(v.x**2 + v.y**2);
+}
+
+/** Normalize input vector `v` to have length `1.0` */
+export function normalize_vector(v:Vector): Vector {
+    const length:number = vector_length(v)
+    return {
+        x: v.x/length,
+        y: v.y/length,
+    }
+}
+
+/** Compute the direction vector from point `p0` to `p1` */
+export function direction_vector(p0:Point, p1:Point): Vector {
+    return {x:p1.x-p0.x, y:p1.y-p0.y}
+}
+
+/** Compute the vector orthogonal to `v` */
+export function orthogonal_vector(v:Vector): Vector {
+    return {x:v.y, y:-v.x}
+}
+
 
 
 export function wait(ms: number): Promise<unknown> {
