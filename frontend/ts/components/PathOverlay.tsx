@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-inferrable-types
 import { JSX, Signal, preact, signals }         from "../dep.ts";
 import * as styles                              from "./styles.ts";
 import * as util                                from "../util.ts";
@@ -7,10 +8,16 @@ type RGBA = `rgba(${number}, ${number}, ${number}, ${number})`;
 
 type PathNode = util.Point & {
     width: number;
-    color: RGBA;  //TODO: probably not per node but per path
+    //color: RGBA;  //TODO: probably not per node but per path
 }
 
 type Path = PathNode[];
+
+
+//TODO: save in settings
+const DEFAULT_PATH_WIDTH:number = 10;
+const MAXIMUM_PATH_WIDTH:number = 50;
+const MINIMUM_PATH_WIDTH:number = 1;
 
 
 type PathOverlayProps = ui_util.MaybeHiddenProps & {
@@ -21,6 +28,13 @@ export class PathOverlay<P extends PathOverlayProps> extends ui_util.MaybeHidden
     ref:preact.RefObject<SVGSVGElement> = preact.createRef()
 
     $paths: Signal<Path[]> = new Signal([])
+
+    /** Last seen mouse coordinates / end point for the next edge. */
+    $cursor: Signal<PathNode> = new Signal({x:0, y:0, width:DEFAULT_PATH_WIDTH});
+
+    /** The last set node / the starting point for the next edge.
+     *  If `null` a new path will be created. */
+    $last_node: Signal<PathNode|null> = new Signal(null);
 
 
     render(): JSX.Element {
@@ -33,7 +47,7 @@ export class PathOverlay<P extends PathOverlayProps> extends ui_util.MaybeHidden
             = signals.computed( () => paths_to_polylines_svg(this.$paths.value) )
 
         console.log('render')
-        return (
+        return <>
         <svg
             class       =   "paths overlay" 
             style       =   {{ 
@@ -43,11 +57,16 @@ export class PathOverlay<P extends PathOverlayProps> extends ui_util.MaybeHidden
                 ...super.get_display_css() 
             }} 
             onMouseDown =   {this.on_mouse_down.bind(this)}
+            onMouseMove =   {this.on_mouse_move}
+            onWheel     =   {this.on_wheel}
+            onContextMenu = {prevent_context_menu}
             ref         =   {this.ref}
         >
             { $polylines_svg.value }
+            <NextEdgeIndicator $start={this.$last_node} $end={this.$cursor} />
         </svg>
-        )
+        <PathOverlayCSS />
+        </>
     }
 
     on_mouse_down(mouse_event:MouseEvent) {
@@ -57,27 +76,96 @@ export class PathOverlay<P extends PathOverlayProps> extends ui_util.MaybeHidden
         if(mouse_event.ctrlKey || mouse_event.altKey || mouse_event.shiftKey)
             return;
         
-        const p:util.Point = ui_util.page2element_coordinates(
-            {x:mouse_event.pageX, y:mouse_event.pageY},
-            this.ref.current,
-            //targetsize
-        )
-        const node:PathNode = {...p, width:10, color:'rgba(200, 200, 200, 255)'}
 
-        const path:Path = (this.$paths.value.pop() ?? []).concat([node]);
-        this.$paths.value = this.$paths.value.concat([path])
-    }
-
-    on_keydown(event:KeyboardEvent){
-        if(event.key == 'Escape'){
-            this.$paths.value = this.$paths.value.concat([[]])
-        } else if (event.key == 'z' && event.ctrlKey) {
-            console.warn('CTRL+Z not implemented yet')
+        if(mouse_event.button == 0){
+            // left button, add new node
+            const node:PathNode = this.$cursor.value;
+            const path:Path     = (this.$paths.value.pop() ?? []).concat([node]);
+            this.$paths.value   = this.$paths.value.concat([path])
+            this.$last_node.value = node;
+        } else if(mouse_event.button == 2) {
+            //right mouse button, stop
+            mouse_event.preventDefault()
+            this.#end_path()
+            return false;
         }
         
     }
-    #keydown:void = globalThis.addEventListener('keydown', this.on_keydown.bind(this))
+
+    on_mouse_move: JSX.MouseEventHandler<SVGSVGElement> = ((event:MouseEvent) => {
+        if(event.target == null || this.ref.current == null)
+            return;
+        
+        const p:util.Point = ui_util.page2element_coordinates(
+            {x:event.pageX, y:event.pageY},
+            this.ref.current,
+            //targetsize
+        ) ?? {x:0,y:0}
+        this.$cursor.value = {...p, width:this.$cursor.value.width}
+    }).bind(this)
+
+    on_wheel: JSX.WheelEventHandler<SVGSVGElement> = ((event:WheelEvent) => {
+        //skip if shift, ctrl or alt is pressed
+        if(event.ctrlKey || event.altKey || event.shiftKey)
+            return;
+        event.preventDefault();
+
+        const new_width:number = Math.max(
+            Math.min(
+                this.$cursor.value.width + 0.2 * Math.sign(event.deltaY), 
+                MAXIMUM_PATH_WIDTH,
+            ), MINIMUM_PATH_WIDTH
+        )
+        this.$cursor.value = { ...this.$cursor.value, width:new_width };
+
+        return true;
+    }).bind(this)
+
+    on_keydown(event:KeyboardEvent){
+        if(event.key == 'Escape'){
+            this.#end_path()
+        } else if (event.key == 'z' && event.ctrlKey) {
+            console.warn('CTRL+Z not implemented yet')
+        }
+    }
+    #keydown_event_handle:void 
+        = globalThis.addEventListener('keydown', this.on_keydown.bind(this));
+
+    #end_path(): void {
+        //TODO: if(!this.$last_node.value == null)
+        this.$paths.value = this.$paths.value.concat([[]])
+        this.$last_node.value = null;
+    }
     
+}
+
+/** Custom CSS styles */
+function PathOverlayCSS(): JSX.Element {
+    return <style>{`
+        svg.paths.overlay circle:hover {
+            cursor: pointer;
+        }
+    `}</style>
+}
+
+
+
+class NextEdgeIndicator extends preact.Component<{
+    $start: Signal<PathNode|null>;
+    $end:   Signal<PathNode>;
+}> {
+    render(props: NextEdgeIndicator['props']): JSX.Element {
+        if(props.$start.value == null)
+            return <></>
+        
+        return polygon_from_two_nodes(props.$start.value, props.$end.value);
+    }
+}
+
+/** Callback to the `contextmenu` event, 
+ *  to prevent opening the context menu on right click */
+function prevent_context_menu(event:Event){
+    event.preventDefault()
 }
 
 
@@ -87,7 +175,6 @@ function paths_to_polylines_svg(paths:Path[]): JSX.Element[] {
 
 function path_to_polyline_svg(path:Path): JSX.Element {
     const polygons:JSX.Element[] = []
-    // deno-lint-ignore no-inferrable-types
     for(let i:number = 1; i < path.length; i++){
         polygons.push(
             polygon_from_two_nodes(path[i-1]!, path[i]!)
