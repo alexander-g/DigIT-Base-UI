@@ -4,7 +4,6 @@ import { page_wide_css }    from "./styles.ts";
 import { ProcessingModuleWithSettings } from "../logic/files.ts"
 import * as state           from "./state.ts"
 import * as util            from "../util.ts"
-import * as files from "../logic/files.ts"
 
 type TabsProps = {
     tab_names:  string[]

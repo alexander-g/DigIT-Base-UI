@@ -115,7 +115,7 @@ export class FileTableRow<I extends Input, R extends Result> extends preact.Comp
 
 
 
-export class ObjectdetectionRow extends FileTableRow<Input, ObjectdetectionResult> {
+export class ObjectdetectionRow extends FileTableRow<never, ObjectdetectionResult> {
     extra_columns(): preact.JSX.Element {
         return <LabelsColumn instances={this.props.$result.value.instances}/>
     }

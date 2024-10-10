@@ -15,7 +15,7 @@ type FomanticWidth = (
     |'eleven'|'twelve'|'thirteen'|'fourteen'|'fifteen'|'sixteen'
 )
 
-type FileTableColumn = {label:string, width_css_class:FomanticWidth}
+export type FileTableColumn = {label:string, width_css_class:FomanticWidth}
 
 export function FileTableHead(props:{columns: FileTableColumn[]}): JSX.Element {
     const columns_jsx: JSX.Element[] = props.columns.map(

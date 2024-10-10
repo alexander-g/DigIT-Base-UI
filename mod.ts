@@ -12,9 +12,25 @@ export * as state           from "./frontend/ts/components/state.ts"
 export * as detectiontab    from "./frontend/ts/components/DetectionTab.tsx";
 export * as imageoverlay    from "./frontend/ts/components/ImageOverlay.tsx"
 export { TopMenu }          from "./frontend/ts/components/TopMenu.tsx";
+export { 
+    FileTableContent,
+    SingleFileContent 
+} from "./frontend/ts/components/FileTable.tsx";
+export { FileTableRow }      from "./frontend/ts/components/FileTableRow.tsx"
+export { 
+    ImageContainer, 
+    ImageControls, 
+    InputImage 
+} from "./frontend/ts/components/ImageComponents.tsx"
 
 //export * as backend_deps    from "./backend/ts/dep.ts"
+export * as ui_util from "../base/frontend/ts/components/ui_util.ts"
+export * as styles  from "../base/frontend/ts/components/styles.ts"
 
-export type { JSX } from "./frontend/ts/dep.ts"
-
+export { 
+    type JSX, 
+    preact, 
+    signals, 
+    Signal 
+} from "./frontend/ts/dep.ts"
 
