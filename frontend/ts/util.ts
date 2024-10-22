@@ -9,12 +9,18 @@ export function deepcopy<T extends Record<string|number, unknown>>(x:T): T {
 
 /** Send a file to the flask backend */
 export function upload_file_no_throw(
-    file: File, 
+    file: File|File[], 
     // deno-lint-ignore no-inferrable-types
     url:  string  = 'file_upload',
 ): Promise<Response|Error> {
     const data = new FormData()
-    data.append('files', file);
+    if(file instanceof File)
+        data.append('files', file);
+    else {
+        // array of files
+        for(const f of file)
+            data.append('files', f)
+    }
     return fetch_no_throw(url, {method: 'POST', body: data})
 }
 
