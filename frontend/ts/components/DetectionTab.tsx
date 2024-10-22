@@ -67,7 +67,7 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
             $files            = { this.$files() }
             $processing       = { appstate.$processing }
             $processingmodule = {
-                signals.computed( this.processingmodule.bind(this) )
+                new signals.Signal(this.processingmodule())
             }
             columns           = { this.columns() }
             FileTableRow      = { this.file_table_row() }
