@@ -3,15 +3,52 @@ import { JSX, Signal, preact, signals }         from "../dep.ts";
 import * as styles                              from "./styles.ts";
 import * as util                                from "../util.ts";
 import * as ui_util                             from "./ui_util.ts";
+import * as graphdet                            from "../logic/graphdetection.ts"
+import { 
+    Path, 
+    PathNode,
+    GraphDetectionInput,
+    GraphDetectionResult,
+} from "../logic/graphdetection.ts"
 
-type RGBA = `rgba(${number}, ${number}, ${number}, ${number})`;
+import { SingleFileContent }              from "./FileTable.tsx";
+import { DetectionTab, FileTableContent } from "./DetectionTab.tsx"
+import { AppState }                       from "./state.ts"
+import type {BaseSettings}                from "../logic/settings.ts"
 
-type PathNode = util.Point & {
-    width: number;
-    //color: RGBA;  //TODO: probably not per node but per path
+
+export class GraphDetectionAppState extends AppState<
+    GraphDetectionInput,
+    GraphDetectionResult, 
+    BaseSettings
+>{}
+
+export class GraphDetectionTab<S extends GraphDetectionAppState> 
+extends DetectionTab<S> {
+    /** @override */
+    resultclass() {
+        return GraphDetectionResult;
+    }
+
+    /** @override */
+    file_table_content(): FileTableContent<S> {
+        return GraphDetectionContent;
+    }
 }
 
-type Path = PathNode[];
+
+
+export class GraphDetectionContent extends SingleFileContent<GraphDetectionResult> {
+    result_overlays(): JSX.Element {
+        return <>
+            <PathsOverlay 
+                $visible = {this.$result_visible} 
+                $result  = {this.props.$result}
+                imagesize= {this.$imagesize.value}
+            />
+        </>
+    }
+}
 
 
 //TODO: save in settings
@@ -20,11 +57,11 @@ const MAXIMUM_PATH_WIDTH:number = 50;
 const MINIMUM_PATH_WIDTH:number = 1;
 
 
-type PathOverlayProps = ui_util.MaybeHiddenProps & {
-    //
-};
-
-export class PathOverlay<P extends PathOverlayProps> extends ui_util.MaybeHidden<P> {
+/** A result overlay that displays and manipulates paths/graphs */
+export class PathsOverlay<P extends ui_util.MaybeHiddenProps & {
+    $result:   Signal<GraphDetectionResult>,
+    imagesize: util.Size|null,
+}> extends ui_util.MaybeHidden<P> {
     ref:preact.RefObject<SVGSVGElement> = preact.createRef()
 
     $paths: Signal<Path[]> = new Signal([])
@@ -46,9 +83,12 @@ export class PathOverlay<P extends PathOverlayProps> extends ui_util.MaybeHidden
         const $polylines_svg:signals.ReadonlySignal<JSX.Element[]> 
             = signals.computed( () => paths_to_polylines_svg(this.$paths.value) )
 
-        console.log('render')
+        const W:number = this.props.imagesize?.width  ?? 1;
+        const H:number = this.props.imagesize?.height ?? 1;
         return <>
+        {/* Definitely need to set viewport */}
         <svg
+            viewBox     =   {`0 0 ${W} ${H}`}
             class       =   "paths overlay" 
             style       =   {{ 
                 pointerEvents:'all',
@@ -62,7 +102,9 @@ export class PathOverlay<P extends PathOverlayProps> extends ui_util.MaybeHidden
             onContextMenu = {prevent_context_menu}
             ref         =   {this.ref}
         >
-            { $polylines_svg.value }
+            {/* { $polylines_svg.value } */}
+            <PathGraphs graphs={this.props.$result.value.graphs ??  []} />
+            <PathGraph  graph={ {paths:this.$paths.value, color:{r:0, g:0, b:0}} }/>
             <NextEdgeIndicator $start={this.$last_node} $end={this.$cursor} />
         </svg>
         <PathOverlayCSS />
@@ -99,7 +141,7 @@ export class PathOverlay<P extends PathOverlayProps> extends ui_util.MaybeHidden
         const p:util.Point = ui_util.page2element_coordinates(
             {x:event.pageX, y:event.pageY},
             this.ref.current,
-            //targetsize
+            this.props.imagesize ?? {width:1, height:1},
         ) ?? {x:0,y:0}
         this.$cursor.value = {...p, width:this.$cursor.value.width}
     }).bind(this)
@@ -133,10 +175,23 @@ export class PathOverlay<P extends PathOverlayProps> extends ui_util.MaybeHidden
 
     #end_path(): void {
         //TODO: if(!this.$last_node.value == null)
-        this.$paths.value = this.$paths.value.concat([[]])
+        //this.$paths.value = this.$paths.value.concat([[]])
+        
+        //add current path to the result
+        const old_result: GraphDetectionResult = this.props.$result.value;
+        const new_graph:graphdet.Graph = {paths:this.$paths.value, color:{r:0,g:0,b:0}}
+        const new_graphs:graphdet.Graph[] = (old_result.graphs ?? []).concat(new_graph)
+        //TODO: `new GraphDetectionResult` not subclass compatible
+        const new_result: GraphDetectionResult 
+            = Object.assign(new GraphDetectionResult(), old_result)
+        new_result.graphs = new_graphs;
+        new_result.status = 'processed';
+        this.props.$result.value = new_result;
+
+        //clear temporary paths
+        this.$paths.value = this.$paths.value = [];
         this.$last_node.value = null;
     }
-    
 }
 
 /** Custom CSS styles */
@@ -154,11 +209,19 @@ class NextEdgeIndicator extends preact.Component<{
     $start: Signal<PathNode|null>;
     $end:   Signal<PathNode>;
 }> {
-    render(props: NextEdgeIndicator['props']): JSX.Element {
-        if(props.$start.value == null)
-            return <></>
+    render(props: NextEdgeIndicator['props']): JSX.Element|null {
+        const [start,end] = [props.$start.value, props.$end.value]
+        if(start == null)
+            return null;
+        if(start.x == end.x && start.y == end.y)
+            return null;
         
-        return polygon_from_two_nodes(props.$start.value, props.$end.value);
+        return <>
+            { polygon_from_two_nodes(start, end) }
+            <ToolTip position={end}>
+                Click to add node
+            </ToolTip>
+        </>
     }
 }
 
@@ -185,7 +248,7 @@ function path_to_polyline_svg(path:Path): JSX.Element {
             r    = {p.width/2} 
             cx   = {p.x} 
             cy   = {p.y} 
-            fill = "rgba(250, 100, 0, 64)"
+            fill = "rgba(200, 200, 0, 64)"
             fill-opacity = {0.5}
             stroke       = "black"
         /> )
@@ -212,8 +275,59 @@ function polygon_from_two_nodes(n0:PathNode, n1:PathNode): JSX.Element {
     return <polygon 
         points = {points_str}
         stroke = "black"
-        fill   = "rgba(250, 100, 0, 64)"
+        fill   = "rgba(250, 250, 0, 64)"
         fill-opacity = {0.5}
     />
 }
 
+
+class PathGraphs extends preact.Component<{
+    graphs: graphdet.Graph[]
+}> {
+    render(): JSX.Element[] {
+        return this.props.graphs.map( (g:graphdet.Graph) => <PathGraph graph={g} /> )
+    }
+}
+
+class PathGraph extends preact.Component<{
+    graph: graphdet.Graph
+}> {
+    render(): JSX.Element[] {
+        return this.props.graph.paths.map( (p:Path) => <PathSVG path={p} /> )
+    }
+}
+
+class PathSVG extends preact.Component<{
+    path: graphdet.Path
+}> {
+    render(): JSX.Element {
+        return path_to_polyline_svg(this.props.path)
+    }
+}
+
+class ToolTip extends preact.Component<{
+    position: util.Point,
+}> {
+    render(props:ToolTip['props']): JSX.Element {
+        const offset = 5;
+        return <>  
+        <defs>
+            <filter x="0" y="0" width="1" height="1" id="solid">
+                <feFlood flood-color="rgb(224,224,224)" result="bg" />
+                <feMerge>
+                    <feMergeNode in="bg"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+        </defs>
+        <text 
+            filter = "url(#solid)" 
+            x      = {props.position.x + offset} 
+            y      = {props.position.y + offset}
+            fill   = "rgb(64,64,64)"
+        >
+            { props.children }
+        </text>
+      </>
+    }
+}

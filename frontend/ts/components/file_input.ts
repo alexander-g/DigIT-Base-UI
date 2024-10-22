@@ -92,7 +92,7 @@ export async function try_load_results<R extends Result>(
         }
         
         if(result == null)
-            result = new ResultClass('unprocessed')
+            result = new ResultClass('unprocessed', null, input.name)
         results.push(result)
     }
     return results;

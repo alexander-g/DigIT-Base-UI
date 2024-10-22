@@ -54,7 +54,7 @@ export function input_result_signal_pairs_from_inputs<I extends Input, R extends
     inputs: I[], ResultClass:Constructor<R, ConstructorParameters<typeof Result> >
 ): InputResultPair<I,R>[] {
     const simple_pairs: files.InputResultPair<I,R>[] = inputs.map(
-        (input:I) => ({input, result:new ResultClass('unprocessed')})
+        (input:I) => ({input, result:new ResultClass('unprocessed', null, input.name)})
     )
     return input_result_signal_pairs_from_simple(simple_pairs)
 }

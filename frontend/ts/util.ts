@@ -265,6 +265,15 @@ export function validate_imagesize(x:unknown): ImageSize|null {
     else return null;
 }
 
+export function validate_point(x:unknown): Point|null {
+    if(is_object(x)
+    && has_number_property(x, 'x')
+    && has_number_property(x, 'y')){
+        return x;
+    }
+    else return null;
+}
+
 
 
 
