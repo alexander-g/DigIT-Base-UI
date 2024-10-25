@@ -93,10 +93,12 @@ export function page2element_coordinates(
 
 /** Collect all possible classes from current global state.  */
 export function collect_all_classes_from_appstate(
-    appstate:AppState<Input, ObjectdetectionResult, BaseSettings>
+    //appstate:AppState<Input, ObjectdetectionResult, BaseSettings>
+    appstate:AppState<BaseSettings>
 ): string[] {
-    const results: ObjectdetectionResult[] = appstate.$files.peek().map(
-        (pair: InputResultPair<Input, ObjectdetectionResult>) => pair.$result.peek()
+    const results: Result[] = appstate.$files.peek().map(
+        //(pair: InputResultPair<Input, ObjectdetectionResult>) => pair.$result.peek()
+        (pair: InputResultPair<Input, Result>) => pair.$result.peek()
     )
     const model: string|undefined = appstate.$settings.peek()?.active_models?.detection
     let modelinfo: ModelInfo|undefined;
@@ -106,7 +108,8 @@ export function collect_all_classes_from_appstate(
         ) ?? undefined;
     }
 
-    return collect_all_classes(results, modelinfo)
+    console.error('TODO: collect_all_classes_from_appstate()')
+    return collect_all_classes([], modelinfo)
 }
 
 

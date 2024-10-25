@@ -37,8 +37,10 @@ export class InputFile extends File implements Input  {
     }
 }
 
-export type InputClassInterface<I extends Input>
-    = util.ClassWithValidate<I> & { filetypes:string[] }
+export type InputClassInterface<I extends Input> = util.ClassWithValidate<I> & { 
+    /** File extensions that are accepted as input (e.g. for the file picker) */
+    filetypes:string[] 
+}
 
 
 
@@ -183,7 +185,9 @@ export abstract class ProcessingModule<I extends Input, R extends Result>{
 
 
 export abstract class ProcessingModuleWithSettings<
-    I extends Input, R extends Result, S extends Settings
+    I extends Input, 
+    R extends Result, 
+    S extends Settings
 > extends ProcessingModule<I,R> {
     settings: S;
 

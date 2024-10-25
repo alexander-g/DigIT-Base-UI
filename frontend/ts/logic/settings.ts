@@ -121,7 +121,7 @@ function validate_model_info(x:unknown): ModelInfo|null {
     else return null;
 }
 
-function validate_model_info_array(x:unknown): ModelInfo[]|null {
+export function validate_model_info_array(x:unknown): ModelInfo[]|null {
     if(Array.isArray(x) 
     && x.every((i:unknown) => validate_model_info(i)!=null )) {
         return x;

@@ -5,6 +5,9 @@ import * as files                               from "../logic/files.ts";
 import { Constructor }                          from "../util.ts";
 import { set_image_src }                        from "./file_input.ts";
 
+import * as util       from "../util.ts";
+import * as file_input from "./file_input.ts";
+
 //for convenience
 export { Result }
 export type {Input}
@@ -86,12 +89,12 @@ class AvailableModelsSignal<S extends Settings>
 
 /** Main application state structure */
 export class AppState<
-I extends Input = Input, 
-R extends Result = Result, 
+//I extends Input = Input, 
+//R extends Result = Result, 
 SETTINGS extends Settings = Settings
 > {
     /** Currently loaded files and their results */
-    $files:InputFileList<I, R> = new Signal([])
+    $files:InputFileList<Input, Result> = new Signal([])
 
     /** Indicates whether there is a processing operation running somewhere */
     $processing: Signal<boolean> = new Signal<boolean>(false)
@@ -102,6 +105,32 @@ SETTINGS extends Settings = Settings
     /** Which models can be selected in the settings */
     $available_models: AvailableModelsSignal<SETTINGS> 
         = new AvailableModelsSignal(undefined)
+    
+    
+    
+    InputClass:files.InputClassInterface<Input> = files.InputFile;
+
+    /** Filter a list of potential input or result files and set $files.
+     *  @virtual */
+     async set_files(files_raw: FileList|File[]): Promise<void>{
+        const previous_pairs: files.InputResultPair<Input,Result>[] 
+            = input_result_simple_pairs_from_signals(this.$files.value)
+        
+        //reset state
+        //TODO: send clear cache request to backend
+        this.$files.value = []
+        //refresh ui
+        await util.wait(1)
+        //load the new files
+        this.$files.value = input_result_signal_pairs_from_simple(
+            await file_input.load_list_of_files(
+                files_raw ?? [], 
+                files.InputFile,
+                files.Result, 
+                previous_pairs
+            )
+        )
+    }
 }
 
 

@@ -34,22 +34,24 @@ import * as instseg        from "./logic/instancesegmentation.ts";
  * @param TopMenu       - JSX component on top of the main content 
  * @param tabs          - Dict mapping tab name to tab JSX component */
 export function create_App<
-INPUT           extends files.Input,
-INPUTCLASS      extends files.InputClassInterface<INPUT>,
-RESULT          extends files.Result,
-RESULTCLASS     extends files.ResultClassInterface<RESULT>,
+//INPUT           extends files.Input,
+//INPUTCLASS      extends files.InputClassInterface<INPUT>,
+//RESULT          extends files.Result,
+//RESULTCLASS     extends files.ResultClassInterface<RESULT>,
 SETTINGS        extends settings.Settings,
 // NOTE: using RESULT instead of InstanceType<RESULTCLASS> is not type-safe for some reason
 APPSTATE        extends state.AppState<
-    InstanceType<INPUTCLASS>, InstanceType<RESULTCLASS>, SETTINGS
+    //InstanceType<INPUTCLASS>, 
+    //InstanceType<RESULTCLASS>, 
+    SETTINGS
 >,
 TOPMENU         extends TopMenu,
 >(
     options: {
     id:              string, 
     AppState:        util.Constructor<APPSTATE>,
-    InputClass:      INPUTCLASS,
-    ResultClass:     RESULTCLASS,
+    //InputClass:      INPUTCLASS,
+    //ResultClass:     RESULTCLASS,
     settingshandler: settings.SettingsHandler<SETTINGS>,
     backend:         ProcessingBackendConstructor<APPSTATE>,
     TopMenu:         util.Constructor<TOPMENU>,
@@ -71,10 +73,10 @@ TOPMENU         extends TopMenu,
                     $settings           = {this.appstate.$settings}
                     $available_models   = {this.appstate.$available_models}
                     settingshandler     = {options.settingshandler}
-                    on_inputfiles       = {this.set_files.bind(this)}
-                    on_inputfolder      = {this.set_files.bind(this)}
-                    on_annotationfiles  = {this.set_files.bind(this)}
-                    input_filetypes     = {options.InputClass.filetypes}
+                    on_inputfiles       = {this.on_new_files.bind(this)}
+                    on_inputfolder      = {this.on_new_files.bind(this)}
+                    on_annotationfiles  = {this.on_new_files.bind(this)}
+                    input_filetypes     = {this.appstate.InputClass.filetypes}
                 />
                 <MainContainer<APPSTATE>
                     appstate = {this.appstate} 
@@ -100,31 +102,39 @@ TOPMENU         extends TopMenu,
         }
 
         /** File drop event handler. */
-        async on_drop(event:JSX.TargetedDragEvent<HTMLElement>): Promise<FileList|File[]> {
+        async on_drop(event:JSX.TargetedDragEvent<HTMLElement>): Promise<void> {
             event.preventDefault()
             const files: FileList | File[] = event.dataTransfer?.files ?? []
             
-            return await this.set_files(files)
+            return await this.on_new_files(files)
         }
 
-        /** Set the currently loaded files in the appstate */
-        async set_files(files: FileList|File[]): Promise<FileList|File[]>{
-            const previous_pairs: files.InputResultPair<INPUT,RESULT>[] 
-                = state.input_result_simple_pairs_from_signals(this.appstate.$files.value)
-            //reset state
-            //TODO: send clear cache request to backend
-            this.appstate.$files.value = []
-            //refresh ui
-            await util.wait(1)
-            //load the new files
-            this.appstate.$files.value = state.input_result_signal_pairs_from_simple(
-                await file_input.load_list_of_files(
-                    files ?? [], options.InputClass, options.ResultClass, previous_pairs
-                )
-            )
-
-            return files;
+        /** New files callback */
+        async on_new_files(files: FileList|File[]): Promise<void> {
+            return await this.appstate.set_files(files);
         }
+
+        // /** Set the currently loaded files in the appstate */
+        // async set_files(files: FileList|File[]): Promise<FileList|File[]>{
+        //     const previous_pairs: files.InputResultPair<INPUT,RESULT>[] 
+        //         = state.input_result_simple_pairs_from_signals(this.appstate.$files.value)
+        //     //reset state
+        //     //TODO: send clear cache request to backend
+        //     this.appstate.$files.value = []
+        //     //refresh ui
+        //     await util.wait(1)
+        //     //load the new files
+        //     this.appstate.$files.value = state.input_result_signal_pairs_from_simple(
+        //         await file_input.load_list_of_files(
+        //             files ?? [], 
+        //             options.InputClass, 
+        //             options.ResultClass, 
+        //             previous_pairs,
+        //         )
+        //     )
+
+        //     return files;
+        // }
     }
 }
 
@@ -132,17 +142,17 @@ TOPMENU         extends TopMenu,
 /** Main component for the base project */
 class App extends create_App({
     id:              'base', 
-    //AppState:        state.AppState, 
+    AppState:        state.AppState, 
     //AppState:        detectiontab.ObjectdetectionAppState, 
     //AppState:        detectiontab.SegmentationAppState, 
-    AppState:        detectiontab.InstanceSegmentationAppState, 
+    //AppState:        detectiontab.InstanceSegmentationAppState, 
 
-    InputClass:      files.InputFile,
+    //InputClass:      files.InputFile,
 
     //ResultClass:     files.Result,
     //ResultClass:     objdet.ObjectdetectionResult,
     //ResultClass:     segm.SegmentationResult,
-    ResultClass:     instseg.InstanceSegmentationResult,
+    //ResultClass:     instseg.InstanceSegmentationResult,
 
     settingshandler: new settings.BaseSettingsHandler(), 
     //settingshandler: new settings.StaticPageBaseSettingsHandler(), 

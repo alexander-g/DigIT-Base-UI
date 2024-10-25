@@ -86,7 +86,9 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
 
 
 export class ObjectdetectionAppState extends AppState<
-    objdet.Input, objdet.ObjectdetectionResult, BaseSettings
+    //objdet.Input, 
+    //objdet.ObjectdetectionResult, 
+    BaseSettings
 >{}
 
 export class ObjectDetectionTab<S extends ObjectdetectionAppState>
@@ -139,7 +141,9 @@ extends DetectionTab<S> {
 
 
 export class SegmentationAppState extends AppState<
-    segm.SegmentationInput, segm.SegmentationResult, BaseSettings
+    //segm.SegmentationInput, 
+    //segm.SegmentationResult, 
+    BaseSettings
 >{}
 
 
@@ -168,7 +172,9 @@ class SegmentationTab<S extends SegmentationAppState> extends DetectionTab<S> {
 
 
 export class InstanceSegmentationAppState extends AppState<
-    instseg.InstanceSegmentationInput, instseg.InstanceSegmentationResult, BaseSettings
+    //instseg.InstanceSegmentationInput, 
+    //instseg.InstanceSegmentationResult, 
+    BaseSettings
 >{}
 
 export class InstanceSegmentationTab<S extends InstanceSegmentationAppState> 
