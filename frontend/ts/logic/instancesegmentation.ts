@@ -60,7 +60,7 @@ export class InstanceSegmentationResult extends segm.SegmentationResult {
                 return null;
             
             if('instancemap.png' in zipcontents){
-                const instancemap_file:File = zipcontents['instancemap.png']
+                const instancemap_file:File = zipcontents['instancemap.png']!
                 return new this(
                     'processed', 
                     raw, 

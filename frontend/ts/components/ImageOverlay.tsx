@@ -71,6 +71,11 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
         return true;
     }
 
+    componentDidMount(): void {
+        if(this.props.image != null)
+            this.set_img_src(this.props.image)
+    }
+
     async set_img_src(image:string|Blob): Promise<void> {
         if(this.ref.current == null) 
             return;

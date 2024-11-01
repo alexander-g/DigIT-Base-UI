@@ -128,7 +128,7 @@ type ModelDropdownProps = {
     /** Which options to display in the model selection dropdown */
     available_models?: ModelInfo[];
     /** Which option is displayed in the model selection dropdown (not yet saved) */
-    $selected_model:   Signal<string|undefined>;
+    selected_model:    string|undefined;
 }
 
 
@@ -169,20 +169,27 @@ class ModelDropdown extends preact.Component<ModelDropdownProps> {
         if(dropdown_el){
             //update the dropdown options with available models
             type FomanticDropdownItem = {name:string, value:number, selected:boolean}
-            const dropdown_items:FomanticDropdownItem[] = props?.available_models?.map(
+            const dropdown_items:FomanticDropdownItem[] = props.available_models?.map(
                 (m:ModelInfo, index:number) => ({
                     name        : m.name, 
                     value       : index, 
-                    selected    : (m.name == props.$selected_model.value ) 
+                    selected    : (m.name == props.selected_model ) 
                 }) 
             ) ?? [] //TODO: display some error instead of empty
+            if(props.selected_model == '')
+                dropdown_items.push({
+                    name:     '[UNSAVED MODEL]',
+                    value:    dropdown_items.length,
+                    selected: true,
+                })
+            
 
             $(dropdown_el).dropdown({
                 values:      dropdown_items, 
                 showOnFocus: false,
                 onChange:    (_i:number, modelname:string) => {
-                    props.$selected_model.value = modelname}
-                ,
+                    //props.$selected_model.value = modelname
+                },
             })
         }
 
@@ -202,18 +209,18 @@ type ModelSelectionProps = {
     label:             string;
 }
 
-/**
- * Dropdown to select a model and additiona infobox with known classes for the selected model.
- */
+/** Dropdown to select a model and additiona infobox with known classes 
+ *  for the selected model. */
 export class ModelSelection extends preact.Component<ModelSelectionProps> {
     private dropdown_ref:preact.RefObject<ModelDropdown> = preact.createRef()
-    private selected_model: Signal<string|undefined>     = new Signal()
+    //private $selected_model: Signal<string|undefined>    = new Signal()
 
     render(props:ModelSelectionProps): JSX.Element {
-        if(this.selected_model.value == undefined)
-            this.selected_model.value = props.active_model;
+        //if(this.$selected_model.value == undefined)
+        //    this.$selected_model.value = props.active_model;
         
-        const modelname:string|undefined = this.selected_model.value
+        //const modelname:string|undefined = this.$selected_model.value
+        const modelname:string|undefined = props.active_model;
         
         let known_classes: JSX.Element|undefined;
         if(props.available_models && modelname) {
@@ -229,7 +236,7 @@ export class ModelSelection extends preact.Component<ModelSelectionProps> {
             <label>{ this.props.label }</label>
             <ModelDropdown 
                 available_models = {props.available_models}
-                $selected_model  = {this.selected_model}
+                selected_model   = {modelname}
                 ref              = {this.dropdown_ref}
             />
 

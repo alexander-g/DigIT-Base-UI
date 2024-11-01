@@ -107,8 +107,11 @@ SETTINGS extends Settings = Settings
         = new AvailableModelsSignal(undefined)
     
     
-    
+    /** @virtual */
     InputClass:files.InputClassInterface<Input> = files.InputFile;
+
+    /** @virtual */
+    ResultClass:files.ResultClassInterface<files.Result> = files.Result;
 
     /** Filter a list of potential input or result files and set $files.
      *  @virtual */
@@ -125,8 +128,8 @@ SETTINGS extends Settings = Settings
         this.$files.value = input_result_signal_pairs_from_simple(
             await file_input.load_list_of_files(
                 files_raw ?? [], 
-                files.InputFile,
-                files.Result, 
+                this.InputClass,
+                this.ResultClass, 
                 previous_pairs
             )
         )

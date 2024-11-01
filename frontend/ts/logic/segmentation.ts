@@ -89,28 +89,26 @@ export class SegmentationResult extends BaseResult {
             return new this('processed', raw, baseresult.inputname, datablob)
         }
 
-        
-        if(files.is_input_and_file_pair(raw)){
-            const match:boolean 
-                = files.match_resultfile_to_inputfile(raw.input, raw.file, ['.zip'])
-            if(!match)
-                return null;
-            //else
-            raw = raw.file;
-            //continue below
-        }
-
-        if(raw instanceof Blob) {
-            const zipcontents:zip.Files|Error = await zip.unzip(raw)
+        // zip file that contains a classmap.png
+        if(files.is_input_and_file_pair(raw)
+        && files.match_resultfile_to_inputfile(raw.input, raw.file, ['.zip'])){
+            const zipcontents:zip.Files|Error = await zip.unzip(raw.file)
             if(zipcontents instanceof Error)
                 return null;
             
             if('classmap.png' in zipcontents){
-                const classmap_file:File = zipcontents['classmap.png'];
+                const classmap_file:File = zipcontents['classmap.png']!;
                 return new this('processed', raw, baseresult.inputname, classmap_file)
             }
             else return null;
         }
+        
+        // png file with a similar name as the input
+        if(files.is_input_and_file_pair(raw)
+        && files.match_resultfile_to_inputfile(raw.input, raw.file, ['.png'])){
+            return new this('processed', raw, baseresult.inputname, raw.file)
+        }
+
 
         else return null;
     }

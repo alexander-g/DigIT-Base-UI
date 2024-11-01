@@ -7,6 +7,7 @@ export * as instseg         from "./frontend/ts/logic/instancesegmentation.ts";
 export * as image_j         from "./frontend/ts/logic/image_j.ts";
 export * as backend_common  from "./frontend/ts/logic/backends/common.ts";
 export { RemoteProcessing } from "./frontend/ts/logic/backends/remote.ts";
+export { FileTableContent } from "./frontend/ts/components/FileTable.tsx"
 
 export * as state           from "./frontend/ts/components/state.ts"
 export * as detectiontab    from "./frontend/ts/components/DetectionTab.tsx";
