@@ -93,8 +93,10 @@ type ImageControlsProps = {
     /** Callback for mouse click event.
      *  Will stop the default panning the return value is `true` */
     on_mouse_down?:  (event:MouseEvent) => boolean;
-
+    /** Callback for mouse leave event, when cursor leaves image. */
     on_mouse_leave?: (event:MouseEvent) => boolean;
+    /** Callback for context menu event, when user right clicks */
+    on_contextmenu?: (event:MouseEvent) => boolean;
 }
 
 /** Responsible for panning and zooming of images and important for layout */
@@ -167,6 +169,7 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
             onMouseDown =   {this.on_mouse_down.bind(this) }
             onMouseMove =   {this.props.on_mouse_move}
             onMouseLeave =  {this.props.on_mouse_leave}
+            onContextMenu = {this.props.on_contextmenu}
             >
                 {/* prevent children from receiving inputs by default */}
                 <div style="pointer-events: none">
