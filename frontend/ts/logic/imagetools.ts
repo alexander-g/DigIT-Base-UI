@@ -76,7 +76,7 @@ export async function blob_to_image(blob:Blob): Promise<Image|Error> {
             await _init_canvaslib()
             return await canvaslib.loadImage(new Uint8Array(buffer))
         } catch(error) {
-            return error;
+            return error as Error;
         }
     } else {
         const image = new Image()

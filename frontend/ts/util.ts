@@ -24,7 +24,7 @@ export async function fetch_no_throw(...x: Parameters<typeof fetch>): Promise<Re
     try {
         response = await fetch(...x)
     } catch (error) {
-        return error;
+        return error as Error;
     }
 
     if(!response.ok) {

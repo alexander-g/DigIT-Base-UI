@@ -54,7 +54,7 @@ export class FileTableRow<I extends Input, R extends Result> extends preact.Comp
     #scroll_effects:(() => void)[] = []
 
     /** Setup of auto-scrolling behaviour when a table row is opened */
-    componentDidMount(): void {
+    override componentDidMount(): void {
         this.#maybe_init_top()
 
         //works on the first time, wont work later
@@ -105,7 +105,7 @@ export class FileTableRow<I extends Input, R extends Result> extends preact.Comp
     }
 
     /** Clean up effects */
-    componentWillUnmount(): void {
+    override componentWillUnmount(): void {
         for(const dispose_fn of this.#scroll_effects) {
             dispose_fn()
         }
@@ -116,7 +116,7 @@ export class FileTableRow<I extends Input, R extends Result> extends preact.Comp
 
 
 export class ObjectdetectionRow extends FileTableRow<Input, ObjectdetectionResult> {
-    extra_columns(): preact.JSX.Element {
+    override extra_columns(): preact.JSX.Element {
         return <LabelsColumn instances={this.props.$result.value.instances}/>
     }
 }

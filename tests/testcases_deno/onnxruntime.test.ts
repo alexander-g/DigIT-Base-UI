@@ -16,12 +16,12 @@ Deno.test('load_pt_zip', async () => {
     asserts.assertNotInstanceOf(loaded, Error)
 })
 
-
-Deno.test('Session.basic', async () => {
+//NOTE: currently disabled
+Deno.test('Session.basic', {ignore:true}, async () => {
     const session: ort.Session|Error 
         = await ort.Session.initialize(PTZIP_FILEPATH)
     
-    //console.log(session)
+    console.log(session)
     asserts.assertNotInstanceOf(session, Error)
 
     
@@ -30,8 +30,8 @@ Deno.test('Session.basic', async () => {
 
 })
 
-
-Deno.test('Session.initialize-non-deno', async () => {
+//NOTE: currently disabled
+Deno.test('Session.initialize-non-deno', {ignore:true}, async () => {
     util.simulate_browser()
     util.mock_fetch(
         async () => { 

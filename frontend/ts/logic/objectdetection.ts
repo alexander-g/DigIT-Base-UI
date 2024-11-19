@@ -33,7 +33,9 @@ export class ObjectdetectionResult extends BaseResult {
     }
 
     /** @override */
-    async export(what:ExportType = 'annotations'): Promise<Record<string, File>|null> {
+    override async export(
+        what:ExportType = 'annotations'
+    ): Promise<Record<string, File>|null> {
         const exports: Record<string, File>|null = await super.export(what) ?? {}
         if(this.status != 'processed')
             return null;
@@ -47,7 +49,7 @@ export class ObjectdetectionResult extends BaseResult {
 
     /** @override */
     // deno-lint-ignore require-await
-    static async export_combined(
+    static override async export_combined(
         results: BaseResult[],
         format:  ExportType,
     ): Promise<Record<string, File> | null> {
@@ -65,7 +67,7 @@ export class ObjectdetectionResult extends BaseResult {
         return {[f.name]: f}
     }
 
-    static async validate<T extends BaseResult>(
+    static override async validate<T extends BaseResult>(
         this: util.ClassWithValidate<T, ConstructorParameters<typeof ObjectdetectionResult> >,
         raw:  unknown
     ): Promise<T|null> {
@@ -245,7 +247,7 @@ export function export_results_as_csv(results:ObjectdetectionResult[]): string {
         for(const instance of result?.instances ?? []) {
             const index:number = all_classes.indexOf(instance.label)
             if(index >= 0 && index <= counts.length)
-                counts[index] += 1
+                counts[index]! += 1
             //else should not happen
         }
         const line = `${result.inputname}, ${counts.join(', ')}`

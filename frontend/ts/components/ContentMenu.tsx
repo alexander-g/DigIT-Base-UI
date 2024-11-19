@@ -137,7 +137,7 @@ export class Checkbox extends preact.Component<CheckboxProps> {
         this.props.$value.value = !this.props.$value.value
     }
 
-    componentDidMount(): void {
+    override componentDidMount(): void {
         //need to initialize although docs say works without javascript
         if(this.ref.current)
             $(this.ref.current).checkbox()
@@ -251,7 +251,7 @@ export class HelpButton extends preact.Component<HelpButtonProps> {
     }
 
     /** Initialize the Fomantic popup */
-    componentDidMount(): void {
+    override componentDidMount(): void {
         $(this.ref.current).popup({ hoverable: false });
     }
 }

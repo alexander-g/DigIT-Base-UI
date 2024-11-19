@@ -23,7 +23,8 @@ type DownloadAllProps = {
 
 /** Button to combine and export all processed results */
 export class DownloadAllButton extends preact.Component<DownloadAllProps> {
-    static defaultProps: Pick<DownloadAllProps, 'on_download_all'|'submenu_callbacks'> = {
+    static override defaultProps: 
+    Pick<DownloadAllProps, 'on_download_all'|'submenu_callbacks'> = {
         on_download_all:   this.on_download_all,
         submenu_callbacks: undefined,
     }
@@ -88,7 +89,8 @@ export class DownloadAllButton extends preact.Component<DownloadAllProps> {
 
 /** {@link DownloadAllButton} with a predefined submenu */
 export class DownloadAllWithCSVAndAnnotations extends DownloadAllButton {
-    static defaultProps: Pick<DownloadAllProps, 'on_download_all'|'submenu_callbacks'> = {
+    static override defaultProps: 
+    Pick<DownloadAllProps, 'on_download_all'|'submenu_callbacks'> = {
         on_download_all: undefined,
         submenu_callbacks: {
             'Download CSV':         this.on_download_all_csv,
@@ -122,7 +124,8 @@ type FileTableMenuProps<I extends Input, R extends Result> = {
 export class FileTableMenu<I extends Input, R extends Result>
 extends preact.Component<FileTableMenuProps<I,R>> {
 
-    static defaultProps: Pick<FileTableMenuProps<Input, Result>, 'DownloadButton'> = {
+    static override defaultProps: 
+    Pick<FileTableMenuProps<Input, Result>, 'DownloadButton'> = {
         DownloadButton: DownloadAllButton,
     }
 

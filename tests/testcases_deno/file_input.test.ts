@@ -66,7 +66,7 @@ Deno.test('load_list_of_files', async () => {
 
     const validate_spy: mock.Spy = mock.spy( () => null )
     class MockResultClass extends Result {
-        static validate = validate_spy as <T extends Result>() => Promise<T|null>
+        static override validate = validate_spy as <T extends Result>() => Promise<T|null>
     }
     await file_input.load_list_of_files(files, InputFile, MockResultClass)
     // 3 input files x 2 remaining files = 6

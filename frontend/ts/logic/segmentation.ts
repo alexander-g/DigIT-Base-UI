@@ -29,7 +29,7 @@ export class SegmentationResult extends BaseResult {
         this.classmap = args[3] ?? null
     }
 
-    async export(): Promise<Record<string, File>|null> {
+    override async export(): Promise<Record<string, File>|null> {
         const exports: Record<string, File>|null = await super.export() ?? {}
         
         if(this.classmap != null) {
@@ -45,7 +45,7 @@ export class SegmentationResult extends BaseResult {
         return exports;
     }
 
-    static async validate<T extends BaseResult>(
+    static override async validate<T extends BaseResult>(
         this: util.ClassWithValidate<
             T & SegmentationResult, 
             ConstructorParameters<typeof SegmentationResult>
@@ -98,7 +98,7 @@ export class SegmentationResult extends BaseResult {
             
             if('classmap.png' in zipcontents){
                 const classmap_file:File = zipcontents['classmap.png']!;
-                return new this('processed', raw, baseresult.inputname, classmap_file)
+                return new this('processed', raw.file, baseresult.inputname, classmap_file)
             }
             else return null;
         }

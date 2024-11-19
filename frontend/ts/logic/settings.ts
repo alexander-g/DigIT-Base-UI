@@ -174,7 +174,7 @@ extends SettingsHandler<S> {
         try {
             localStorage.setItem('settings', jsonsettings)
         } catch(e) {
-            return e;
+            return e as Error;
         }
         return await true;
     }

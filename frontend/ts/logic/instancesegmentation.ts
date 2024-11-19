@@ -29,7 +29,7 @@ export class InstanceSegmentationResult extends segm.SegmentationResult {
         this.instancemap = instancemap ?? null;
     }
 
-    async export(): Promise<Record<string, File> | null> {
+    override async export(): Promise<Record<string, File> | null> {
         if(this.instancemap === null){
             return null;
         }
@@ -42,7 +42,7 @@ export class InstanceSegmentationResult extends segm.SegmentationResult {
         return baseexport;
     }
 
-    static async validate<T extends BaseResult>(
+    static override async validate<T extends BaseResult>(
         this: new (...args:ConstructorParameters<typeof InstanceSegmentationResult>) => T, 
         raw:  unknown,
     ): Promise<T|null> {

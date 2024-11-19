@@ -10,7 +10,7 @@ Deno.test("imagetools.blob_to_u8rgb", async() => {
     const jpgdata = Deno.readFileSync(IMAGE_ASSET0_PATH)
     const jpgblob = new Blob([jpgdata])
     const data    = await imagetools.blob_to_rgb( jpgblob )
-    asserts.assertNotInstanceOf(data, Error)
+    asserts.assertNotInstanceOf(data, Error, data.toString())
 
     asserts.assertEquals(data.width, 128)
     asserts.assertEquals(data.height, 100)

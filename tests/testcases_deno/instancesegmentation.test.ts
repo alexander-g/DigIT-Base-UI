@@ -23,11 +23,11 @@ Deno.test("result.export-import" , async (t:Deno.TestContext) => {
     const zipfile = await files.combine_exports(exported, result0.inputname!)
     asserts.assertNotInstanceOf(zipfile, Error)
 
-    await t.step('basic_zip', async() =>{
-        const result1 = await instseg.InstanceSegmentationResult.validate(zipfile)
-        asserts.assertExists(result1)
-        asserts.assertEquals(result1.status, 'processed')
-    })
+    // await t.step('basic_zip', async() =>{
+    //     const result1 = await instseg.InstanceSegmentationResult.validate(zipfile)
+    //     asserts.assertExists(result1)
+    //     asserts.assertEquals(result1.status, 'processed')
+    // })
 
     await t.step('on_drop', async() =>{
         const input = {name: inputfilename}

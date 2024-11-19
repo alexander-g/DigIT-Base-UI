@@ -103,8 +103,7 @@ extends DetectionTab<S> {
         FileTableMenu.defaultProps.DownloadButton = DownloadAllWithCSVAndAnnotations;
     }
 
-    /** @virtual */
-    file_table(): JSX.Element {
+    override file_table(): JSX.Element {
         const appstate: S = this.props.appstate;
         return <FileTable 
             sortable        =   {false} 
@@ -133,7 +132,7 @@ extends DetectionTab<S> {
     // }
 
     /** @override */
-    resultclass() {
+    override resultclass() {
         return objdet.ObjectdetectionResult;
     }
 }
@@ -159,13 +158,11 @@ class SegmentationTab<S extends SegmentationAppState> extends DetectionTab<S> {
     //     return new this.props.backend(segm.SegmentationResult, settings)
     // }
 
-    /** @override */
-    resultclass() {
+    override resultclass() {
         return segm.SegmentationResult;
     }
 
-    /** @override */
-    file_table_content(): FileTableContent<S> {
+    override file_table_content(): FileTableContent<S> {
         return SegmentationContent;
     }
 }
@@ -179,13 +176,11 @@ export class InstanceSegmentationAppState extends AppState<
 
 export class InstanceSegmentationTab<S extends InstanceSegmentationAppState> 
 extends SegmentationTab<S> {
-    /** @override */
-    resultclass() {
+    override resultclass() {
         return instseg.InstanceSegmentationResult;
     }
 
-    /** @override */
-    file_table_content(): FileTableContent<S> {
+    override file_table_content(): FileTableContent<S> {
         return InstanceSegmentationContent;
     }
 }

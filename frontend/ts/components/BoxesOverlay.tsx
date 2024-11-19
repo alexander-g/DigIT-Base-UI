@@ -15,7 +15,7 @@ export class ObjectdetectionContent extends SingleFileContent<ObjectdetectionRes
     $box_drawing_mode: signals.Signal<boolean> = new signals.Signal(false)
 
     /** Boxes overlays */
-    result_overlays(): JSX.Element {
+    override result_overlays(): JSX.Element {
         const $instances: ReadonlySignal<MaybeInstances> = signals.computed(
             () => this.props.$result.value.instances
         )
@@ -38,7 +38,7 @@ export class ObjectdetectionContent extends SingleFileContent<ObjectdetectionRes
     }
 
     /** Add a New-Box button to the content menu */
-    content_menu_extras(): preact.JSX.Element[] {
+    override content_menu_extras(): preact.JSX.Element[] {
         return [<NewBoxButton drawing_mode_active={this.$box_drawing_mode}/>]
     }
 }
@@ -346,7 +346,8 @@ type LabelDropdownProps =  {
 
 /** Textbox, input and dropdown for fast label selection */
 export class LabelDropdown extends preact.Component<LabelDropdownProps> {
-    static defaultProps: Pick<LabelDropdownProps, 'collect_all_classes'> = {
+    static 
+    override defaultProps: Pick<LabelDropdownProps, 'collect_all_classes'> = {
         collect_all_classes: () => [/*  This should be replaced */]
     }
 

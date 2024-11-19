@@ -87,7 +87,7 @@ TOPMENU         extends TopMenu,
             )
         }
 
-        async componentDidMount(): Promise<void> {
+        override async componentDidMount(): Promise<void> {
             state.set_global_app_state(this.appstate)
             
             //TODO: refactor out

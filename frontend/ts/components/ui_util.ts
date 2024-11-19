@@ -71,8 +71,8 @@ export function page2element_coordinates(
     const rect:DOMRect = element.getBoundingClientRect()
     /** Absolute point, relative to the top-left corner */
     const p_rel:Point  = {
-        x : (p.x  - rect.left - (offset?.x ?? window.scrollX)),
-        y : (p.y  - rect.top  - (offset?.y ?? window.scrollY)),
+        x : (p.x  - rect.left - (offset?.x ?? globalThis.scrollX)),
+        y : (p.y  - rect.top  - (offset?.y ?? globalThis.scrollY)),
     }
     /** Normalized point, relative to the top-left corner */
     const p_norm:Point = {

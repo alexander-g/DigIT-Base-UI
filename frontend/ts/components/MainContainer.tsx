@@ -24,7 +24,7 @@ export class TabButtons extends preact.Component<TabsProps> {
         </div>
     }
 
-    componentDidMount(): void {
+    override componentDidMount(): void {
         $('.tabs.menu .item').tab()   //TODO: use ref/unique id
     }
 }

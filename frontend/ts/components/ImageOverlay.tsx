@@ -12,7 +12,7 @@ import { type InstanceSegmentationResult }      from "../logic/instancesegmentat
 
 export class SegmentationContent<R extends SegmentationResult = SegmentationResult> 
 extends SingleFileContent<R> {
-    result_overlays(): JSX.Element {
+    override result_overlays(): JSX.Element {
         return (
             <ImageOverlay 
                 image     = {this.props.$result.value.classmap}        
@@ -24,7 +24,7 @@ extends SingleFileContent<R> {
 
 export class InstanceSegmentationContent<R extends InstanceSegmentationResult> 
 extends SingleFileContent<R> {
-    result_overlays(): JSX.Element {
+    override result_overlays(): JSX.Element {
         return (
             <ImageOverlay 
                 image     = {this.props.$result.value.instancemap}        
@@ -63,7 +63,7 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
         />
     }
 
-    shouldComponentUpdate(nextProps: Readonly<P>): boolean {
+    override shouldComponentUpdate(nextProps: Readonly<P>): boolean {
         const image:string|Blob|null = nextProps.image;
         if(image != null)
             this.set_img_src(image)  //no await
@@ -71,7 +71,7 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
         return true;
     }
 
-    componentDidMount(): void {
+    override componentDidMount(): void {
         if(this.props.image != null)
             this.set_img_src(this.props.image)
     }

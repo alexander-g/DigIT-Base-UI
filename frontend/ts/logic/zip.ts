@@ -59,7 +59,7 @@ export async function unzip(data:Blob|Uint8Array): Promise<Files|Error> {
     try {
         unzipped = fflate.unzipSync(data)
     } catch (error) {
-        return error;
+        return error as Error;
     }
     const files:Files = {}
     for(const [path, data] of Object.entries(unzipped)) {

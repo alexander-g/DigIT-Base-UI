@@ -191,7 +191,7 @@ export function create_tensor(
         const x_typed: DTypeArray = to_dtype_array(buf_or_size, dtype)
         return { dtype, shape, data:x_typed }
     } catch(error) {
-        return error;
+        return error as Error;
     }
 }
 

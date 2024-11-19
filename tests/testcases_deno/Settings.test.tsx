@@ -57,6 +57,9 @@ Deno.test('SettingsModal', async () => {
     asserts.assertEquals(handler.store.calls.length, store_calls_before_save+1)
     //reload after save, actual bug:
     asserts.assertEquals(handler.load.calls.length,  load_calls_before_save+1)
+
+    // NOTE: to prevent a leak
+    await util.wait(1)
 })
 
 

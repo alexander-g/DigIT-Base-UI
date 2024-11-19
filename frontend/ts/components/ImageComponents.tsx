@@ -30,7 +30,7 @@ export class InputImage extends preact.Component<InputImageProps> {
     #dispose_init?: () => void;
 
     /** Initate image loading only when needed */
-    componentDidMount(): void {
+    override componentDidMount(): void {
         this.#dispose_init = signals.effect( () => {
             if(this.props.$active_file.value == this.props.inputfile.name 
                 && !this.props.$loaded.value) {
@@ -39,7 +39,7 @@ export class InputImage extends preact.Component<InputImageProps> {
         })
     }
 
-    componentWillUnmount(): void {
+    override componentWillUnmount(): void {
         this.#dispose_init?.()
     }
 

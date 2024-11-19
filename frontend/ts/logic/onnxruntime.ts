@@ -98,7 +98,7 @@ async function load_file(path:string): Promise<ArrayBuffer|Error> {
             return Deno.readFileSync(path).buffer
         }
         catch(error) {
-            return error; 
+            return error as Error; 
         }
     } else {
         const response: Response|Error = await util.fetch_no_throw(path)
@@ -145,7 +145,7 @@ export function create_ort_tensor(
         const x_typed: DTypeArray = to_dtype_array(buf_or_size, dtype)
         return new ort.Tensor(dtype, x_typed, shape)
     } catch(error) {
-        return error;
+        return error as Error;
     }
 }
 
@@ -243,33 +243,35 @@ export class Session {
 
     /** Factory function returning a new {@link Session} instance or `Error`.*/
     static async initialize(modelpath:string): Promise<Session|Error> {
-        let status:true|Error = check_permissions()
-        if(status instanceof Error)
-            return status as Error;
+        return new Error("ONNX currently disabled.")
 
-        status = set_ort_env(WASM_PATH.href)
-        if(status instanceof Error)
-            return status as Error;
+        // let status:true|Error = check_permissions()
+        // if(status instanceof Error)
+        //     return status as Error;
+
+        // status = set_ort_env(WASM_PATH.href)
+        // if(status instanceof Error)
+        //     return status as Error;
         
-        const loaded_pt_zip:PT_ZIP|Error = await load_pt_zip(modelpath)
-        if(loaded_pt_zip instanceof Error)
-            return loaded_pt_zip as Error;
+        // const loaded_pt_zip:PT_ZIP|Error = await load_pt_zip(modelpath)
+        // if(loaded_pt_zip instanceof Error)
+        //     return loaded_pt_zip as Error;
         
-        const options:ort.InferenceSession.SessionOptions = {
-            executionProviders: ['wasm'],
-            logSeverityLevel:   3,
-        }
-        try{
-            const ortsession:ort.InferenceSession 
-                = await ort.InferenceSession.create(
-                    loaded_pt_zip.onnx_bytes, options
-                )
-            //TODO: verifiy inputnames in ortsession with state_dict
-            return new Session(ortsession, loaded_pt_zip)
-        } catch(error) {
-            console.warn(error)
-            return error;
-        }
+        // const options:ort.InferenceSession.SessionOptions = {
+        //     executionProviders: ['wasm'],
+        //     logSeverityLevel:   3,
+        // }
+        // try{
+        //     const ortsession:ort.InferenceSession 
+        //         = await ort.InferenceSession.create(
+        //             loaded_pt_zip.onnx_bytes, options
+        //         )
+        //     //TODO: verifiy inputnames in ortsession with state_dict
+        //     return new Session(ortsession, loaded_pt_zip)
+        // } catch(error) {
+        //     console.warn(error)
+        //     return error as Error;
+        // }
     }
 
     async process_image_from_path(imagepath:string): Promise<SessionOutput|Error> {
@@ -336,7 +338,7 @@ export class Session {
             }
         } catch(error) {
             console.error('ONNX runtime error: ', error)
-            return error;
+            return error as Error;
         }
     }
 

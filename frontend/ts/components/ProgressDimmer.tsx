@@ -44,7 +44,7 @@ export class ProgressDimmer extends preact.Component<ProgressDimmerProps> {
     }
 
     /** Call fomantic to show or hide the dimmer */
-    componentDidMount(): void {
+    override componentDidMount(): void {
         signals.effect(() => {
             const ref:HTMLDivElement|null = this.ref.current;
             if(ref == null)

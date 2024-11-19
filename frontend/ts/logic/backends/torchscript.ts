@@ -111,12 +111,12 @@ export class TS_Backend<R extends Result> extends DetectionModule<File,R> {
 type TS_Lib = {
     symbols: {
         /** Initialize a torchscript module from binary data. */
-        initialize_module: (data:ArrayBuffer, size:number) => number;
+        initialize_module: (data:ArrayBuffer, size:bigint) => number;
         
         /** Run a previously loaded module with inputs. */
         run_module: (
             data:         ArrayBuffer, 
-            size:         number, 
+            size:         bigint, 
             outputbuffer: ArrayBuffer, 
             outputsize:   ArrayBuffer,
             debug:        number,
@@ -130,34 +130,34 @@ type TS_Lib = {
 
 // adding dlopen etc to Deno because otherwise always get errors during checks
 // --unstable does not help
-declare global {
-    namespace Deno {
-        // all optional because undefined if run without --unstable
+// declare global {
+//     namespace Deno {
+//         // all optional because undefined if run without --unstable
 
-        // deno-lint-ignore no-explicit-any
-        const dlopen: ((path:string, def:any) => any) | undefined;
+//         // deno-lint-ignore no-explicit-any
+//         const dlopen: ((path:string, def:any) => any) | undefined;
       
-        const UnsafePointer: {
-            create: (p:number|bigint)     => unknown;
-            of:     (value: BufferSource) => unknown;
-            value:  (p:unknown)           => number|bigint;
-        }
+//         const UnsafePointer: {
+//             create: (p:number|bigint)     => unknown;
+//             of:     (value: BufferSource) => unknown;
+//             value:  (p:unknown)           => number|bigint;
+//         }
 
-        const UnsafePointerView: new (p:unknown) => {
-            getArrayBuffer: (size:number|bigint) => ArrayBuffer;
-            copyInto(destination: BufferSource, offset?: number): void;
-        };
-    }
-}
+//         const UnsafePointerView: new (p:unknown) => {
+//             getArrayBuffer: (size:number|bigint) => ArrayBuffer;
+//             copyInto(destination: BufferSource, offset?: number): void;
+//         };
+//     }
+// }
 
 const DLOPEN_SYMBOLS = {
     "initialize_module": { 
-        parameters: ["buffer", "usize"], 
+        parameters: ["buffer", "u64"], 
         result:     "i32" 
     },
     "run_module":  { 
         //TODO: async
-        parameters: ["buffer", "usize", "buffer", "buffer", "u8"],
+        parameters: ["buffer", "u64", "buffer", "buffer", "u8"],
         result:     "i32" 
     },
     "free_memory": { 
@@ -183,7 +183,7 @@ export async function initialize_ffi(path:string): Promise<TS_Lib|Error> {
         
         return lib;
     } catch (e) {
-        return e;
+        return e as Error;
     }
 }
 
@@ -198,7 +198,7 @@ export async function _dlopen_maybe_encrypted(path:string): Promise<TS_Lib|Error
         try {
             return Deno.dlopen!(path, DLOPEN_SYMBOLS) as TS_Lib
         } catch(error) {
-            return error;
+            return error as Error;
         }
     }
 }
@@ -214,7 +214,7 @@ async function _dlopen_encrypted(
 
     try{
         await crypto.decrypt_file(path_to_enc_tslib, destination_path, crypto.DEFAULT_KEY)
-        const lib:TS_Lib = Deno.dlopen!(destination_path, DLOPEN_SYMBOLS)
+        const lib:TS_Lib = Deno.dlopen(destination_path, DLOPEN_SYMBOLS)
         //clean up
         try {
             Deno.removeSync(destination_path)
@@ -223,7 +223,7 @@ async function _dlopen_encrypted(
         }
         return lib;
     } catch(_error) {
-        return _error;
+        return _error as Error;
     }
 }
 
@@ -259,11 +259,13 @@ type PointerSchemaItem = {
 export function encode_tensordict_as_json(tensordict:TensorDict): string {
     const schema: Record<string, PointerSchemaItem> = {}
     for(const [key, tensor] of Object.entries(tensordict)){
-        const pointer:unknown = Deno.UnsafePointer.of(tensor.data);
+        const pointer:Deno.PointerValue<unknown> = 
+            Deno.UnsafePointer.of(tensor.data);
         schema[key] = {
             dtype:   tensor.dtype,
             shape:   tensor.shape, 
-            address: Deno.UnsafePointer.value(pointer)
+            // NOTE: might not be safe to case to number but seems to work
+            address: Number( Deno.UnsafePointer.value(pointer) )
         }
     }
     return JSON.stringify(schema)
@@ -271,6 +273,10 @@ export function encode_tensordict_as_json(tensordict:TensorDict): string {
 
 function validate_number_or_bigint(x:unknown): number|bigint|null {
     return util.validate_number(x) ?? ((typeof x == 'bigint') ? x: null)
+}
+
+function validate_bigint(x:unknown): bigint|null {
+    return ((typeof x == 'bigint') ? x: null)
 }
 
 function validate_pointer_schema_item(x:unknown): PointerSchemaItem|null {
@@ -291,9 +297,12 @@ function validate_tensor_from_json(x:unknown): common.AnyTensor|null {
     const itemsize:number = common.DataTypeMap[schemaitem.dtype].BYTES_PER_ELEMENT;
     const nbytes:number = common.shape_to_size(schemaitem.shape) * itemsize;
     const buffer:ArrayBuffer = new ArrayBuffer(nbytes);
-    new Deno.UnsafePointerView(
-        Deno.UnsafePointer.create(schemaitem.address)
-    ).copyInto(buffer)
+    const pointer:Deno.PointerValue<unknown> = 
+        Deno.UnsafePointer.create(BigInt(schemaitem.address))
+    if(pointer == null)
+        return null;
+    
+    new Deno.UnsafePointerView(pointer).copyInto(buffer)
 
     return {
         dtype: schemaitem.dtype,
@@ -338,7 +347,7 @@ async function initialize_module(path:string, lib:TS_Lib): Promise<PT_ZIP|Error>
     const modulebytes:Uint8Array = pt_zip.torchscript_bytes;
     
     const status:number = 
-        lib.symbols.initialize_module(modulebytes, modulebytes.length)
+        lib.symbols.initialize_module(modulebytes, BigInt(modulebytes.length))
     if(status != 0)
         return new Error(`Could not initialize module ${path}`)
     
@@ -373,7 +382,7 @@ export async function run_module(
     const p_outputsize   = new BigUint64Array(1)
     const status:number  = lib.symbols.run_module(
         inputbuffer,
-        inputbuffer.length,
+        BigInt(inputbuffer.length),
         p_outputbuffer,
         p_outputsize,
         0//,  //debug
@@ -381,7 +390,10 @@ export async function run_module(
     if(status != 0)
         return new Error('Running module failed')
 
-    const unsafe_p:unknown = Deno.UnsafePointer.create(p_outputbuffer[0]!)
+    const unsafe_p:Deno.PointerValue<unknown> 
+        = Deno.UnsafePointer.create(p_outputbuffer[0]!)
+    if(unsafe_p == null)
+        return new Error('Could not create a pointer')
     const arraybuffer:ArrayBuffer = new ArrayBuffer(Number(p_outputsize[0]!))
     new Deno.UnsafePointerView(unsafe_p).copyInto(arraybuffer);
 

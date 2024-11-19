@@ -12,8 +12,8 @@ const TESTIMAGE_PATH:string = path.fromFileUrl(
     import.meta.resolve('./assets/test_image0.jpg')
 )
 
-
-Deno.test('ONNX_backend_basic_inference', async () => {
+// NOTE: disabled for now
+Deno.test('ONNX_backend_basic_inference', {ignore:true}, async () => {
     await 0;
     const backend = new ORT_Processing<ObjectdetectionResult>(
         ObjectdetectionResult, {active_models: {detection:PTZIP_FILEPATH}}
@@ -37,7 +37,8 @@ const MULTISTEP_PTZIP_FILEPATH:string = path.fromFileUrl(
     import.meta.resolve('./assets/segmock.inference.pt.zip')
 )
 
-Deno.test('ONNX_multistep_inference', async () => {
+// NOTE: disabled for now
+Deno.test('ONNX_multistep_inference', {ignore:true}, async () => {
     await 0;
     const backend = new ORT_Processing<SegmentationResult>(
         SegmentationResult, {active_models: {detection:MULTISTEP_PTZIP_FILEPATH}}

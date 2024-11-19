@@ -163,7 +163,7 @@ class ModelDropdown extends preact.Component<ModelDropdownProps> {
     }
 
     /** Dropdown is handled by Fomantic, not preact */
-    shouldComponentUpdate(props: Readonly<ModelDropdownProps>): boolean {
+    override shouldComponentUpdate(props: Readonly<ModelDropdownProps>): boolean {
         const dropdown_el:HTMLDivElement|null = this.dropdown_ref.current;
 
         if(dropdown_el){

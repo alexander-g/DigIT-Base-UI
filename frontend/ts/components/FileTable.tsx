@@ -172,7 +172,8 @@ export type FileTableItemProps<I extends Input, R extends Result> = FileTableRow
 
 /** A table row and the corresponding content, which is initially hidden */
 class FileTableItem<I extends Input, R extends Result> extends preact.Component<FileTableItemProps<I,R>> {
-    static defaultProps: Pick<FileTableItemProps<Input, Result>, 'FileTableContent'|'FileTableRow'> = {
+    static override defaultProps: 
+    Pick<FileTableItemProps<Input, Result>, 'FileTableContent'|'FileTableRow'> = {
         'FileTableContent' : SingleFileContent,
         'FileTableRow'     : FileTableRow,
     }
@@ -237,7 +238,8 @@ export type FileTableProps<I extends Input, R extends Result> = {
 export 
 class FileTable<I extends Input, R extends Result> extends preact.Component<FileTableProps<I,R>> {
     //Single column 'Files' by default
-    static defaultProps: Pick<FileTableProps<never, never>, 'columns'|'sortable'> = {
+    static override defaultProps: 
+    Pick<FileTableProps<never, never>, 'columns'|'sortable'> = {
         columns:  [{label:'Files', width_css_class:'sixteen'}],
         sortable: false,
     }
@@ -283,7 +285,7 @@ class FileTable<I extends Input, R extends Result> extends preact.Component<File
         </>
     }
 
-    componentDidMount(): void {
+    override componentDidMount(): void {
         // deno-lint-ignore no-this-alias
         const _this:FileTable<I,R> = this;
 
