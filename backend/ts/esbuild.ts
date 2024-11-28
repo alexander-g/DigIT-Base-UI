@@ -23,7 +23,12 @@ function CustomResolvePlugin(remap:Record<string, string> = {}): esbuild.Plugin 
 
         /** Resolve local to absolute paths */
         build.onResolve({ filter: /^\./ }, (args:esbuild.OnResolveArgs) => {
-            const abspath:string = path.join( path.dirname(args.importer), args.path )
+            let abspath:string;
+            if(https_rx.test(args.importer)){
+                abspath = (new URL(args.path, args.importer)).href
+            } else {
+                abspath = path.join( path.dirname(args.importer), args.path )
+            }
             //for some reason the paths in windows are messed up
             //and start with something like \Y:
             const abspath_fixed:string = abspath.replace(/^\\([A-Z]):/, '$1:')
@@ -46,6 +51,11 @@ function CustomResolvePlugin(remap:Record<string, string> = {}): esbuild.Plugin 
             //esbuild on the other hand complains if the path does not start with /
             //workaround:
             result.path = result.path!.replace(/\\([A-Z]):/g, '/$1:')
+
+            // sometimes args.importer is a https://, esbuild wants a namespace
+            if(https_rx.test(result.path)){
+                result.namespace = https_ns;
+            }
             return result
         })
 
@@ -125,7 +135,7 @@ async function load_module_from_deno_cache(path:string): Promise<string | null> 
 
     const loadresponse = await loader.load(path)
     if(loadresponse?.kind == 'module') {
-        return loadresponse.content
+        return loadresponse.content as string;
     }
     return null;
 }

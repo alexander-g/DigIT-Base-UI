@@ -11,7 +11,7 @@ export * as preact_ssr from "https://esm.sh/preact-render-to-string@5.2.6?deps=p
 //export * as cache               from 'https://raw.githubusercontent.com/denoland/deno_cache/bc03f82bbda192228d7090b803fb1dd8e7f1d7ff/mod.ts'
 
 
-export * as cache from "https://deno.land/x/deno_cache@0.7.1/mod.ts";
+export * as cache from "jsr:@deno/cache-dir@0.13.2";
 
 
 export * as file_server from "https://deno.land/std@0.176.0/http/file_server.ts";

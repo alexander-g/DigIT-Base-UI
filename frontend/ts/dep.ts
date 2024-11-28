@@ -17,7 +17,7 @@ export { signals, Signal, type ReadonlySignal }
 
 //NOTE: utif2 better at jpeg decompression
 // @deno-types="https://esm.sh/v135/utif2@4.1.0/UTIF.d.ts"
-export { default as UTIF } from 'https://esm.sh/utif2@4.1.0?bundle-deps'
+export { default as UTIF } from 'https://esm.sh/utif2@4.1.0?target=es2022'
 
 export * as fflate from "https://esm.sh/fflate@0.7.4"
 
@@ -30,7 +30,7 @@ import "./jquery_mock.ts";
 //export {default as ort} from "https://esm.run/onnxruntime-web@1.16.3"
 
 //@deno-types="https://esm.sh/v135/onnxruntime-common@1.20.0/dist/esm/index.d.ts"
-export {default as ort} from "https://esm.sh/onnxruntime-web@1.20.0?no-dts"
+export {default as ort} from "https://esm.sh/onnxruntime-web@1.20.0?target=es2022&no-dts"
 
 
 export * as denolibs from "./dep.deno.ts"
