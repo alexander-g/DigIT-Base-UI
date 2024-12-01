@@ -1,9 +1,9 @@
-export * as path       from "https://deno.land/std@0.176.0/path/mod.ts";
-export * as fs         from "https://deno.land/std@0.176.0/fs/mod.ts";
-export * as flags      from "https://deno.land/std@0.176.0/flags/mod.ts";
+export * as path  from "jsr:@std/path@1.0.8"
+export * as fs    from "jsr:@std/fs@1.0.6"
+export * as cli   from "jsr:@std/cli@1.0.7"
 
 export * as esbuild    from 'https://deno.land/x/esbuild@v0.17.10/wasm.js';
-export * as preact_ssr from "https://esm.sh/preact-render-to-string@5.2.6?deps=preact@10.11.3";
+export * as preact_ssr from "https://esm.sh/preact-render-to-string@5.2.6?deps=preact@10.25.0";
 
 
 //import * as cache from "https://deno.land/x/deno_cache@0.4.1/mod.ts";
@@ -14,11 +14,12 @@ export * as preact_ssr from "https://esm.sh/preact-render-to-string@5.2.6?deps=p
 export * as cache from "jsr:@deno/cache-dir@0.13.2";
 
 
-export * as file_server from "https://deno.land/std@0.176.0/http/file_server.ts";
+//export * as file_server from "https://deno.land/std@0.176.0/http/file_server.ts";
+export * as file_server from "jsr:@std/http@1.0.11/file-server"
 
 
 //required to prevent net-access on dynamic import()
 import "../../frontend/ts/dep.ts"
 
 //required for caching/vendoring
-import "https://esm.sh/preact@10.11.3/jsx-runtime"
+import "https://esm.sh/preact@10.25.0/jsx-runtime"

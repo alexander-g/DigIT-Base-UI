@@ -1,11 +1,11 @@
-import * as preact      from "https://esm.sh/preact@10.11.3"
+import * as preact      from "https://esm.sh/preact@10.25.0"
 import JSX = preact.JSX;
 export { preact, type JSX };
 
 //make preact global (for javascript)
 globalThis.preact = preact;
 
-import * as signals from "https://esm.sh/@preact/signals@1.1.3?deps=preact@10.11.3";
+import * as signals from "https://esm.sh/@preact/signals@1.3.1?deps=preact@10.25.0";
 import Signal           = signals.Signal;
 type ReadonlySignal<T>  = signals.ReadonlySignal<T>;
 export { signals, Signal, type ReadonlySignal }

@@ -1,4 +1,4 @@
-import { flags } from "./dep.ts"
+import { cli } from "./dep.ts"
 
 
 export async function encrypt_file(
@@ -62,7 +62,7 @@ type Args = {
 }
 
 function parse_args(): Args|Error {
-    const args:Pick<Args, 'key'> & {_:string[]} = flags.parse(
+    const args:Pick<Args, 'key'> & {_:string[]} = cli.parseArgs(
         Deno.args, 
         {
             default: {key:DEFAULT_KEY},

@@ -59,5 +59,6 @@ Deno.test('ImageControls', async () => {
     asserts.assertEquals(offset0, ref.current?.$offset.value)
     
 
+    await util.wait(10)
 })
 

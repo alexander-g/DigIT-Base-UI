@@ -7,6 +7,7 @@ export function SVGFilters(): JSX.Element {
             <filter id="black-to-transparent">
             {/* <!-- image filter to set alpha=0 where the image is black --> */}
             <feColorMatrix in="SourceGraphic"
+                // @ts-ignore, yes this attribute does exist.
                 type="matrix"
                 values="1 0 0 0 0
                         0 1 0 0 0
@@ -16,6 +17,7 @@ export function SVGFilters(): JSX.Element {
 
             <filter id="white-to-red">
             <feColorMatrix in="SourceGraphic"
+                // @ts-ignore, yes this attribute does exist.
                 type="matrix"
                 values="1 1 1 0 0
                         0 0 0 0 0

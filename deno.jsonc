@@ -2,7 +2,7 @@
   "compilerOptions": {
     "lib": ["dom", "deno.ns"],
     "jsx": "react-jsx",
-    "jsxImportSource": "https://esm.sh/preact@10.11.3",
+    "jsxImportSource": "https://esm.sh/preact@10.25.0",
 
     //to make sure that [][0] gives undefined
     "noUncheckedIndexedAccess": true
@@ -14,8 +14,5 @@
     "cache":         "./deno.sh cache ./backend/ts/dep.ts ./frontend/ts/index.tsx ./tests/testcases_deno/dep.ts",
     //vendoring currently not recommended, typechecking issues
     //"vendor":"./deno.sh vendor --reload --force --no-config --output=.deno/vendor frontend/ts/index.tsx backend/ts/preact.ts tests/testcases_deno/dep.ts "
-  },
-  "imports": {
-    "@deno/cache-dir": "jsr:@deno/cache-dir@0.13.2"
   }
 }

@@ -1,7 +1,7 @@
 #!./deno.sh run  --no-prompt --allow-read=./ --allow-write=./ --allow-env=DENO_DIR --allow-net=cdn.jsdelivr.net
 
 import { preact_ssr }                   from "./dep.ts";
-import { path, fs, flags }              from "./dep.ts"
+import { path, fs, cli }              from "./dep.ts"
 import * as esbuild                     from "./esbuild.ts";
 
 import * as paths                       from "./paths.ts"
@@ -237,8 +237,9 @@ export async function compile_and_copy(
 
 
 function parse_args(): Record<string, string> & {copy_globs:string[]} {
-    const args:Record<string, string>  = flags.parse(
-        Deno.args, {default: {...DEFAULT_PATHS, copy_globs:undefined} }
+    const args:Record<string, string>  = cli.parseArgs(
+        Deno.args, 
+        {default: {...DEFAULT_PATHS, copy_globs:undefined} }
     )
     const copy_globs:string[] = args.copy_globs?.split(',') ?? [];
     
