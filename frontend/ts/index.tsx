@@ -60,6 +60,7 @@ TOPMENU         extends TopMenu,
 ){
     return class App extends preact.Component {
         appstate: APPSTATE = new options.AppState()
+        backend:  ProcessingBackendConstructor<APPSTATE> = options.backend;
 
         render(): JSX.Element {
             return (
@@ -113,28 +114,6 @@ TOPMENU         extends TopMenu,
         async on_new_files(files: FileList|File[]): Promise<void> {
             return await this.appstate.set_files(files);
         }
-
-        // /** Set the currently loaded files in the appstate */
-        // async set_files(files: FileList|File[]): Promise<FileList|File[]>{
-        //     const previous_pairs: files.InputResultPair<INPUT,RESULT>[] 
-        //         = state.input_result_simple_pairs_from_signals(this.appstate.$files.value)
-        //     //reset state
-        //     //TODO: send clear cache request to backend
-        //     this.appstate.$files.value = []
-        //     //refresh ui
-        //     await util.wait(1)
-        //     //load the new files
-        //     this.appstate.$files.value = state.input_result_signal_pairs_from_simple(
-        //         await file_input.load_list_of_files(
-        //             files ?? [], 
-        //             options.InputClass, 
-        //             options.ResultClass, 
-        //             previous_pairs,
-        //         )
-        //     )
-
-        //     return files;
-        // }
     }
 }
 
