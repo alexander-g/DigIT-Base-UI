@@ -18,9 +18,11 @@ export {
     FileTableContent, 
     SingleFileContent 
 } from "./frontend/ts/components/FileTable.tsx";
+export * as styles          from "./frontend/ts/components/styles.ts"
+export * as ui_util         from "./frontend/ts/components/ui_util.ts"
 
 //export * as backend_deps    from "./backend/ts/dep.ts"
 
-export type { JSX } from "./frontend/ts/dep.ts"
+export { preact, signals, Signal, type JSX } from "./frontend/ts/dep.ts"
 
 

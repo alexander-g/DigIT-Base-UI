@@ -3,6 +3,7 @@ import JSX = preact.JSX;
 export { preact, type JSX };
 
 //make preact global (for javascript)
+// @ts-ignore used only for debugging
 globalThis.preact = preact;
 
 import * as signals from "https://esm.sh/@preact/signals@1.3.1?deps=preact@10.25.0,@preact/signals-core@1.7.0";

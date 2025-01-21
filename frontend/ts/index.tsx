@@ -179,6 +179,7 @@ function ExtraStyles(): JSX.Element {
 type HeadProps = {
     title:      string;
     import_src: string;
+    children?:  preact.ComponentChildren;
 }
 
 /** The `<head>` part of the HTML document. */
@@ -191,6 +192,7 @@ export function Head(props:HeadProps): JSX.Element {
         <script type="module" src={props.import_src}></script>
         <link rel="stylesheet" href="css/box_styles.css" />
         <ExtraStyles />
+        { props.children }
     </head>
 }
 
