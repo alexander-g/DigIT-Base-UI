@@ -7,6 +7,7 @@ import type {
     SettingsResponse,
 }         from "../logic/settings.ts";
 import { show_error_toast }                 from "./errors.ts";
+import * as ui_util from "./ui_util.ts"
 
 
 
@@ -309,4 +310,53 @@ export function SettingsButton(props:SettingsButtonProps): JSX.Element {
         <i class="wrench icon"></i>
         <span class="text">Settings</span>
     </a>  
+}
+
+
+
+
+
+type CheckboxedFieldProps = {
+    children:       preact.ComponentChildren;
+
+    /** Short text above the checkbox */
+    checkbox_title: string;
+    /** Text beside the checkbox */
+    checkbox_label: string;
+    /** State of the checkbox */
+    checkbox_value: boolean
+}
+
+/** Checkbox that controls if its children are displayed */
+export class CheckboxedField extends preact.Component<CheckboxedFieldProps> {
+    $checkbox_value: Signal<boolean> = new Signal<boolean>(this.props.checkbox_value)
+    
+    render(props:CheckboxedFieldProps): JSX.Element {
+        const $val:Signal<boolean> = this.$checkbox_value;
+        //update the internal signal with new extern value
+        //$val.value = props.checkbox_value;
+
+        return <>
+            <div class="field">
+                <label>{ props.checkbox_title }</label>
+                <div class="ui toggle checkbox">
+                    <input 
+                        type     = "checkbox" 
+                        checked  = {$val} 
+                        onChange = {() => $val.value = !$val.value} 
+                    />
+                    <label>{ props.checkbox_label }</label>
+                </div>
+            </div>
+
+            <div style={{display:ui_util.boolean_to_display_css($val.value)}}>
+                { props.children }
+            </div>
+        </>
+    }
+
+    get_value(): boolean {
+        return this.$checkbox_value.value;
+    }
+
 }
