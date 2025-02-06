@@ -231,12 +231,14 @@ class DenoConfig:
         )
         #path to the root of the downstream project
         self.root       = root or base_root
-        self.executable = (
-            executable 
-            or os.path.join(
-                base_root, ('deno.bat' if sys.platform == 'win32' else 'deno.sh')
-            )
-        )
+        if executable is None:
+            scriptname =  ('deno.bat' if sys.platform == 'win32' else 'deno.sh')
+            executable = os.path.join(root, scriptname)
+            if not os.path.exists(executable):
+                executable = os.path.join(base_root, scriptname)
+                if not os.path.exists(executable):
+                    raise RuntimeError('Cannot find deno.')
+        self.executable = executable
         self.configfile = configfile or os.path.join(base_root, 'deno.jsonc')
         self.buildfile  = buildfile or os.path.join(base_root, 'backend/ts/build.ts')
         self.static     = static    or os.path.join(self.root, 'static/')
@@ -253,6 +255,7 @@ class DenoConfig:
             f' --allow-env=DENO_DIR'
             f' --allow-net=cdn.jsdelivr.net'
             f' --no-prompt'
+            f' --cached-only'
             f' {self.buildfile}'
             f' --static={self.static}'
             f' --frontend={self.frontend}'
