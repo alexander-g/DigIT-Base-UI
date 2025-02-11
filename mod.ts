@@ -6,6 +6,7 @@ export * as files           from "./frontend/ts/logic/files.ts";
 export * as instseg         from "./frontend/ts/logic/instancesegmentation.ts";
 export * as segmentation    from "./frontend/ts/logic/segmentation.ts";
 export * as image_j         from "./frontend/ts/logic/image_j.ts";
+export * as boxes           from "./frontend/ts/logic/boxes.ts";
 export * as backend_common  from "./frontend/ts/logic/backends/common.ts";
 export { RemoteProcessing } from "./frontend/ts/logic/backends/remote.ts";
 
