@@ -17,8 +17,8 @@ export { signals, Signal, type ReadonlySignal }
 //export { default as UTIF } from 'https://cdn.skypack.dev/utif@3.1.0?dts'
 
 //NOTE: utif2 better at jpeg decompression
-// @deno-types="https://esm.sh/v135/utif2@4.1.0/UTIF.d.ts"
-export { default as UTIF } from 'https://esm.sh/utif2@4.1.0?target=es2022'
+// @deno-types="https://gist.githubusercontent.com/alexander-g/9a29620733b53d7a72992098fd0b9761/raw/2984712c54977c9a0b906b2d6c38bd75d5201f2a/UTIF.d.ts"
+export { default as UTIF } from 'https://esm.sh/utif2@4.1.0?target=es2022&no-dts'
 
 export * as fflate from "https://esm.sh/fflate@0.7.4"
 
