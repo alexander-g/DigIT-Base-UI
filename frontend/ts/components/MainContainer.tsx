@@ -106,10 +106,3 @@ extends preact.Component<MainContainerProps<AS>> {
 
 
 
-export class TrainingTab<AS extends AppState> extends TabContent<AS> {
-    render(props:TabProps<AS>): JSX.Element{
-        return <div class="ui bottom attached tab" data-tab={props.name}>
-            Training Not Implemented.
-        </div>
-    }
-}

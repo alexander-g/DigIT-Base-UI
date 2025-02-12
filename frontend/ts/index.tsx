@@ -14,10 +14,10 @@ import { show_error_toast } from "./components/errors.ts";
 
 import {
     MainContainer,
-    TrainingTab, 
     Tabs,
     ProcessingBackendConstructor,
 } from "./components/MainContainer.tsx"
+import { TrainingTab }     from "./components/TrainingTab.tsx";
 import * as detectiontab   from "./components/DetectionTab.tsx"
 import * as objdet         from "./logic/objectdetection.ts";
 import * as segm           from "./logic/segmentation.ts";

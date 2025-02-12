@@ -14,6 +14,8 @@ export { RemoteProcessing } from "./frontend/ts/logic/backends/remote.ts";
 export * as state           from "./frontend/ts/components/state.ts"
 export * as detectiontab    from "./frontend/ts/components/DetectionTab.tsx";
 export * as imageoverlay    from "./frontend/ts/components/ImageOverlay.tsx"
+export * from "./frontend/ts/components/MainContainer.tsx"
+export * from "./frontend/ts/components/TrainingTab.tsx"
 export { 
     SettingsModal,
     CheckboxedField,
