@@ -127,8 +127,12 @@ export class SingleFileContent<R extends Result = Result>
 extends FileTableContent< File, R > {
 
     /** Size of the displayed image or null if image not yet loaded. 
-     *  Forwarded from InputImage. */
+     *  Set in InputImage. */
     $imagesize: signals.Signal<ImageSize|null> = new signals.Signal(null)
+
+    /** Original size of the image before resizing (if resized). 
+     *  Set in InputImage. */
+    $og_imagesize: signals.Signal<ImageSize|null> = new signals.Signal(null)
 
     /** The actual content */
     contentview(): JSX.Element {
@@ -139,6 +143,7 @@ extends FileTableContent< File, R > {
                     $active_file = {this.props.$active_file}
                     $loaded      = {this.props.$loaded}
                     $size        = {this.$imagesize}
+                    $og_size     = {this.$og_imagesize}
                 /> 
                 { this.result_overlays() }
             </ImageControls>

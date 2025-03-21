@@ -1,6 +1,6 @@
 import { preact, JSX, signals, Signal }     from "../dep.ts"
 import type { ImageSize, Point }            from "../util.ts"
-import { set_image_src }                    from "./file_input.ts"
+import { ResizedImageBlob, set_image_src }  from "./file_input.ts"
 import * as styles                          from "./styles.ts"
 import { start_drag }                       from "./ui_util.ts";
 import { InputImageFile }                   from "./state.ts";
@@ -18,6 +18,9 @@ export type InputImageProps = {
     /** The original size of the image or null if not yet loaded 
      * @output To be used by parent components*/
     $size:   Signal<ImageSize|null>;
+
+    /** @output The original size of the image, before resizing (if resized.) */
+    $og_size: Signal<ImageSize|null>;
 }
 
 
@@ -54,15 +57,23 @@ export class InputImage extends preact.Component<InputImageProps> {
         />
     }
 
-    load_image(): void {
+    async load_image(): Promise<void> {
         const htmlimage: HTMLImageElement|null = this.ref.current;
         const inputfile: File = this.props.inputfile;
         if(htmlimage != null) {
+            let status:unknown;
             if(inputfile instanceof InputImageFile){
-                inputfile.set_image_src(htmlimage)
+                status = await inputfile.set_image_src(htmlimage)
             } else {
-                set_image_src(htmlimage, this.props.inputfile)
+                status = await set_image_src(htmlimage, this.props.inputfile)
             }
+
+            if(status instanceof Error){
+                return
+            }
+            if(status instanceof ResizedImageBlob)
+                this.props.$og_size.value = status.og_size;
+            
         }
     }
 
@@ -71,10 +82,12 @@ export class InputImage extends preact.Component<InputImageProps> {
         if(this.ref.current) {
             //TODO: resize if too large
             this.props.$loaded.value = true;
-            this.props.$size.value   = {
+            this.props.$size.value = {
                 width:  this.ref.current.naturalWidth,
                 height: this.ref.current.naturalHeight,
             }
+            if(this.props.$og_size.value == null)
+                this.props.$og_size.value = this.props.$size.value;
         }
     }
 }

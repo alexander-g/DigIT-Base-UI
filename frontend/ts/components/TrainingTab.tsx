@@ -1,4 +1,4 @@
-import { JSX, signals, Signal } from "../dep.ts"
+import { JSX, signals, Signal, preact } from "../dep.ts"
 import { TabContent } from "./MainContainer.tsx"
 import { AppState, InputResultPairOfAppState }   from "./state.ts"
 import * as ui_util   from "./ui_util.ts"

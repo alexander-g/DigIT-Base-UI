@@ -69,7 +69,7 @@ type HTMLDisplayable = {
 }
 
 export class InputImageFile extends files.InputFile implements HTMLDisplayable {
-    async set_image_src(htmlimage: HTMLImageElement): Promise<void> {
+    async set_image_src(htmlimage: HTMLImageElement): Promise<unknown> {
         return await set_image_src(htmlimage, this)
     }
 }

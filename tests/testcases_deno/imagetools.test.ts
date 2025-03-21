@@ -6,6 +6,14 @@ const IMAGE_ASSET0_PATH = path.fromFileUrl(
     import.meta.resolve('./assets/test_image0.jpg')
 )
 
+const IMAGE_ASSET1_PATH = path.fromFileUrl(
+    import.meta.resolve('./assets/bigtiff.tif')
+)
+
+const IMAGE_ASSET2_PATH = path.fromFileUrl(
+    import.meta.resolve('./assets/test_image2.tiff')
+)
+
 Deno.test("imagetools.blob_to_u8rgb", async() => {
     const jpgdata = Deno.readFileSync(IMAGE_ASSET0_PATH)
     const jpgblob = new Blob([jpgdata])
@@ -57,3 +65,13 @@ Deno.test("f32_mono_to_rgba_u8", () => {
     )
 })
 
+
+Deno.test('is_bigtiff', async () => {
+    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET1_PATH) ])
+    const result = await imagetools.is_bigtiff(blob)
+    asserts.assert(result)
+
+    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET2_PATH) ])
+    const result2 = await imagetools.is_bigtiff(blob2)
+    asserts.assertFalse(result2)
+})

@@ -250,11 +250,38 @@ export function get_image_size(image:Image): util.ImageSize {
 
 
 
-function is_tiff_file(x:Blob|File): boolean {
+export function is_tiff_file(x:Blob|File): boolean {
     return (
         x.type == 'image/tiff' 
         || 'name' in x && (/\.tif[f]?$/).test(x.name)
     )
+}
+
+export async function is_bigtiff(x:Blob): Promise<boolean> {
+    const header:Blob = x.slice(0, 4);
+    const buffer:ArrayBuffer = await header.arrayBuffer();
+    const view = new Uint8Array(buffer);
+    
+    if (view.length < 4) {
+        return false;
+    }
+    
+    // little-endian BigTIFF: "II\x2B\x00"
+    const littleEndianBigTIFF:boolean = (
+        view[0] === 0x49 
+        && view[1] === 0x49 
+        && view[2] === 0x2B 
+        && view[3] === 0x00
+    )
+                                    
+    // big-endian BigTIFF: "MM\x00\x2B"
+    const bigEndianBigTIFF:boolean = (
+        view[0] === 0x4D 
+        && view[1] === 0x4D 
+        && view[2] === 0x00 
+        && view[3] === 0x2B
+    )
+    return littleEndianBigTIFF || bigEndianBigTIFF;
 }
 
 export async function load_tiff_file(
