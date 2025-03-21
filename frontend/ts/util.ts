@@ -96,6 +96,15 @@ export function vector_length(v:Vector): number {
     return Math.sqrt(v.x**2 + v.y**2);
 }
 
+/** Euclidean distance */
+export function distance(a:Point, b:Point): number {
+    return vector_length( { 
+        x:a.x - b.x, 
+        y:a.y - b.y, 
+    } )
+}
+
+
 /** Normalize input vector `v` to have length `1.0` */
 export function normalize_vector(v:Vector): Vector {
     const length:number = vector_length(v)
