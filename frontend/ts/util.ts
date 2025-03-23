@@ -124,6 +124,11 @@ export function orthogonal_vector(v:Vector): Vector {
     return {x:v.y, y:-v.x}
 }
 
+export function arange(x0:number,x1?:number): number[] {
+    const start:number = (x1==undefined)?  0 : x0;
+    const stop:number  = (x1==undefined)? x0 : x1-start;
+    return [...Array(stop).keys()].map((x:number) => x+start)
+}
 
 
 export function wait(ms: number): Promise<unknown> {
