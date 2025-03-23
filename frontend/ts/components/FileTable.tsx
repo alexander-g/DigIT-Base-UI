@@ -134,10 +134,13 @@ extends FileTableContent< File, R > {
      *  Set in InputImage. */
     $og_imagesize: signals.Signal<ImageSize|null> = new signals.Signal(null)
 
+    /** The current zoom level */
+    $scale: signals.Signal<number> = new signals.Signal(1.0)
+
     /** The actual content */
     contentview(): JSX.Element {
         return <ImageContainer>
-            <ImageControls $imagesize={this.$imagesize}>
+            <ImageControls $imagesize={this.$imagesize} $scale={this.$scale}>
                 <InputImage 
                     inputfile    = {this.props.input} 
                     $active_file = {this.props.$active_file}
