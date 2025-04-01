@@ -70,6 +70,7 @@ export type FileTableContentProps<I extends Input, R extends Result>
 /** Input image, result overlays and controls */
 export abstract class FileTableContent<I extends Input, R extends Result> 
 extends preact.Component<FileTableContentProps<I,R>> {
+    /** Flag set by the checkbox "Show Results" */
     $result_visible: signals.Signal<boolean> = new signals.Signal(true)
 
     render(_props: FileTableContentProps<I,R>): JSX.Element {
