@@ -6,6 +6,9 @@ import { boolean_to_display_css }       from "./ui_util.ts";
 
 type ProgressDimmerProps = {
     $result: ReadonlySignal<Result>;
+
+    /** */
+    progress?: ReadonlySignal<number>;
 }
 
 
@@ -24,12 +27,20 @@ export class ProgressDimmer extends preact.Component<ProgressDimmerProps> {
             display:    boolean_to_display_css(failed),
         }
 
+        let progress_str:string = ''
+        if(props.$result.value.progress != undefined)
+            progress_str = (props.$result.value.progress * 100).toFixed(0) + '%';
+        
+        let message: string = 'Processing ...'
+        if(props.$result.value.message != undefined)
+            message = props.$result.value.message;
+
         return (
             <div class="ui dimmer" ref={this.ref}>
                 <div class="content processing" style={processing_css}>
                     <h2 class="ui inverted icon header">
                         <i class="spinner loading icon"></i>
-                        <p>Processing...</p>
+                        <p>{message} {progress_str}</p>
                     </h2>
                 </div>
                 <div class="content failed"  style={failed_css}>

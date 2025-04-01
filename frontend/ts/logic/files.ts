@@ -48,6 +48,24 @@ export type InputClassInterface<I extends Input> = util.ClassWithValidate<I> & {
 
 export type ResultStatus = 'unprocessed' | 'processing' | 'processed' | 'failed';
 
+type FailedStruct = {
+    status: Extract<ResultStatus, 'failed'>;
+    raw:    unknown;
+    inputname: string;
+    /** Reason for processing failure to display to user. */
+    message:   string;
+}
+
+type ProcessingStruct = {
+    status: Extract<ResultStatus, 'processing'>;
+    raw:    unknown;
+    inputname: string;
+    
+    /** Processing progress, range 0..1 */
+    progress:  number;
+    /** Optional message for user, e.g. which stage of processing we are in. */
+    message?:  string;
+}
 
 
 /** What kind of data to export. 
@@ -65,19 +83,38 @@ export class Result {
     inputname:      string|null;                                         //TODO: make this non-null
 
     //TODO: modelinfo / metadata
+    /** Message for user if status is failed, or optionally when processing */
+    message?: string;
+
+    /** Current progress if status is processing */
+    progress?: number;
 
     /** Raw processing outputs, as received from backend or onnx.
      *  For debugging. */
     readonly raw:   unknown;
 
+    constructor(status:'unprocessed');
+    constructor(struct:FailedStruct);
+    constructor(struct:ProcessingStruct);
+    constructor(status?:ResultStatus, raw?:unknown, inputname?:string|null); //legacy
     constructor(
-        status:ResultStatus     = 'unprocessed', 
+        //status:ResultStatus     = 'unprocessed', 
+        arg0:ResultStatus|FailedStruct|ProcessingStruct = 'unprocessed',
         raw:unknown             = null, 
         inputname:string|null   = null,                                  //TODO: make this required
     ) {
-        this.status = status;
-        this.raw    = raw;
-        this.inputname = inputname;
+        if(typeof arg0 == 'object'){
+            this.status    = arg0.status
+            this.inputname = arg0.inputname;
+            this.raw       = arg0.raw;
+            this.message   = arg0.message;
+            if('progress' in arg0)
+                this.progress = arg0.progress;
+        } else {
+            this.status = arg0;
+            this.raw    = raw;
+            this.inputname = inputname;
+        }
     }
 
     /** Export this result to files.
