@@ -7,6 +7,8 @@ import * as ui_util   from "./ui_util.ts"
 
 export abstract class TrainingTab<AS extends AppState> extends TabContent<AS> {
     trainingmodal: preact.RefObject<TrainingModal> = preact.createRef()
+    lr_epochs_ref: preact.RefObject<LR_EpochsField> = preact.createRef()
+    save_field:    preact.RefObject<SaveModelField> = preact.createRef()
     
     $modeltype: Signal<string|null> = new Signal(null)
 
@@ -38,7 +40,10 @@ export abstract class TrainingTab<AS extends AppState> extends TabContent<AS> {
                 </div>
             </div>
 
-            <TrainingModal ref={this.trainingmodal} />
+            <TrainingModal 
+                ref={this.trainingmodal} 
+                on_cancel_training={this.on_cancel_training}
+            />
         </>
     }
 
@@ -64,6 +69,7 @@ export abstract class TrainingTab<AS extends AppState> extends TabContent<AS> {
                     label          = "Hyperparameters" 
                     default_lr     = {1e-3} 
                     default_epochs = {10}
+                    ref            = {this.lr_epochs_ref}
                 />
     
                 <div class="ui divider"></div>
@@ -82,6 +88,7 @@ export abstract class TrainingTab<AS extends AppState> extends TabContent<AS> {
                     $visible = {signals.computed(
                         () => (modelname == '')
                     )}
+                    ref = {this.save_field}
                 />
             </div>
         </div>
@@ -89,48 +96,66 @@ export abstract class TrainingTab<AS extends AppState> extends TabContent<AS> {
     }
 
     abstract on_start_training(): Promise<void>;
+    abstract on_cancel_training(): boolean;
     abstract on_save_model(new_modelname:string): Promise<void>;
     abstract filepairs_suitable_for_training(): InputResultPairOfAppState<AS>[];
     abstract modeltype_dropdown(): JSX.Element;
 }
 
 
-
-function LR_EpochsField(props:{
+type LR_EpochsField_Props = {
     label:          string, 
     default_lr:     number, 
     default_epochs: number
 }
-): JSX.Element {
-    return <>
-    <div class="field" id="training-learning-rate-field">
-        <label>{props.label}</label>
-    <div class="ui input" id="settings-micrometers">
-        <label style="padding:10px; width:50%;">Learning rate:</label>
-        <input 
-            type  = "number" 
-            step  = "0.0001" 
-            min   = "0.00001" 
-            style = "width: 5ch;" 
-            value = {props.default_lr} 
-            id    = 'training-learning-rate' 
-        />
-    </div>
-    </div>
-    <div class="field" id="training-number-of-epochs-field">
-    <div class="ui input" id="settings-micrometers">
-        <label style="padding:10px; width:50%;">Number of epochs:</label>
-        <input 
-            type  = "number" 
-            step  = "1" 
-            min   = "1" 
-            style = "width: 5ch;" 
-            value = {props.default_epochs} 
-            id    = 'training-number-of-epochs' 
-        />
-    </div>
-    </div>
-    </>
+
+class LR_EpochsField extends preact.Component<LR_EpochsField_Props> {
+    lr_ref:     preact.RefObject<HTMLInputElement> = preact.createRef()
+    epochs_ref: preact.RefObject<HTMLInputElement> = preact.createRef()
+
+
+    render(props:LR_EpochsField_Props): JSX.Element {
+        return <>
+        <div class="field" id="training-learning-rate-field">
+            <label>{props.label}</label>
+        <div class="ui input" id="settings-lr">
+            <label style="padding:10px; width:50%;">Learning rate:</label>
+            <input 
+                type  = "number" 
+                step  = "0.0001" 
+                min   = "0.00001" 
+                style = "width: 5ch;" 
+                value = {props.default_lr} 
+                id    = 'training-learning-rate' 
+                ref   = {this.lr_ref}
+            />
+        </div>
+        </div>
+        <div class="field" id="training-number-of-epochs-field">
+        <div class="ui input" id="settings-epochs">
+            <label style="padding:10px; width:50%;">Number of epochs:</label>
+            <input 
+                type  = "number" 
+                step  = "1" 
+                min   = "1" 
+                style = "width: 5ch;" 
+                value = {props.default_epochs} 
+                id    = 'training-number-of-epochs' 
+                ref   = {this.epochs_ref}
+            />
+        </div>
+        </div>
+        </>
+    }
+
+    get_options(): Record<string,number> {
+        const lr:number = Number(this.lr_ref.current?.value)
+        const epochs:number = Number(this.epochs_ref.current?.value)
+        return {
+            lr:     isNaN(lr)?     this.props.default_lr     : lr,
+            epochs: isNaN(epochs)? this.props.default_epochs : epochs,
+        }
+    }
 }
 
 function StartingPointInfoBox(props:{modelname:string}): JSX.Element {
@@ -218,12 +243,18 @@ class SaveModelField extends ui_util.MaybeHidden<SaveModelFieldProps> {
 }
 
 
-export class TrainingModal extends preact.Component {
+
+type TrainingModalProps = {
+    /** Called when user wants to stop the training */
+    on_cancel_training: () => void;
+}
+
+export class TrainingModal extends preact.Component<TrainingModalProps> {
     ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 
     render(): JSX.Element {
         return (
-        <div class="ui tiny modal" id="settings-dialog" ref={this.ref}>
+        <div class="ui tiny modal" id="training-modal" ref={this.ref}>
             <div class="header"> Training </div>
 
             <div class="ui form content">
@@ -248,40 +279,62 @@ export class TrainingModal extends preact.Component {
         )
     }
 
-    show() {
+    show(message?:string, progress?:number) {
+        message = message ?? 'Training in progress...'
+
         $(this.ref.current).find('.progress')
             .progress('remove error')
             .progress('remove success')
-            .progress('set label', 'Training in progress...')
+            .progress('set label', message)
             .progress('reset');
+        if(progress != undefined)
+            $(this.ref.current).find('.progress')
+                .progress({percent:progress, autoSuccess:false})
+        
         $(this.ref.current).find('#ok-training-button')
             .hide()
-        $(this.ref.current).find('#cancel-training-button')
-            .removeClass('disabled')
-            .show()
+        this.disable_cancel_button(false)
 
         $(this.ref.current).modal({
             closable: false, 
             inverted: true, 
-            //onDeny: x => this.on_cancel_training(),
+            onDeny: () => this.props.on_cancel_training(),
         }).modal('show');
     }
 
-    failed() {
-        $(this.ref.current).find('.progress').progress('set error', 'Training failed');
+    failed(message?:string) {
+        message = message ?? 'Training failed'
+        $(this.ref.current)
+            .find('.progress')
+            .progress('set error', message);
         $(this.ref.current).find('#cancel-training-button').removeClass('disabled')
         $(this.ref.current).modal({closable:true})
     }
 
     success() {
-        $(this.ref.current).find('.progress').progress('set success', 'Training finished');
+        $(this.ref.current).find('.progress')
+            .progress('set success', 'Training finished');
         $(this.ref.current).find('#ok-training-button').show()
         $(this.ref.current).find('#cancel-training-button').hide()
     }
 
-    // TODO: interrupted()
-    // TODO: success()
+    hide() {
+        $(this.ref.current).modal('hide');
+    }
 
+    // TODO: interrupted()
+    
+    disable_cancel_button(yes_or_no:boolean): void {
+        if(yes_or_no){
+            $(this.ref.current).find('#cancel-training-button')
+            .addClass('disabled')
+            .show()
+        } else {
+            $(this.ref.current).find('#cancel-training-button')
+            .removeClass('disabled')
+            .show()
+        }
+    }
 }
 
 
