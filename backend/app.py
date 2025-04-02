@@ -23,10 +23,13 @@ from .paths import (
     get_frontend_folders,
 )
 
+def is_debug() -> bool:
+    return sys.argv[0].endswith('.py')
+
 
 class App(flask.Flask):
     def __init__(self, deno_cfg: 'DenoConfig' = None, **kw):
-        self.is_debug    = sys.argv[0].endswith('.py')
+        self.is_debug    = is_debug()
         is_second_start  = (os.environ.get("WERKZEUG_RUN_MAIN") == 'true')
         do_not_reload    = (os.environ.get('DO_NOT_RELOAD',None) is not None)
         is_reloader      = (self.is_debug and not is_second_start) and not do_not_reload
@@ -55,8 +58,8 @@ class App(flask.Flask):
             print('Frontend paths:  ', self.frontend_folders)
         print()
 
-
-        self.deno_cfg = deno_cfg or DenoConfig()
+        if self.is_debug:
+            self.deno_cfg = deno_cfg or DenoConfig()
 
         setup_cache(self.cache_path)
         self.recompile_static()
