@@ -36,7 +36,7 @@ export abstract class TrainingTab<AS extends AppState> extends TabContent<AS> {
             >
                 <div style = {css}>
                     { this.training_controls() }
-                    <TrainingInstructions />
+                    {/* <TrainingInstructions /> */}
                 </div>
             </div>
 
