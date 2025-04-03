@@ -1,4 +1,4 @@
-import { JSX, preact, Signal }              from "../dep.ts"
+import { JSX, preact, Signal, signals }              from "../dep.ts"
 import * as settings                        from "../logic/settings.ts";
 import type { 
     ModelInfo, 
@@ -29,6 +29,8 @@ extends preact.Component<P> {
     ref: preact.RefObject<HTMLDivElement>            = preact.createRef()
     model_selection:preact.RefObject<ModelSelection> = preact.createRef()
 
+    $saving: Signal<boolean> = new Signal(false);
+
     render(props:P): JSX.Element {
         return <div class="ui tiny modal" id="settings-dialog" ref={this.ref}>
             <i class="close icon"></i>
@@ -37,7 +39,7 @@ extends preact.Component<P> {
             <div class="ui form content">
                 { this.form_content() }
                 <div class="ui divider"></div>
-                <OkCancelButtons />
+                <OkCancelButtons $saving={this.$saving}/>
             </div>
         </div>
     }
@@ -58,12 +60,13 @@ extends preact.Component<P> {
     }
 
     async show_modal(): Promise<void> {
+        this.$saving.value = false;
         const status: true|Error = await this.#load_settings()
         if(status instanceof Error)
             return
 
         $(this.ref.current).modal({
-            onApprove: this.save_settings.bind(this)
+            onApprove: this.on_save_settings
         }).modal('show');
     }
 
@@ -71,10 +74,20 @@ extends preact.Component<P> {
      *  @virtual */
     abstract collect_settings_from_widgets(): S|Error;
 
+    on_save_settings = () => {
+        // no await
+        this.save_settings()
+
+        // do not close the modal yet, will close manually in save_settings()
+        return false;
+    }
+
     async save_settings(): Promise<true|Error> {
+        this.$saving.value = true;
         const settings:S|Error = this.collect_settings_from_widgets()
         if(settings instanceof Error){
             console.error(settings.message)
+            $(this.ref.current).modal('hide')
             return settings as Error;
         }
         
@@ -83,6 +96,7 @@ extends preact.Component<P> {
             show_error_toast('Could not save settings', status as Error)
         }
         await this.#load_settings()
+        $(this.ref.current).modal('hide')
         return true;
     }
 }
@@ -252,15 +266,27 @@ export class ModelSelection extends preact.Component<ModelSelectionProps> {
 }
 
 
-export function OkCancelButtons(): JSX.Element {
+type OkCancelButtonProps = {
+    /** Optional flag indicating if to disable buttons and show a spinner */
+    $saving?: Readonly<Signal<boolean>>
+}
+
+export function OkCancelButtons(props:OkCancelButtonProps): JSX.Element {
+    const saving:boolean   = props.$saving?.value ?? false;
+    const disabled:string  = saving? 'disabled' : '';
+    const save_text:string = saving? 'Saving...' : 'Save'
+    const save_icon:string = saving? 'loading spinner' : 'checkmark';
     return <div class="ui form content">
         <div class="actions">
-            <div class="ui negative button">
+            <div class={"ui negative button "+disabled}>
                 Cancel
             </div>
-            <div class="ui positive right labeled icon button" id="settings-ok-button">
-                Save
-                <i class="checkmark icon"></i>
+            <div 
+                class={"ui positive right labeled icon button "+disabled} 
+                id="settings-ok-button"
+            >
+                { save_text }
+                <i class={save_icon+" icon"}></i>
             </div>
         </div>
     </div>
