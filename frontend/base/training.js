@@ -23,7 +23,11 @@ BaseTraining = class BaseTraining{
         const progress_cb = (m => this.on_training_progress(m))
         try {
             this.show_modal()
-            await this.upload_training_data(filenames)
+            const ok = await this.upload_training_data(filenames)
+            if(!ok){
+                this.fail_modal()
+                return;
+            }
 
             $(GLOBAL.event_source).on('training', progress_cb)
             //FIXME: success/fail should not be determined by this request
@@ -129,15 +133,16 @@ BaseTraining = class BaseTraining{
         $('#training-new-modelname')[0].value = ''
     }
 
-    static upload_training_data(filenames){
+    static async upload_training_data(filenames){
         //TODO: show progress
         var promises      = filenames.map( f => upload_file_to_flask(GLOBAL.files[f]) )
         //TODO: refactor
         //TODO: standardize file name
         var segmentations = filenames.map(    f => GLOBAL.files[f].results.segmentation )
                                      .filter( s => s instanceof Blob )
-        promises          = promises.concat( segmentations.map( f => upload_file_to_flask(f) ) )
-        return Promise.all(promises).catch( this.fail_modal )  //FIXME: dont catch, handle in calling function
+        //promises          = promises.concat( segmentations.map( f => upload_file_to_flask(f) ) )
+        const ok = upload_files_slowly(segmentations)
+        return ok;
     }
 }
 
@@ -162,15 +167,15 @@ ObjectDetectionTraining = class extends BaseTraining {
     }
 
     //override
-    static upload_training_data(filenames){
+    static async upload_training_data(filenames){
         //TODO: show progress
         const files           = filenames.map( k => GLOBAL.files[k] )
         const targetfiles     = files.map(
             f => GLOBAL.App.Download.build_annotation_jsonfile(f.name, f.results)
         )
 
-        const promises = files.concat(targetfiles).map( f => upload_file_to_flask(f) )
-        return Promise.all(promises).catch( this.fail_modal )
+        const ok = upload_files_slowly([...files, ...targetfiles])
+        return ok
     }
 
     //override
@@ -283,6 +288,19 @@ ObjectDetectionTraining = class extends BaseTraining {
             .dropdown('refresh')
             .dropdown('set selected', unknown_classes)
     }
+}
+
+
+/** Uploading a lot of files at once gives an error in chrome. */
+async function upload_files_slowly(files) {
+    for(f of files){
+        try{
+            await upload_file_to_flask(f)
+        } catch {
+            return false;
+        }
+    }
+    return true;
 }
 
 
