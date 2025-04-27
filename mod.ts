@@ -9,6 +9,7 @@ export * as image_j         from "./frontend/ts/logic/image_j.ts";
 export * as boxes           from "./frontend/ts/logic/boxes.ts";
 export * as backend_common  from "./frontend/ts/logic/backends/common.ts";
 export { RemoteProcessing } from "./frontend/ts/logic/backends/remote.ts";
+export * as imagetools      from "./frontend/ts/logic/imagetools.ts";
 
 // TODO: separate logic and ui
 export * as state           from "./frontend/ts/components/state.ts"

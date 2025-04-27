@@ -319,3 +319,27 @@ export async function load_tiff_file(
     return null;
 }
 
+export async function is_png(blob:Blob): Promise<boolean> {
+    const headerblob:Blob = blob.slice(0, 8);
+  
+    try {
+        const buffer:ArrayBuffer = await headerblob.arrayBuffer();
+        if (buffer.byteLength !== 8) {
+            return false;
+        }
+  
+        const view = new DataView(buffer);
+        // PNG signature: 89 50 4E 47 0D 0A 1A 0A
+        const expected_signature:number[] = 
+            [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+  
+        for (let i:number = 0; i < expected_signature.length; i++) {
+            if (view.getUint8(i) !== expected_signature[i]) {
+                return false;
+            }
+        }
+        return true;
+    } catch (_error) {
+        return false;
+    }
+}

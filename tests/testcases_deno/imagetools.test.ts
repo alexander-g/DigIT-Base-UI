@@ -10,6 +10,10 @@ const IMAGE_ASSET1_PATH = path.fromFileUrl(
     import.meta.resolve('./assets/bigtiff.tif')
 )
 
+const IMAGE_ASSET_PNG_PATH = path.fromFileUrl(
+    import.meta.resolve('./assets/test_image1.png')
+)
+
 const IMAGE_ASSET2_PATH = path.fromFileUrl(
     import.meta.resolve('./assets/test_image2.tiff')
 )
@@ -75,3 +79,14 @@ Deno.test('is_bigtiff', async () => {
     const result2 = await imagetools.is_bigtiff(blob2)
     asserts.assertFalse(result2)
 })
+
+Deno.test('is_png', async () => {
+    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET_PNG_PATH) ])
+    const result = await imagetools.is_png(blob)
+    asserts.assert(result)
+
+    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET2_PATH) ])
+    const result2 = await imagetools.is_png(blob2)
+    asserts.assertFalse(result2)
+})
+
