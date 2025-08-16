@@ -90,3 +90,25 @@ Deno.test('is_png', async () => {
     asserts.assertFalse(result2)
 })
 
+
+Deno.test('get_jpg_size', async ()  => {
+    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET0_PATH) ])
+    const result = await imagetools.get_jpg_size(blob)
+    asserts.assertEquals(result, [128, 100])
+
+    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET_PNG_PATH) ])
+    const result2 = await imagetools.get_jpg_size(blob2)
+    asserts.assertInstanceOf(result2, Error)
+})
+
+
+Deno.test('get_png_size', async ()  => {
+    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET_PNG_PATH) ])
+    const result = await imagetools.get_png_size(blob)
+    asserts.assertEquals(result, [100, 100])
+
+    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET0_PATH) ])
+    const result2 = await imagetools.get_png_size(blob2)
+    asserts.assertInstanceOf(result2, Error)
+})
+

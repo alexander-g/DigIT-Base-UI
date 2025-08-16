@@ -343,3 +343,80 @@ export async function is_png(blob:Blob): Promise<boolean> {
         return false;
     }
 }
+
+
+export async function get_jpg_size(blob: Blob): Promise<[number, number]|Error>{
+    const buffer:ArrayBuffer = await blob.slice(0, blob.size).arrayBuffer();
+    const dataview = new DataView(buffer);
+
+    // Csheck for JPEG signature
+    if (dataview.getUint8(0) !== 0xff || dataview.getUint8(1) !== 0xd8) {
+        return new Error("Not a valid JPEG file");
+    }
+
+    let offset:number = 2;
+    while (offset < dataview.byteLength) {
+        const marker:number = dataview.getUint8(offset);
+        if (marker !== 0xff) {
+            return new Error("Invalid JPEG format");
+        }
+        const markerType:number = dataview.getUint8(offset + 1);
+        if (markerType === 0xc0 || markerType === 0xc2) {
+            const height:number = dataview.getUint16(offset + 5);
+            const width:number = dataview.getUint16(offset + 7);
+            return [width, height];
+        } else {
+            const length:number = dataview.getUint16(offset + 2);
+            offset += length + 2; // Move to the next segment
+        }
+    }
+    return new Error("No valid size found");
+}
+
+export async function get_png_size(blob: Blob): Promise<[number, number]|Error>{
+    const signatureslice:Blob = blob.slice(0, 8);
+    const signature = new Uint8Array(await signatureslice.arrayBuffer());
+
+    // Check PNG signature
+    const valid_png:boolean = 
+        signature[0] == 137 
+        && signature[1] == 80
+        && signature[2] == 78
+        && signature[3] == 71
+        && signature[4] == 13
+        && signature[5] == 10
+        && signature[6] == 26
+        && signature[7] == 10
+    if (!valid_png)
+        return new Error("Not a valid PNG file");
+
+    
+    let offset:number = 8;
+    while (true) {
+        const lengthslice:Blob = blob.slice(offset, offset + 4);
+        const lengthbuffer:ArrayBuffer = await lengthslice.arrayBuffer();
+        const length:number = new DataView(lengthbuffer).getUint32(0, false);
+        offset += 4;
+
+        const chunktypeslice:Blob = blob.slice(offset, offset + 4);
+        const chunktypebuffer:ArrayBuffer = await chunktypeslice.arrayBuffer();
+        const chunktype:string = 
+            String.fromCharCode(...new Uint8Array(chunktypebuffer));
+
+        if (chunktype === 'IHDR') {
+            const widthslice:Blob = blob.slice(offset + 4, offset + 8);
+            const widthbuffer:ArrayBuffer = await widthslice.arrayBuffer();
+            const width:number = new DataView(widthbuffer).getUint32(0, false);
+
+            const heightslice:Blob = blob.slice(offset + 8, offset + 12);
+            const heightbuffer:ArrayBuffer = await heightslice.arrayBuffer();
+            const height:number = new DataView(heightbuffer).getUint32(0, false)
+
+            return [width, height];
+        } else {
+            // Skip the chunk data and CRC
+            offset += length + 12; // 4 bytes for length, 4 for type, 4 for CRC
+        }
+    }
+}
+
