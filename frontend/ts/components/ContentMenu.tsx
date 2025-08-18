@@ -9,7 +9,7 @@ type ContentMenuProps<I extends Input, R extends Result> = InputResultPair<I,R> 
     $processingmodule:  signals.ReadonlySignal< ProcessingModule<I,R>|null >
 
     /** Flag indicating whether to show the result or not. Set here. */
-    $result_visible:    Signal<boolean>
+    $result_visible:    Readonly<Signal<boolean>>
 
     /** Additional buttons to display in the content menu */
     children?:          preact.ComponentChildren

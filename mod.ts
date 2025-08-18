@@ -32,7 +32,6 @@ export * as styles          from "./frontend/ts/components/styles.ts"
 export * as ui_util         from "./frontend/ts/components/ui_util.ts"
 export * as errors          from "./frontend/ts/components/errors.ts"
 
-//export * as backend_deps    from "./backend/ts/dep.ts"
 
 export { preact, signals, Signal, type JSX } from "./frontend/ts/dep.ts"
 

@@ -1,13 +1,16 @@
 import { JSX, signals } from "../dep.ts"
 import type {BaseSettings}   from "../logic/settings.ts"
-import { FileTable }         from "./FileTable.tsx"
-import { FileTableProps }    from "./FileTable.tsx"
+import { 
+         FileTable,
+         FileTableProps,
+    type FileTableColumn 
+} from "./FileTable.tsx"
 import { AppState }     from "./state.ts"
 import * as state       from "./state.ts"
 import { TabContent }   from "./MainContainer.tsx";
 
-import { DummyProcessingModule, ProcessingModule }            from "../logic/files.ts"
-import * as files       from "../logic/files.ts"
+import { ProcessingModule } from "../logic/files.ts"
+import * as files           from "../logic/files.ts"
 
 import { ObjectdetectionRow }               from "./FileTableRow.tsx";
 import { SegmentationContent }              from "./ImageOverlay.tsx"
@@ -27,8 +30,15 @@ type ProcessingModuleOfAppState<S extends AppState>
 
 type FileTableContent<S extends AppState>
     = FileTableProps<
-        state.InputTypeOfAppState<S>, state.ResultTypeOfAppState<S>
+        state.InputTypeOfAppState<S>, 
+        state.ResultTypeOfAppState<S>
     >['FileTableContent']
+
+export type FileTableRow<S extends AppState>
+    = FileTableProps<
+        state.InputTypeOfAppState<S>, 
+        state.ResultTypeOfAppState<S>
+    >['FileTableRow']
 
 export class DetectionTab<S extends AppState> extends TabContent<S> {
     /** Flag indicating that this tab is the first one. Speeds up rendering.
@@ -53,12 +63,14 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
     file_table(): JSX.Element {
         const appstate: S = this.props.appstate;
         return <FileTable 
-            sortable          =  {false} 
-            $files            =  {appstate.$files}
-            $processing       =  {appstate.$processing}
-            $processingmodule =  {
-                signals.computed( this.processingmodule.bind(this) )
+            sortable          = { false } 
+            $files            = { this.$files() }
+            $processing       = { appstate.$processing }
+            $processingmodule = {
+                new signals.Signal(this.processingmodule())
             }
+            columns           = { this.columns() }
+            FileTableRow      = { this.file_table_row() }
             FileTableContent  = { this.file_table_content() }
         />; 
     }
@@ -81,6 +93,21 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
     /** @virtual */
     file_table_content(): FileTableContent<S>  {
         return undefined;
+    }
+
+    /** @virtual */
+    columns(): FileTableColumn[] | undefined {
+        return undefined;
+    }
+
+    /** @virtual */
+    file_table_row(): FileTableRow<S> {
+        return undefined;
+    }
+
+    /** @virtual */
+    $files(): state.InputFileList<state.Input, state.Result> {
+        return this.props.appstate.$files;
     }
 }
 
@@ -122,18 +149,22 @@ extends DetectionTab<S> {
         />; 
     }
 
-    // /** @override */
-    // processingmodule(): ProcessingModuleOfAppState<S>|null {
-    //     const settings:BaseSettings|undefined = this.props.appstate.$settings.value
-    //     if(settings == undefined)
-    //         return null
-        
-    //     return new this.props.backend(objdet.ObjectdetectionResult, settings)
-    // }
-
     /** @override */
     override resultclass() {
         return objdet.ObjectdetectionResult;
+    }
+
+    /** @override */
+    columns(): FileTableColumn[] | undefined {
+        return [
+            {label:'Files',      width_css_class:'six'}, 
+            {label:'Detections', width_css_class:'ten'},
+        ]
+    }
+
+    /** @override */
+    file_table_row(): FileTableRow<S> {
+        return ObjectdetectionRow;
     }
 }
 

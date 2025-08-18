@@ -37,11 +37,15 @@ export class InputImage extends preact.Component<InputImageProps> {
     /** Load image as soon as it is beeing displayed in the file table, once */
     #dispose_init?: () => void;
 
+    /** Internal flag to indicate if the image has been loaded. 
+     *  props.$loaded is intended as output instead. */
+    #$loaded: Signal<boolean> = new Signal(false)
+
     /** Initate image loading only when needed */
     override componentDidMount(): void {
         this.#dispose_init = signals.effect( () => {
             if(this.props.$active_file.value == this.props.inputfile.name 
-                && !this.props.$loaded.value) {
+                && !this.#$loaded.value) {
                     this.load_image()
             }
         })
@@ -94,7 +98,8 @@ export class InputImage extends preact.Component<InputImageProps> {
         if(this.ref.current) {
             //TODO: resize if too large
             this.props.$loaded.value = true;
-            this.props.$size.value = {
+            this.#$loaded.value = true;
+            this.props.$size.value   = {
                 width:  this.ref.current.naturalWidth,
                 height: this.ref.current.naturalHeight,
             }
