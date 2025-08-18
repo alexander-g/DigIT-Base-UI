@@ -148,6 +148,7 @@ extends FileTableContent< File, R > {
                     $loaded      = {this.props.$loaded}
                     $size        = {this.$imagesize}
                     $og_size     = {this.$og_imagesize}
+                    $css         = {this.input_image_css()}
                 /> 
                 { this.result_overlays() }
             </ImageControls>
@@ -159,6 +160,12 @@ extends FileTableContent< File, R > {
      *  @virtual Can be overwritten  downstream for custom overlays */
     result_overlays(): JSX.Element {
         return <></>
+    }
+
+    /** Extra css properties to pass to the input image.
+     *  @virtual Can be overwritten for customization */
+    input_image_css(): Readonly< signals.Signal< JSX.CSSProperties > >|undefined{
+        return undefined;
     }
 }
 

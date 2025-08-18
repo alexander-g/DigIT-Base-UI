@@ -21,6 +21,9 @@ export type InputImageProps = {
 
     /** @output The original size of the image, before resizing (if resized.) */
     $og_size: Signal<ImageSize|null>;
+
+    /** @input Optional extra CSS properties */
+    $css?: Readonly< Signal< JSX.CSSProperties > >;
 }
 
 
@@ -51,7 +54,7 @@ export class InputImage extends preact.Component<InputImageProps> {
         return <img 
             class   =   {"input-image"} 
             onLoad  =   {this.on_load.bind(this)} 
-            style   =   {{...css, ...styles.unselectable_css}}
+            style   =   {{...css, ...styles.unselectable_css, ...extra_css}}
             ref     =   {this.ref}
             draggable = {false}
         />
