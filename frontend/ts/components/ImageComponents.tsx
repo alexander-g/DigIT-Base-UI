@@ -4,6 +4,8 @@ import { ResizedImageBlob, set_image_src }  from "./file_input.ts"
 import * as styles                          from "./styles.ts"
 import { start_drag }                       from "./ui_util.ts";
 import { InputImageFile }                   from "./state.ts";
+import * as imagetools                      from "../logic/imagetools.ts"
+
 
 export type InputImageProps = {
     /** Which file to display */
@@ -30,7 +32,7 @@ export type InputImageProps = {
 export class InputImage extends preact.Component<InputImageProps> {
 
     /** Ref to the HTML image element */
-    ref: preact.RefObject<HTMLImageElement> = preact.createRef()
+    ref: preact.RefObject<AutoscaleImage> = preact.createRef()
 
     /** Load image as soon as it is beeing displayed in the file table, once */
     #dispose_init?: () => void;
@@ -51,7 +53,10 @@ export class InputImage extends preact.Component<InputImageProps> {
 
     render(): JSX.Element {
         const css = {width: '100%'}
-        return <img 
+        const extra_css:JSX.CSSProperties = this.props.$css?.value ?? {}
+        return <AutoscaleImage 
+            max_size = { {width:4096, height:4096} }
+            jpeg_ok  = {true}
             class   =   {"input-image"} 
             onLoad  =   {this.on_load.bind(this)} 
             style   =   {{...css, ...styles.unselectable_css, ...extra_css}}
@@ -61,7 +66,10 @@ export class InputImage extends preact.Component<InputImageProps> {
     }
 
     async load_image(): Promise<void> {
-        const htmlimage: HTMLImageElement|null = this.ref.current;
+        const image_element: AutoscaleImage|HTMLImageElement|null = this.ref.current;
+        const htmlimage: HTMLImageElement|null = 
+            (image_element instanceof AutoscaleImage)? image_element.ref.current : image_element
+        //const htmlimage: HTMLImageElement|null = this.ref.current;
         const inputfile: File = this.props.inputfile;
         if(htmlimage != null) {
             let status:unknown;
@@ -72,6 +80,7 @@ export class InputImage extends preact.Component<InputImageProps> {
             }
 
             if(status instanceof Error){
+                // TODO
                 return
             }
             if(status instanceof ResizedImageBlob)
@@ -265,3 +274,85 @@ export function ImageContainer(props:{children:preact.ComponentChildren}): JSX.E
         { props.children }
     </div>
 }
+
+
+type ImageProps = Omit<JSX.IntrinsicElements['img'], 'ref'>;
+type AutoscaleImageProps = ImageProps & {
+    /** @input The curent zoom level */
+    $scale?: Readonly<Signal<number>>;
+
+    /** Maximum acceptable height / width. Will scale if image exceeds this. */
+    max_size: ImageSize;
+
+    /** Whether or not JPEG compression is acceptable when scaling. */
+    jpeg_ok: boolean;
+
+}
+
+
+
+/** An `<img>` element that scales down the image if too large, for performance.
+ *  Scales up again on zoom. */
+export class AutoscaleImage extends preact.Component<AutoscaleImageProps> {
+    ref: preact.RefObject<HTMLImageElement> = preact.createRef()
+
+    render(props:AutoscaleImageProps): JSX.Element {
+        return <img {...props} onLoad={this.on_load} ref={this.ref} />
+    }
+
+    on_load = () => {
+        //const { width:W, height:H } = this.original_size();
+        const { width:W, height:H } = this.displayed_size();
+        const { width:max_w, height:max_h } =  this.props.max_size
+        const scale:number = Math.min(max_w / W, max_h / H, 1);
+        // 1.0 is prone to infinite loop
+        if(scale < 0.95){
+            this.rescale_image(scale)
+        }
+
+        /** @ts-ignore */
+        this.props.onLoad?.()
+    }
+
+    async rescale_image(scale:number) {
+        //const { width:W, height:H } = this.original_size();
+        const { width:W, height:H } = this.displayed_size();
+        const new_size:ImageSize = { width: W*scale, height: H*scale }
+        console.log('Scaling image to ', new_size)
+        const blob:Blob|Error = 
+            await imagetools.image_to_blob(this.ref.current!, new_size)
+        if(blob instanceof Error){
+            console.error('Rescaling failed')
+            return;
+        }
+        set_image_src(this.ref.current!, blob)
+    }
+
+
+    #og_size:ImageSize|null = null;
+
+    /** Return the size of the image before it got scaled */
+    original_size(): ImageSize {
+        if(this.#og_size == null){
+            //const { naturalWidth:W, naturalHeight:H } = this.ref.current!
+            const { width:W, height:H } = this.displayed_size();
+            this.#og_size = {width:W, height:H};
+        }
+        return this.#og_size;
+    }
+
+    displayed_size(): ImageSize {
+        const { naturalWidth:width, naturalHeight:height } = this.ref.current!
+        return {width, height};
+    }
+
+    get naturalWidth(): number {
+        return this.ref.current!.naturalWidth;
+    }
+
+    get naturalHeight(): number {
+        return this.ref.current!.naturalHeight;
+    }
+
+}
+

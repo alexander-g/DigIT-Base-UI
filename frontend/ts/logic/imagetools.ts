@@ -114,10 +114,13 @@ export async function blob_to_rgb(
     else return image_to_rgb(image, targetsize);
 }
 
-/** Convert an image element to raw RGB data. Resize to `targetsize` if provided */
-export async function image_to_rgb(
-    image:Image, targetsize?:util.ImageSize|null
-): Promise<ImageData|Error> {
+
+type CanvasAndContext = {canvas:Canvas, context:CanvasContext2D}
+
+async function image_to_canvas(
+    image:       Image, 
+    targetsize?: util.ImageSize|null
+): Promise<CanvasAndContext|Error> {
     if(!targetsize){
         //read the size from file
         targetsize = get_image_size(image);
@@ -134,12 +137,41 @@ export async function image_to_rgb(
         (image as HTMLImageElement), 0, 0, targetsize.width, targetsize.height
     )
 
-    const rgba:Uint8ClampedArray = ctx.getImageData(
+    return {canvas, context:ctx};
+}
+
+
+/** Convert an image element to raw RGB data. Resize to `targetsize` if provided */
+export async function image_to_rgb(
+    image:Image, 
+    targetsize?:util.ImageSize|null
+): Promise<ImageData|Error> {
+    const canvas: CanvasAndContext|Error = await image_to_canvas(image, targetsize)
+    if(canvas instanceof Error)
+        return canvas;
+    
+    if(!targetsize){
+        //read the size from file
+        targetsize = get_image_size(image);
+    }
+    const rgba:Uint8ClampedArray = canvas.context.getImageData(
         0,0, targetsize.width, targetsize.height
     ).data
     
     const rgb: Uint8ClampedArray = rgba_to_rgb(rgba)
     return new ImageData(rgb, targetsize.height, targetsize.width, "HWC");
+}
+
+/** Convert an image element to blob. Resize to `targetsize` if provided */
+export async function image_to_blob(
+    image:       Image, 
+    targetsize?: util.ImageSize|null
+): Promise<Blob|Error> {
+    const canvas: CanvasAndContext|Error = await image_to_canvas(image, targetsize)
+    if(canvas instanceof Error)
+        return canvas;
+    
+    return canvas_to_blob(canvas.canvas)
 }
 
 
@@ -223,7 +255,7 @@ async function imagedata_to_blob(data:ImageData): Promise<Blob|Error> {
 }
 
 /** Get image data from either HTMLImageElement or EmulatedImage as a blob  */
-async function canvas_to_blob(canvas:Canvas): Promise<Blob|Error> {
+async function canvas_to_blob(canvas:Canvas): Promise<Blob|Error> { //TODO: jpeg
     if('toBlob' in canvas) {
         return new Promise( (resolve: (b:Blob|Error) => void ) => {
             canvas.toBlob((b:Blob|null) => {
@@ -396,7 +428,7 @@ export async function get_png_size(blob: Blob): Promise<[number, number]|Error>{
     while (true) {
         const lengthslice:Blob = blob.slice(offset, offset + 4);
         const lengthbuffer:ArrayBuffer = await lengthslice.arrayBuffer();
-        const length:number = new DataView(lengthbuffer).getUint32(0, false);
+        const length:number = new DataView(lengthbuffer).getUint32(0, false);   // can throw, check buffer size
         offset += 4;
 
         const chunktypeslice:Blob = blob.slice(offset, offset + 4);
@@ -407,11 +439,11 @@ export async function get_png_size(blob: Blob): Promise<[number, number]|Error>{
         if (chunktype === 'IHDR') {
             const widthslice:Blob = blob.slice(offset + 4, offset + 8);
             const widthbuffer:ArrayBuffer = await widthslice.arrayBuffer();
-            const width:number = new DataView(widthbuffer).getUint32(0, false);
+            const width:number = new DataView(widthbuffer).getUint32(0, false); // can throw, check buffer size
 
             const heightslice:Blob = blob.slice(offset + 8, offset + 12);
             const heightbuffer:ArrayBuffer = await heightslice.arrayBuffer();
-            const height:number = new DataView(heightbuffer).getUint32(0, false)
+            const height:number = new DataView(heightbuffer).getUint32(0, false) // can throw, check buffer size
 
             return [width, height];
         } else {
