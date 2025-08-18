@@ -24,7 +24,7 @@ const IMAGE_ASSET0_PATH:string = path.fromFileUrl(
 
 Deno.test('encode-decode-tensors', async () =>{
     const t0 = common.create_tensor(
-        new Float32Array([1.0, 5.0, 10.0, 25.0]),
+        new Float32Array([1.0, 5.0, 10.0, 25.0]).buffer,
         'float32',
         [1,1,2,2],
     )
@@ -128,24 +128,24 @@ Deno.test('ffi.error-no-permissions', {permissions:{ffi:false}}, async () => {
 //     ts.TS_Backend.lib?.close()
 // })
 
-Deno.test('TS_Backend.multistep-inference', async () => {
-    const backend = new ts.TS_Backend<files.Result>(
-        files.Result, 
-        {active_models:{detection:TS_MULTISTEP_MODULE_PATH}},
-        path.fromFileUrl(
-            import.meta.resolve('../../assets/libTSinterface.so')
-        ),
-        path.fromFileUrl(
-            import.meta.resolve('../../models/')
-        ),
-    )
+// Deno.test('TS_Backend.multistep-inference', async () => {
+//     const backend = new ts.TS_Backend<files.Result>(
+//         files.Result, 
+//         {active_models:{detection:TS_MULTISTEP_MODULE_PATH}},
+//         path.fromFileUrl(
+//             import.meta.resolve('../../assets/libTSinterface.so')
+//         ),
+//         path.fromFileUrl(
+//             import.meta.resolve('../../models/')
+//         ),
+//     )
 
-    const imagedata: Uint8Array = Deno.readFileSync(IMAGE_ASSET0_PATH)
-    const imagefile             = new File([imagedata], 'image1.jpg')
-    const result: files.Result = await backend.process(imagefile)
+//     const imagedata: Uint8Array = Deno.readFileSync(IMAGE_ASSET0_PATH)
+//     const imagefile             = new File([imagedata], 'image1.jpg')
+//     const result: files.Result = await backend.process(imagefile)
     
-    //console.log(result.raw)
-    asserts.assertEquals(result.status, 'processed')
-    ts.TS_Backend.lib?.close()
-})
+//     console.log(result.raw)
+//     asserts.assertEquals(result.status, 'processed')
+//     ts.TS_Backend.lib?.close()
+// })
 

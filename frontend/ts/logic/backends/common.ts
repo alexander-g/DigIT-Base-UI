@@ -182,12 +182,12 @@ function validate_number_or_null_array(x:unknown): (number|null)[]|null {
 
 export function create_tensor(
     /** Raw tensor data. If null, will create a new buffer. */
-    x:     ArrayBuffer|null, 
+    x:     ArrayBufferLike|null, 
     dtype: DType, 
     shape: number[]
 ): Tensor<DType>|Error {
     try{
-        const buf_or_size: ArrayBuffer|number = x ?? shape_to_size(shape)
+        const buf_or_size: ArrayBufferLike|number = x ?? shape_to_size(shape)
         const x_typed: DTypeArray = to_dtype_array(buf_or_size, dtype)
         return { dtype, shape, data:x_typed }
     } catch(error) {
@@ -207,7 +207,7 @@ export function shape_to_size(shape:number[]) {
 }
 
 /** Convert a buffer to a typed array or create a new one */
-function to_dtype_array(x:ArrayBuffer|number, dtype:DType): DTypeArray {
+function to_dtype_array(x:ArrayBufferLike|number, dtype:DType): DTypeArray {
     // NOTE: no-op to make typescript happy
     // otherwise it complains that it cannot find a call signature
     x = x as ArrayBuffer
@@ -219,7 +219,7 @@ export function validate_typed_array(x:unknown): DTypeArray|null {
     if(x instanceof Uint8Array      //for uint8 and bool
     || x instanceof Float32Array
     || x instanceof BigInt64Array){
-        return x;
+        return x as unknown as DTypeArray;
     }
     else return null;
 }

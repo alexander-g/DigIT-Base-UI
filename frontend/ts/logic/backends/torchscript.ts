@@ -44,7 +44,7 @@ export class TS_Backend<R extends Result> extends DetectionModule<File,R> {
 
     async process(
         input:        File, 
-        on_progress?: (x:InputResultPair<File,R>) => void,
+        _on_progress?: (x:InputResultPair<File,R>) => void,
     ): Promise<R> {
         if(!util.is_deno())
             return new this.ResultClass(
@@ -111,14 +111,14 @@ export class TS_Backend<R extends Result> extends DetectionModule<File,R> {
 type TS_Lib = {
     symbols: {
         /** Initialize a torchscript module from binary data. */
-        initialize_module: (data:ArrayBuffer, size:bigint) => number;
+        initialize_module: (data:ArrayBufferLike, size:bigint) => number;
         
         /** Run a previously loaded module with inputs. */
         run_module: (
-            data:         ArrayBuffer, 
+            data:         ArrayBufferLike, 
             size:         bigint, 
-            outputbuffer: ArrayBuffer, 
-            outputsize:   ArrayBuffer,
+            outputbuffer: ArrayBufferLike, 
+            outputsize:   ArrayBufferLike,
             debug:        number,
         ) => number;
 
@@ -189,6 +189,7 @@ export async function initialize_ffi(path:string): Promise<TS_Lib|Error> {
 
 
 export async function _dlopen_maybe_encrypted(path:string): Promise<TS_Lib|Error> {
+    await 0;
     const filepattern = /\.enc$/
     if(filepattern.test(path)){
         //encrypted
@@ -214,7 +215,8 @@ async function _dlopen_encrypted(
 
     try{
         await crypto.decrypt_file(path_to_enc_tslib, destination_path, crypto.DEFAULT_KEY)
-        const lib:TS_Lib = Deno.dlopen(destination_path, DLOPEN_SYMBOLS)
+        const lib:TS_Lib = 
+            Deno.dlopen(destination_path, DLOPEN_SYMBOLS) as unknown as TS_Lib;
         //clean up
         try {
             Deno.removeSync(destination_path)
@@ -275,7 +277,7 @@ function validate_number_or_bigint(x:unknown): number|bigint|null {
     return util.validate_number(x) ?? ((typeof x == 'bigint') ? x: null)
 }
 
-function validate_bigint(x:unknown): bigint|null {
+function _validate_bigint(x:unknown): bigint|null {
     return ((typeof x == 'bigint') ? x: null)
 }
 
@@ -325,7 +327,7 @@ export function decode_tensordict_from_json(jsondata:string): TensorDict|Error {
         }
         return tensordict;
     }
-    else return jsonobject as Error;
+    else return new Error('Invalid json')
 }
 
 
@@ -347,7 +349,7 @@ async function initialize_module(path:string, lib:TS_Lib): Promise<PT_ZIP|Error>
     const modulebytes:Uint8Array = pt_zip.torchscript_bytes;
     
     const status:number = 
-        lib.symbols.initialize_module(modulebytes, BigInt(modulebytes.length))
+        lib.symbols.initialize_module(modulebytes.buffer, BigInt(modulebytes.length))
     if(status != 0)
         return new Error(`Could not initialize module ${path}`)
     
@@ -373,6 +375,7 @@ export async function run_module(
     inputfeed: TensorDict, 
     lib:       TS_Lib,
 ): Promise<RunModuleOutput|Error> {
+    await 0;
     const encoded:string|Error = encode_tensordict_as_json(inputfeed)
     if(typeof encoded != 'string')
         return encoded as Error;
@@ -381,10 +384,10 @@ export async function run_module(
     const p_outputbuffer = new BigUint64Array(1)
     const p_outputsize   = new BigUint64Array(1)
     const status:number  = lib.symbols.run_module(
-        inputbuffer,
+        inputbuffer.buffer,
         BigInt(inputbuffer.length),
-        p_outputbuffer,
-        p_outputsize,
+        p_outputbuffer.buffer,
+        p_outputsize.buffer,
         0//,  //debug
     )
     if(status != 0)
@@ -477,7 +480,9 @@ async function inputfeed_from_imageblob(
         return imagedata_rgb as Error;
     
     const imagetensor: common.AnyTensor|Error = common.create_tensor(
-        imagedata_rgb, "uint8", [1,imagedata_rgb.height, imagedata_rgb.width,3]
+        imagedata_rgb.buffer, 
+        "uint8", 
+        [1,imagedata_rgb.height, imagedata_rgb.width,3]
     )
     if(imagetensor instanceof Error)
         return imagetensor as Error;

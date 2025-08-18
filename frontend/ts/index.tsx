@@ -145,7 +145,7 @@ class App extends create_App({
         //'Detection': detectiontab.ObjectDetectionTab,
         //'Detection': detectiontab.SegmentationTab,
         'Detection': detectiontab.InstanceSegmentationTab,
-        'Training':  TrainingTab,
+        //'Training':  TrainingTab,
     },
 }){}
 

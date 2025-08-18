@@ -26,6 +26,7 @@ Deno.test('SettingsModal', async () => {
             if(x == 'get value')
                 return 1;
         },
+        modal:   ()=>{},
         toast:   ()=>{},
     })
 

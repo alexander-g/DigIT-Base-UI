@@ -94,11 +94,11 @@ export class RoI {
     }
 
     /** Export to binary format that can be imported into ImageJ */
-    tobytes(): ArrayBuffer {
+    tobytes(): ArrayBufferLike {
         //NOTE: complicated because of big endianness
 
-        const result:ArrayBuffer[] = [
-            new TextEncoder().encode('Iout'),
+        const result:ArrayBufferLike[] = [
+            new TextEncoder().encode('Iout').buffer,
         ]
         const n_coordinates:number = Math.floor(this.coordinates.length / 2);
 
@@ -147,7 +147,7 @@ export class RoI {
             extrabuffers.push(buffer)
             //NOTE: subpixel coordinates not implemented
         }
-        const extradata:ArrayBuffer = concat(extrabuffers)
+        const extradata:ArrayBufferLike = concat(extrabuffers)
         const header2_offset:number = 64 + extradata.byteLength
         const header2_buffer = new ArrayBuffer(4)
         const header2_view   = new DataView(header2_buffer)
@@ -212,7 +212,7 @@ export function points_max(points:Point[]): Point {
 }
 
 /** Compute the total size of a list of buffers */
-function total_length(x:ArrayBuffer[]): number {
+function total_length(x:ArrayBufferLike[]): number {
     let n:number = 0;
     for(const xi of x)
         n += xi.byteLength;
@@ -220,7 +220,7 @@ function total_length(x:ArrayBuffer[]): number {
 }
 
 /** Concatenate a list of buffers */
-export function concat(buffers:ArrayBuffer[]): ArrayBuffer {
+export function concat(buffers:ArrayBufferLike[]): ArrayBufferLike {
     const nbytes:number = total_length(buffers)
     const result = new Uint8Array(nbytes)
     
@@ -229,7 +229,7 @@ export function concat(buffers:ArrayBuffer[]): ArrayBuffer {
         result.set(new Uint8Array(buffer), offset)
         offset += buffer.byteLength;
     }
-    return result;
+    return result.buffer;
 }
 
 /** Encode a string in UTF16 format (big endian), as Python's `.encode('utf-16be')` */

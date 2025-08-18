@@ -32,7 +32,8 @@ export class ImageData extends Uint8ClampedArray {
         readonly height:   number, 
         readonly width:    number,
         readonly ordering: "CHW"|"HWC" = "HWC" ) {
-            super(rgbdata.buffer)
+            // fcking typescript
+            super(rgbdata.buffer as unknown as Uint8ClampedArray)
     }
 }
 

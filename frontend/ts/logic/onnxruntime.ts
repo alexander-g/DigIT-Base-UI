@@ -298,7 +298,7 @@ export class Session {
         
         const xshape: number[] = [1,rgb.height,rgb.width,3]
         const x: ort.Tensor|Error 
-            = create_ort_tensor(new Uint8Array(rgb.buffer), 'uint8', xshape)
+            = create_ort_tensor(rgb.buffer, 'uint8', xshape)
         if(x instanceof Error)
             return x as Error;
 

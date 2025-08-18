@@ -32,7 +32,7 @@ export abstract class TrainingTab<AS extends AppState> extends TabContent<AS> {
         return <>
             <div 
                 data-tab = {this.props.name}
-                class    = {"ui tab unselectable"} 
+                class    = "ui tab unselectable"
             >
                 <div style = {css}>
                     { this.training_controls() }
