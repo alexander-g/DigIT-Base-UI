@@ -30,14 +30,14 @@ Deno.test('ImageControls', async () => {
     const mousewheel_event:WheelEvent = new window.WheelEvent(
         'wheel', {shiftKey:true, deltaY:-10.0}
     )
-    tbox.dispatchEvent(mousewheel_event)
+    viewbox.dispatchEvent(mousewheel_event)
     asserts.assert( ref.current?.$scale.value! > 1.0, 'Did not zoom' )
     const offset1 = ref.current?.$offset.value;
     asserts.assertEquals(offset0, offset1, 'Offset should not change on zoom before panning')
 
     //test pan
     const mouse_down: MouseEvent = new window.MouseEvent('mousedown', {shiftKey:true})
-    tbox.dispatchEvent(mouse_down)
+    viewbox.dispatchEvent(mouse_down)
     const mouse_move: MouseEvent = new window.MouseEvent(
         'mousemove', {shiftKey:true, buttons:0x01, movementX:10} as MouseEventInit
     )

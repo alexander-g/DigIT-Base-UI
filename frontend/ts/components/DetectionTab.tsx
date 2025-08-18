@@ -155,7 +155,7 @@ extends DetectionTab<S> {
     }
 
     /** @override */
-    columns(): FileTableColumn[] | undefined {
+    override columns(): FileTableColumn[] | undefined {
         return [
             {label:'Files',      width_css_class:'six'}, 
             {label:'Detections', width_css_class:'ten'},
@@ -163,7 +163,7 @@ extends DetectionTab<S> {
     }
 
     /** @override */
-    file_table_row(): FileTableRow<S> {
+    override file_table_row(): FileTableRow<S> {
         return ObjectdetectionRow;
     }
 }
