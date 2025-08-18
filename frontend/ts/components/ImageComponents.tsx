@@ -172,14 +172,14 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
             class       =   "view-box stripes" 
             style       =   {{...stripes_css, ...view_box_css}} 
             onDblClick  =   {this.on_dbl_click.bind(this)}
+            onWheel     =   {this.on_wheel.bind(this)}
+            onMouseDown =   {this.on_mouse_down.bind(this) }
             ref         =   {this.ref}
         >
             {/* Transformbox moves around on user input */}
             <div 
             class       =   "transform-box unselectable set-aspect-ratio-manually" 
             style       =   {{...set_aspect_ratio_css, ...unselectable_css, ...transform_css}}
-            onWheel     =   {this.on_wheel.bind(this)}
-            onMouseDown =   {this.on_mouse_down.bind(this) }
             onMouseMove =   {this.props.on_mouse_move}
             onMouseLeave =  {this.props.on_mouse_leave}
             onContextMenu = {this.props.on_contextmenu}
