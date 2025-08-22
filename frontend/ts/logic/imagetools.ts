@@ -82,7 +82,11 @@ export async function blob_to_image(blob:Blob): Promise<Image|Error> {
     } else {
         const image = new Image()
         image.src   = URL.createObjectURL(blob)
-        await image.decode()
+        try{
+            await image.decode()
+        } catch (error) {
+            return error as Error;
+        }
         return image;
     }
 }
@@ -255,6 +259,7 @@ async function imagedata_to_blob(data:ImageData): Promise<Blob|Error> {
 }
 
 /** Get image data from either HTMLImageElement or EmulatedImage as a blob  */
+export
 async function canvas_to_blob(canvas:Canvas): Promise<Blob|Error> { //TODO: jpeg
     if('toBlob' in canvas) {
         return new Promise( (resolve: (b:Blob|Error) => void ) => {
@@ -428,7 +433,7 @@ export async function get_png_size(blob: Blob): Promise<[number, number]|Error>{
     while (true) {
         const lengthslice:Blob = blob.slice(offset, offset + 4);
         const lengthbuffer:ArrayBuffer = await lengthslice.arrayBuffer();
-        const length:number = new DataView(lengthbuffer).getUint32(0, false);   // can throw, check buffer size
+        const length:number = new DataView(lengthbuffer).getUint32(0, false);   // can throw, check buffer size!
         offset += 4;
 
         const chunktypeslice:Blob = blob.slice(offset, offset + 4);
@@ -439,11 +444,11 @@ export async function get_png_size(blob: Blob): Promise<[number, number]|Error>{
         if (chunktype === 'IHDR') {
             const widthslice:Blob = blob.slice(offset + 4, offset + 8);
             const widthbuffer:ArrayBuffer = await widthslice.arrayBuffer();
-            const width:number = new DataView(widthbuffer).getUint32(0, false); // can throw, check buffer size
+            const width:number = new DataView(widthbuffer).getUint32(0, false); // can throw, check buffer size!
 
             const heightslice:Blob = blob.slice(offset + 8, offset + 12);
             const heightbuffer:ArrayBuffer = await heightslice.arrayBuffer();
-            const height:number = new DataView(heightbuffer).getUint32(0, false) // can throw, check buffer size
+            const height:number = new DataView(heightbuffer).getUint32(0, false) // can throw, check buffer size!
 
             return [width, height];
         } else {
