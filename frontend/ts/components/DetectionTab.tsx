@@ -1,4 +1,4 @@
-import { JSX, signals } from "../dep.ts"
+import { JSX, Signal, signals } from "../dep.ts"
 import type {BaseSettings}   from "../logic/settings.ts"
 import { 
          FileTable,
@@ -47,14 +47,21 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
     is_first: boolean = true;
 
     render(): JSX.Element {
-        const cls_active: 'active'|null = this.is_first ? 'active' : null
+        const cls_active: 'active'|null = this.is_first ? 'active' : null;
+        const anything_loaded: boolean = (this.$files().value.length > 0);
         return (
         <div 
-            class    = {"ui tab segment unselectable " +cls_active} 
+            class    = {"ui tab unselectable " +cls_active + " "+this.cssclass()} 
             data-tab = {this.props.name} 
             style    = "padding:0"
         >
-            { this.file_table() }
+            {
+                anything_loaded
+                ?   this.file_table()
+                :   <NoFilesLoadedInfo />
+            }
+            
+            {/* { this.file_table() } */}
         </div>
         )
     }
@@ -67,7 +74,7 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
             $files            = { this.$files() }
             $processing       = { appstate.$processing }
             $processingmodule = {
-                new signals.Signal(this.processingmodule())
+                new Signal(this.processingmodule())
             }
             columns           = { this.columns() }
             FileTableRow      = { this.file_table_row() }
@@ -109,6 +116,23 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
     $files(): state.InputFileList<state.Input, state.Result> {
         return this.props.appstate.$files;
     }
+
+    /** @virtual */
+    cssclass(): string {
+        return "segment"
+    }
+}
+
+function NoFilesLoadedInfo(): JSX.Element {
+    return <div class="ui icon message">
+        <i class="images outline icon"></i>
+        <div class="content">
+            <div class="header">
+            No Files Loaded
+            </div>
+            <p>Drag and drop images into this window to get started</p>
+        </div>
+    </div>
 }
 
 

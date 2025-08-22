@@ -17,6 +17,7 @@ import {
     Tabs,
     ProcessingBackendConstructor,
 } from "./components/MainContainer.tsx"
+import { SettingsModal, BaseSettingsModal } from "./components/Settings.tsx";
 import { TrainingTab }     from "./components/TrainingTab.tsx";
 import * as detectiontab   from "./components/DetectionTab.tsx"
 import * as objdet         from "./logic/objectdetection.ts";
@@ -34,33 +35,31 @@ import * as instseg        from "./logic/instancesegmentation.ts";
  * @param TopMenu       - JSX component on top of the main content 
  * @param tabs          - Dict mapping tab name to tab JSX component */
 export function create_App<
-//INPUT           extends files.Input,
-//INPUTCLASS      extends files.InputClassInterface<INPUT>,
-//RESULT          extends files.Result,
-//RESULTCLASS     extends files.ResultClassInterface<RESULT>,
-SETTINGS        extends settings.Settings,
-// NOTE: using RESULT instead of InstanceType<RESULTCLASS> is not type-safe for some reason
-APPSTATE        extends state.AppState<
-    //InstanceType<INPUTCLASS>, 
-    //InstanceType<RESULTCLASS>, 
-    SETTINGS
->,
-TOPMENU         extends TopMenu,
+SETTINGS extends settings.Settings,
+APPSTATE extends state.AppState<SETTINGS>,
+SETTINSMODAL extends SettingsModal<SETTINGS>,
 >(
     options: {
     id:              string, 
     AppState:        util.Constructor<APPSTATE>,
-    //InputClass:      INPUTCLASS,
-    //ResultClass:     RESULTCLASS,
+    SettingsModal:   util.Constructor<SETTINSMODAL>,
     settingshandler: settings.SettingsHandler<SETTINGS>,
     backend:         ProcessingBackendConstructor<APPSTATE>,
-    TopMenu:         util.Constructor<TOPMENU>,
     tabs:            Tabs<APPSTATE>,
     },
 ){
     return class App extends preact.Component {
+        
+        /** @virtual Constructor for the menu at the top. */
+        TopMenuClass: util.Constructor<TopMenu> = TopMenu;
+
+        /** The state of the app where all data is stored */
         appstate: APPSTATE = new options.AppState()
+        /** Backend constructor, needed downstream */
         backend:  ProcessingBackendConstructor<APPSTATE> = options.backend;
+
+        
+        settings_modal: preact.RefObject<SettingsModal> = preact.createRef()
 
         render(): JSX.Element {
             return (
@@ -70,19 +69,26 @@ TOPMENU         extends TopMenu,
                 onDrop      =   {this.on_drop.bind(this)}
             >
                 <SVGFilters />  {/* Must go first for cosmetic reasons */}
-                <options.TopMenu
-                    $settings           = {this.appstate.$settings}
-                    $available_models   = {this.appstate.$available_models}
-                    settingshandler     = {options.settingshandler}
+                <this.TopMenuClass
                     on_inputfiles       = {this.on_new_files.bind(this)}
                     on_inputfolder      = {this.on_new_files.bind(this)}
                     on_annotationfiles  = {this.on_new_files.bind(this)}
                     input_filetypes     = {this.appstate.InputClass.filetypes}
+                    on_open_settings    = {
+                        () => this.settings_modal.current!.show_modal()
+                    }
                 />
                 <MainContainer<APPSTATE>
                     appstate = {this.appstate} 
                     tabs     = {options.tabs}
                     backend  = {options.backend}
+                />
+
+                <options.SettingsModal
+                    ref                 = {this.settings_modal}
+                    $available_models   = {this.appstate.$available_models} 
+                    $settings           = {this.appstate.$settings}
+                    settingshandler     = {options.settingshandler}
                 />
             </body>
             )
@@ -135,11 +141,13 @@ class App extends create_App({
 
     settingshandler: new settings.BaseSettingsHandler(), 
     //settingshandler: new settings.StaticPageBaseSettingsHandler(), 
+
+    SettingsModal:   BaseSettingsModal,
     
     //backend:         ORT_Processing,
     backend:         RemoteProcessing,
 
-    TopMenu:         TopMenu,
+    //TopMenu:         TopMenu,
     tabs: {
         //'Detection': detectiontab.DetectionTab,
         //'Detection': detectiontab.ObjectDetectionTab,

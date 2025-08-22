@@ -59,9 +59,9 @@ export class InputImage extends preact.Component<InputImageProps> {
         const css = {width: '100%'}
         const extra_css:JSX.CSSProperties = this.props.$css?.value ?? {}
         return <AutoscaleImage 
-            max_size = { {width:4096, height:4096} }
+            max_size_mp = { 20 }
             jpeg_ok  = {true}
-            class   =   {"input-image"} 
+            class   =   "input-image"
             onLoad  =   {this.on_load.bind(this)} 
             style   =   {{...css, ...styles.unselectable_css, ...extra_css}}
             ref     =   {this.ref}
@@ -286,8 +286,8 @@ type AutoscaleImageProps = ImageProps & {
     /** @input The curent zoom level */
     $scale?: Readonly<Signal<number>>;
 
-    /** Maximum acceptable height / width. Will scale if image exceeds this. */
-    max_size: ImageSize;
+    /** Maximum acceptable size in megapixels. Will scale if image exceeds this. */
+    max_size_mp: number;
 
     /** Whether or not JPEG compression is acceptable when scaling. */
     jpeg_ok: boolean;
@@ -308,8 +308,11 @@ export class AutoscaleImage extends preact.Component<AutoscaleImageProps> {
     on_load = () => {
         //const { width:W, height:H } = this.original_size();
         const { width:W, height:H } = this.displayed_size();
-        const { width:max_w, height:max_h } =  this.props.max_size
-        const scale:number = Math.min(max_w / W, max_h / H, 1);
+        const size_mp:number = W * H / 1000000
+        const scale:number = Math.min( 
+            Math.sqrt(this.props.max_size_mp) / Math.sqrt(size_mp), 
+            1
+        );
         // 1.0 is prone to infinite loop
         if(scale < 0.95){
             this.rescale_image(scale)
@@ -323,7 +326,9 @@ export class AutoscaleImage extends preact.Component<AutoscaleImageProps> {
         //const { width:W, height:H } = this.original_size();
         const { width:W, height:H } = this.displayed_size();
         const new_size:ImageSize = { width: W*scale, height: H*scale }
-        console.log('Scaling image to ', new_size)
+        console.log(
+            `Scaling image to (${new_size.width} x ${new_size.height}) (=${scale})`
+        )
         const blob:Blob|Error = 
             await imagetools.image_to_blob(this.ref.current!, new_size)
         if(blob instanceof Error){

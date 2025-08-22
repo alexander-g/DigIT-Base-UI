@@ -1,13 +1,13 @@
-import { JSX, preact, Signal, signals }              from "../dep.ts"
-import * as settings                        from "../logic/settings.ts";
+import { JSX, preact, Signal } from "../dep.ts"
+import * as settings           from "../logic/settings.ts";
 import type { 
     ModelInfo, 
     Settings, 
     AvailableModels,
     SettingsResponse,
-}         from "../logic/settings.ts";
-import { show_error_toast }                 from "./errors.ts";
-import * as ui_util from "./ui_util.ts"
+} from "../logic/settings.ts";
+import { show_error_toast } from "./errors.ts";
+import * as ui_util         from "./ui_util.ts"
 
 
 

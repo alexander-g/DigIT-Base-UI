@@ -1,9 +1,8 @@
 import { JSX, preact }      from "../dep.ts"
 import { SettingsButton }   from "./Settings.tsx"
 import { page_wide_css }    from "./styles.ts";
-import * as SettingsTSX     from "./Settings.tsx"
 import { Constructor }      from "../util.ts";
-import type { Settings, AvailableModels } from "../logic/settings.ts";
+import type { Settings } from "../logic/settings.ts";
 
 
 function Logo(): JSX.Element {
@@ -106,16 +105,13 @@ function FileMenu(props:FileMenuProps): JSX.Element {
 }
 
 
-type TopMenuProps<S extends Settings = Settings> 
-    = SettingsTSX.SettingsModalProps<S> & FileMenuProps;
+type TopMenuProps<S extends Settings = Settings> = FileMenuProps & {
+    on_open_settings: () => void;
+};
 
 
 /** Menu bar on the top of the page, containing file menu and settings button */
 export class TopMenu extends preact.Component<TopMenuProps> {
-    settings_modal: preact.RefObject<SettingsTSX.SettingsModal> = preact.createRef()
-
-    /** @virtual Overwritten downstream */
-    SettingsModal: Constructor<SettingsTSX.SettingsModal>  = SettingsTSX.BaseSettingsModal
 
     render(): JSX.Element {
         return <>
@@ -127,17 +123,8 @@ export class TopMenu extends preact.Component<TopMenuProps> {
                     on_annotationfiles = {this.props.on_annotationfiles}
                     input_filetypes    = {this.props.input_filetypes}
                 />
-                <SettingsButton on_click={
-                    () => this.settings_modal.current?.show_modal()
-                }/>
+                <SettingsButton on_click = {this.props.on_open_settings}/>
             </div>
-            
-            <this.SettingsModal
-                ref                 = {this.settings_modal}
-                $available_models   = {this.props.$available_models} 
-                $settings           = {this.props.$settings}
-                settingshandler     = {this.props.settingshandler}
-            />
         </>
     }
 }
