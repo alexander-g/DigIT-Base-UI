@@ -2,24 +2,26 @@ import { asserts, path }   from "./dep.ts";
 import * as imagetools     from "../../frontend/ts/logic/imagetools.ts"
 
 
-const IMAGE_ASSET0_PATH = path.fromFileUrl(
+const IMAGE_ASSET0_JPG_PATH = path.fromFileUrl(
     import.meta.resolve('./assets/test_image0.jpg')
 )
 
-const IMAGE_ASSET1_PATH = path.fromFileUrl(
+const IMAGE_ASSET1_BIGTIFF_PATH = path.fromFileUrl(
     import.meta.resolve('./assets/bigtiff.tif')
 )
 
-const IMAGE_ASSET_PNG_PATH = path.fromFileUrl(
-    import.meta.resolve('./assets/test_image1.png')
-)
-
-const IMAGE_ASSET2_PATH = path.fromFileUrl(
+const IMAGE_ASSET2_TIFF_PATH = path.fromFileUrl(
     import.meta.resolve('./assets/test_image2.tiff')
 )
 
+const IMAGE_ASSET3_PNG_PATH = path.fromFileUrl(
+    import.meta.resolve('./assets/test_image1.png')
+)
+
+
+
 Deno.test("imagetools.blob_to_u8rgb", async() => {
-    const jpgdata = Deno.readFileSync(IMAGE_ASSET0_PATH)
+    const jpgdata = Deno.readFileSync(IMAGE_ASSET0_JPG_PATH)
     const jpgblob = new Blob([jpgdata])
     const data    = await imagetools.blob_to_rgb( jpgblob )
     asserts.assertNotInstanceOf(data, Error, data.toString())
@@ -30,7 +32,7 @@ Deno.test("imagetools.blob_to_u8rgb", async() => {
 })
 
 Deno.test("imagetools.blob_to_u8rgb+resized", async() => {
-    const jpgdata = Deno.readFileSync(IMAGE_ASSET0_PATH)
+    const jpgdata = Deno.readFileSync(IMAGE_ASSET0_JPG_PATH)
     const jpgblob = new Blob([jpgdata])
     const size    = { 
         width: Math.floor(Math.random()*64+128), 
@@ -71,44 +73,59 @@ Deno.test("f32_mono_to_rgba_u8", () => {
 
 
 Deno.test('is_bigtiff', async () => {
-    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET1_PATH) ])
+    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET1_BIGTIFF_PATH) ])
     const result = await imagetools.is_bigtiff(blob)
     asserts.assert(result)
 
-    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET2_PATH) ])
+    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET2_TIFF_PATH) ])
     const result2 = await imagetools.is_bigtiff(blob2)
     asserts.assertFalse(result2)
 })
 
 Deno.test('is_png', async () => {
-    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET_PNG_PATH) ])
+    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET3_PNG_PATH) ])
     const result = await imagetools.is_png(blob)
     asserts.assert(result)
 
-    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET2_PATH) ])
+    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET2_TIFF_PATH) ])
     const result2 = await imagetools.is_png(blob2)
     asserts.assertFalse(result2)
 })
 
 
 Deno.test('get_jpg_size', async ()  => {
-    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET0_PATH) ])
+    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET0_JPG_PATH) ])
     const result = await imagetools.get_jpg_size(blob)
-    asserts.assertEquals(result, [128, 100])
+    asserts.assertEquals(result, {width:128, height:100})
 
-    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET_PNG_PATH) ])
+    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET3_PNG_PATH) ])
     const result2 = await imagetools.get_jpg_size(blob2)
     asserts.assertInstanceOf(result2, Error)
 })
 
 
 Deno.test('get_png_size', async ()  => {
-    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET_PNG_PATH) ])
+    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET3_PNG_PATH) ])
     const result = await imagetools.get_png_size(blob)
-    asserts.assertEquals(result, [100, 100])
+    asserts.assertEquals(result, {width:100, height:100})
 
-    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET0_PATH) ])
+    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET0_JPG_PATH) ])
     const result2 = await imagetools.get_png_size(blob2)
     asserts.assertInstanceOf(result2, Error)
+})
+
+
+Deno.test('get_tiff_size', async ()  => {
+    const blob = new Blob([ Deno.readFileSync(IMAGE_ASSET2_TIFF_PATH) ])
+    const result = await imagetools.get_tiff_size(blob)
+    asserts.assertEquals(result, {width:256, height:256})
+
+    const blob2 = new Blob([ Deno.readFileSync(IMAGE_ASSET1_BIGTIFF_PATH) ])
+    const result2 = await imagetools.get_tiff_size(blob2)
+    asserts.assertEquals(result2, {width:58, height:23})
+
+    const blob3 = new Blob([ Deno.readFileSync(IMAGE_ASSET0_JPG_PATH) ])
+    const result3 = await imagetools.get_tiff_size(blob3)
+    asserts.assertInstanceOf(result3, Error)
 })
 

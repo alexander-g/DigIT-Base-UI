@@ -98,7 +98,7 @@ export async function blob_to_rgb(
     blob:        Blob|File, 
     targetsize?: util.ImageSize
 ): Promise<ImageData|Error> {
-    if(is_tiff_file(blob)){
+    if(await is_tiff_file(blob)){
         if(targetsize != undefined)
             return new Error(
                 'Cannot specify a target size for tiff images (not implemented)'
@@ -288,39 +288,172 @@ export function get_image_size(image:Image): util.ImageSize {
 
 
 
-export function is_tiff_file(x:Blob|File): boolean {
-    return (
-        x.type == 'image/tiff' 
-        || 'name' in x && (/\.tif[f]?$/).test(x.name)
-    )
+export async function is_tiff_file(x:Blob): Promise<boolean> {
+    const tifftype: TiffType|Error = await get_tiff_type(x)
+    return !(tifftype instanceof Error)
 }
 
 export async function is_bigtiff(x:Blob): Promise<boolean> {
-    const header:Blob = x.slice(0, 4);
-    const buffer:ArrayBuffer = await header.arrayBuffer();
-    const view = new Uint8Array(buffer);
-    
-    if (view.length < 4) {
+    const tifftype: TiffType|Error = await get_tiff_type(x)
+    if(tifftype instanceof Error)
         return false;
-    }
-    
-    // little-endian BigTIFF: "II\x2B\x00"
-    const littleEndianBigTIFF:boolean = (
-        view[0] === 0x49 
-        && view[1] === 0x49 
-        && view[2] === 0x2B 
-        && view[3] === 0x00
-    )
-                                    
-    // big-endian BigTIFF: "MM\x00\x2B"
-    const bigEndianBigTIFF:boolean = (
-        view[0] === 0x4D 
-        && view[1] === 0x4D 
-        && view[2] === 0x00 
-        && view[3] === 0x2B
-    )
-    return littleEndianBigTIFF || bigEndianBigTIFF;
+    //else
+    return tifftype.bigtiff;
 }
+
+export type TiffType = {
+    endian: 'little'|'big';
+    bigtiff: boolean;
+}
+
+export async function get_tiff_type(x:Blob): Promise<TiffType|Error> {
+    const endianbytes:Uint8Array = new Uint8Array(
+        await x.slice(0,2).arrayBuffer()
+    )
+    if(endianbytes.byteLength < 2)
+        return new Error('Unexpected EOF');
+    
+    let endian:'little'|'big';
+    if(endianbytes[0] == 0x49 && endianbytes[1] == 0x49)
+        endian = 'little';
+    else if(endianbytes[0] == 0x4D && endianbytes[1] == 0x4D)
+        endian = 'big';
+    else
+        return new Error('Invalid TIFF')
+    
+    const versionview = new DataView(await x.slice(2,4).arrayBuffer())
+    if(versionview.byteLength < 2)
+        return new Error('Unexpected EOF')
+    
+    const version:number = versionview.getUint16(0, endian == 'little')
+    let bigtiff:boolean;
+    if(version == 42)
+        bigtiff = false;
+    else if(version == 43)
+        bigtiff = true;
+    else
+        return new Error('Invalid TIFF')
+    
+    return {endian, bigtiff}
+}
+
+
+/** Maximum safe 'number' */
+const MAX_SAFE_INTEGER = 9007199254740991;
+
+async function read_uint_from_blob(
+    x:      Blob, 
+    offset: number, 
+    length: 1|2|4|8, 
+    endian: 'little'|'big'
+): Promise<number|Error> {
+    x = x.slice(offset, offset+length)
+    if(x.size < length)
+        return new Error('Unexpected EOF')
+    
+    const view = new DataView(await x.arrayBuffer())
+    if(length == 1)
+        return view.getUint8(0)
+    else if(length == 2)
+        return view.getUint16(0, endian == 'little')
+    else if(length == 4)
+        return view.getUint32(0, endian == 'little')
+    else if(length == 8){
+        const as_bigint:bigint = view.getBigUint64(0, endian == 'little')
+        if(as_bigint > MAX_SAFE_INTEGER)
+            return new Error('Number too large')
+        return Number(as_bigint);
+    }
+    else return new Error('Invalid byte length')
+}
+
+export async function get_tiff_size(x:Blob): Promise<util.ImageSize|Error> {
+    const tifftype: TiffType|Error = await get_tiff_type(x)
+    if(tifftype instanceof Error)
+        return tifftype as Error;
+    
+    // skip the first 4 bytes (signature)
+    //x = x.slice(4)
+    let off:number = 4;
+
+    const little_end: boolean = (tifftype.endian == 'little')
+    const bigtiff: boolean = tifftype.bigtiff;
+    
+    // Read the offset to the first IFD
+    let ifd_offset: number;
+    if(!bigtiff){
+        const offsetview = new DataView(await x.slice(off,off+4).arrayBuffer())
+        if(offsetview.byteLength < 4)
+            return new Error('Unexpected EOF')
+        
+        ifd_offset = offsetview.getUint32(0, little_end)
+    } else {
+        // if it's BigTIFF, there should be an extra 4 bytes, offset is then 8
+        const offsetview = new DataView(await x.slice(off+4,off+4+8).arrayBuffer())
+        if(offsetview.byteLength < 8)
+            return new Error('Unexpected EOF')
+        
+        const ifd_offset_bigint:bigint = offsetview.getBigUint64(0, little_end)
+        if(ifd_offset_bigint > MAX_SAFE_INTEGER)
+            return new Error('File to large')
+        ifd_offset = Number(ifd_offset_bigint);
+    }
+
+    off = ifd_offset;
+    let len:1|2|4|8 = (bigtiff? 8 : 2)
+    const num_entries:number|Error = 
+        await read_uint_from_blob(x, off, len, tifftype.endian)
+    if(num_entries instanceof Error)
+        return num_entries as Error;
+    
+    off = off + len;
+    
+    let width:  number|undefined = undefined;
+    let height: number|undefined = undefined;
+    for(let i:number = 0; i < num_entries; i++) {
+        const tag:number|Error = 
+            await read_uint_from_blob(x, off,   2, tifftype.endian)
+        if(tag instanceof Error)
+            return tag as Error;
+        
+        // not used:
+        // const field_type:number|Error = 
+        //     await read_uint_from_blob(x, off+2, 2, tifftype.endian)
+        len = (bigtiff? 8 : 4)
+        const count:number|Error = 
+            await read_uint_from_blob(x, off+4, len, tifftype.endian)
+        if(count instanceof Error)
+            return count as Error;
+        const value_offset:number|Error = 
+            await read_uint_from_blob(x, off+4+len, len, tifftype.endian)
+        if(value_offset instanceof Error)
+            return value_offset as Error;
+        
+        off = off + 4 + len + len;
+        
+        if(tag == 256){  // ImageWidth
+            if(count == 1)
+                width = value_offset;
+            else
+                return new Error(`Unexpected IFD count in tag ImageWidth: ${count}`)
+        } else if (tag == 257){ // ImageLength
+            if(count == 1)
+                height = value_offset;
+            else
+                return new Error(`Unexpected IFD count in tag ImageLength: ${count}`)
+        }
+
+        if(width != undefined && height != undefined)
+            break;
+    }
+
+    if(width == undefined || height == undefined)
+        return new Error('Image size not found')
+    
+    return {width, height};
+}
+
+
 
 export async function load_tiff_file(
     file:    Blob, 
@@ -357,6 +490,7 @@ export async function load_tiff_file(
     return null;
 }
 
+/** Check if blob/file is a png file without reading the full file */
 export async function is_png(blob:Blob): Promise<boolean> {
     const headerblob:Blob = blob.slice(0, 8);
   
@@ -383,57 +517,73 @@ export async function is_png(blob:Blob): Promise<boolean> {
 }
 
 
-export async function get_jpg_size(blob: Blob): Promise<[number, number]|Error>{
-    const buffer:ArrayBuffer = await blob.slice(0, blob.size).arrayBuffer();
-    const dataview = new DataView(buffer);
 
-    // Csheck for JPEG signature
-    if (dataview.getUint8(0) !== 0xff || dataview.getUint8(1) !== 0xd8) {
-        return new Error("Not a valid JPEG file");
-    }
+export async function is_jpg_file(x:Blob): Promise<boolean> {
+    const signature = new Uint8Array(await x.slice(0, 2).arrayBuffer());
+    if(signature.length < 2)
+        return false;
+    
+    const is_jpg:boolean = (signature[0] == 0xff) && (signature[1] == 0xd8)
+    return is_jpg;
+}
+
+
+/** Read the image size from a jpg blob/file without reading the full file */
+export async function get_jpg_size(blob: Blob): Promise<util.ImageSize|Error>{
+    if(! (await is_jpg_file(blob)) )
+        return new Error("Not a valid JPEG file")
 
     let offset:number = 2;
-    while (offset < dataview.byteLength) {
-        const marker:number = dataview.getUint8(offset);
+    while (offset < blob.size) {
+        const marker:number|Error = 
+            await read_uint_from_blob(blob, offset, 1, 'big');
         if (marker !== 0xff) {
             return new Error("Invalid JPEG format");
         }
-        const markerType:number = dataview.getUint8(offset + 1);
+
+        const markerType:number|Error = 
+            await read_uint_from_blob(blob, offset+1, 1, 'big');
+        if(markerType instanceof Error)
+            return markerType as Error;
+        
         if (markerType === 0xc0 || markerType === 0xc2) {
-            const height:number = dataview.getUint16(offset + 5);
-            const width:number = dataview.getUint16(offset + 7);
-            return [width, height];
+            const height:number|Error = 
+                await read_uint_from_blob(blob, offset+5, 2, 'big');
+            if(height instanceof Error)
+                return height as Error;
+            
+            const width:number|Error = 
+                await read_uint_from_blob(blob, offset+7, 2, 'big');
+            if(width instanceof Error)
+                return width as Error;
+            
+            return {width, height};
         } else {
-            const length:number = dataview.getUint16(offset + 2);
+            const length:number|Error = 
+                await read_uint_from_blob(blob, offset+2, 2, 'big');
+            if(length instanceof Error)
+                return length as Error;
+            
             offset += length + 2; // Move to the next segment
         }
     }
     return new Error("No valid size found");
 }
 
-export async function get_png_size(blob: Blob): Promise<[number, number]|Error>{
-    const signatureslice:Blob = blob.slice(0, 8);
-    const signature = new Uint8Array(await signatureslice.arrayBuffer());
-
+/** Read the image size from a png blob/file without reading the full file */
+export async function get_png_size(blob: Blob): Promise<util.ImageSize|Error>{
     // Check PNG signature
-    const valid_png:boolean = 
-        signature[0] == 137 
-        && signature[1] == 80
-        && signature[2] == 78
-        && signature[3] == 71
-        && signature[4] == 13
-        && signature[5] == 10
-        && signature[6] == 26
-        && signature[7] == 10
+    const valid_png:boolean = await is_png(blob)
     if (!valid_png)
         return new Error("Not a valid PNG file");
-
     
     let offset:number = 8;
     while (true) {
         const lengthslice:Blob = blob.slice(offset, offset + 4);
         const lengthbuffer:ArrayBuffer = await lengthslice.arrayBuffer();
-        const length:number = new DataView(lengthbuffer).getUint32(0, false);   // can throw, check buffer size!
+        if(lengthbuffer.byteLength < 4)
+            return new Error('Unexpected EOF');
+        const length:number = new DataView(lengthbuffer).getUint32(0, false);
         offset += 4;
 
         const chunktypeslice:Blob = blob.slice(offset, offset + 4);
@@ -444,17 +594,39 @@ export async function get_png_size(blob: Blob): Promise<[number, number]|Error>{
         if (chunktype === 'IHDR') {
             const widthslice:Blob = blob.slice(offset + 4, offset + 8);
             const widthbuffer:ArrayBuffer = await widthslice.arrayBuffer();
-            const width:number = new DataView(widthbuffer).getUint32(0, false); // can throw, check buffer size!
+            if(widthbuffer.byteLength < 4)
+                return new Error('Unexpected EOF');
+            const width:number = new DataView(widthbuffer).getUint32(0, false);
 
             const heightslice:Blob = blob.slice(offset + 8, offset + 12);
             const heightbuffer:ArrayBuffer = await heightslice.arrayBuffer();
-            const height:number = new DataView(heightbuffer).getUint32(0, false) // can throw, check buffer size!
+            if(heightbuffer.byteLength < 4)
+                return new Error('Unexpected EOF');
+            const height:number = new DataView(heightbuffer).getUint32(0, false)
 
-            return [width, height];
+            return {width, height};
         } else {
             // Skip the chunk data and CRC
             offset += length + 12; // 4 bytes for length, 4 for type, 4 for CRC
         }
     }
+}
+
+
+/** Read the image size of JPG, TIFF or PNG files without loading the full file */
+export async function read_image_size(x:Blob): Promise<util.ImageSize|Error> {
+    let size:util.ImageSize|Error = await get_jpg_size(x)
+    if(!(size instanceof Error))
+        return size;
+    
+    size = await get_tiff_size(x)
+    if(!(size instanceof Error))
+        return size;
+    
+    size = await get_png_size(x)
+    if(!(size instanceof Error))
+        return size;
+    
+    return new Error('Could not get image size')
 }
 

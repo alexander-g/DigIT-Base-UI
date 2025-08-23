@@ -108,7 +108,7 @@ export async function set_image_src(
     img:   HTMLImageElement, 
     input: Blob|string|null
 ): Promise<string|Blob|null|Error> {
-    if( input instanceof File && is_tiff_file(input)) {
+    if( input instanceof File && await is_tiff_file(input)) {
         const blob:Blob|null = await load_tiff_file_as_blob(input)
         await set_image_src(img, blob);
         return blob;
