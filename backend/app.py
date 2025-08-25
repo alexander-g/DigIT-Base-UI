@@ -1,11 +1,19 @@
-import os, sys, shutil, glob, tempfile, json, webbrowser, subprocess
+import argparse
+import atexit
+import glob
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
 import typing as tp
+import webbrowser
 import warnings
 warnings.simplefilter('ignore')
 
 import flask
 
-import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--host',    type=str, default='localhost')
 parser.add_argument('--port',    type=int, default=5000)
@@ -67,6 +75,7 @@ class App(flask.Flask):
         @self.route('/')
         def index():
             self.recompile_static()
+            setup_cache(self.cache_path)
             return self.send_static_file('index.html')
         
         @self.route('/images/<path:path>')
@@ -95,6 +104,38 @@ class App(flask.Flask):
             if os.path.exists(fullpath):
                 os.remove(fullpath)
             return 'OK'
+        
+        @self.route('/resize_image', methods=['POST'])
+        def resize_image():
+            '''Convert bigtiff to jpeg'''
+            files = flask.request.files.getlist("files")
+            if len(files) != 1:
+                flask.abort(400, 'No Files')
+            
+            try:
+                W = int(flask.request.form.get('width'))
+                H = int(flask.request.form.get('height'))
+                new_size = (W,H)
+            except:
+                flask.abort(400, 'No Size')
+
+            f = files[0]            
+            fullpath = \
+                self.path_in_cache(os.path.basename(f.filename), abort_404=False)
+            temppath = fullpath + '.tmp'
+            # save continuously as data arrives
+            with open(temppath, 'wb') as tempf:
+                shutil.copyfileobj(f.stream, tempf, length=64*1024)
+            os.replace(temppath, fullpath)
+
+            jpeg_path, [og_height, og_width] = \
+                backend.processing.resize_image(fullpath, new_size, jpeg_ok=True)
+            
+            response = flask.send_file(jpeg_path)
+            response.headers['X-Original-Image-Width']  = og_width
+            response.headers['X-Original-Image-Height'] = og_height
+            return response
+
         
         self.settings = backend.settings.Settings()
         @self.route('/settings', methods=['GET', 'POST'])
@@ -210,7 +251,6 @@ class App(flask.Flask):
 def setup_cache(cache_path):
     shutil.rmtree(cache_path, ignore_errors=True)
     os.makedirs(cache_path)
-    import atexit
     atexit.register(lambda: shutil.rmtree(cache_path, ignore_errors=True))
 
 

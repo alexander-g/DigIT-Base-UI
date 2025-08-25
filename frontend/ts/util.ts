@@ -12,8 +12,14 @@ export function upload_file_no_throw(
     file: File|File[], 
     // deno-lint-ignore no-inferrable-types
     url:  string  = 'file_upload',
+    /** Optional extra parameters to send via FormData */
+    params?: Record<string, string>,
 ): Promise<Response|Error> {
     const data = new FormData()
+    for( const [k,v] of Object.entries(params ?? {}) ){
+        data.append(k, v)
+    }
+    
     if(file instanceof File)
         data.append('files', file);
     else {
@@ -46,13 +52,13 @@ export function url_for_image(imagename:string, cachebuster = true): string {
 }
 
 /** Request image from backend, returning a blob */
-export async function fetch_image_as_blob(imagename:string): Promise<Blob|Error> {
+export async function fetch_image_as_blob(imagename:string): Promise<File|Error> {
     const response:Response|Error = await fetch_no_throw(url_for_image(imagename));
     if(response instanceof Error)
         return response;
     
-    const blob:Blob         = await response.blob()
-    return blob;
+    const blob:Blob = await response.blob()
+    return new File([blob], imagename);
 }
 
 /** Request image from backend, returning a blob object url */

@@ -1,10 +1,26 @@
 import { preact, JSX, signals, Signal }     from "../dep.ts"
 import type { ImageSize, Point }            from "../util.ts"
-import { ResizedImageBlob, set_image_src }  from "./file_input.ts"
+import * as util                            from "../util.ts"
 import * as styles                          from "./styles.ts"
 import { start_drag }                       from "./ui_util.ts";
 import { InputImageFile }                   from "./state.ts";
 import * as imagetools                      from "../logic/imagetools.ts"
+import { 
+    load_tiff_file, 
+    is_tiff_file, 
+    is_bigtiff,
+    read_image_size,
+} from "../logic/imagetools.ts"
+
+
+
+/** Maximum image size to display in original, scale down otherwise */
+const MAX_SIZE_MEGAPIXELS = 20;
+/** Maximum image height/width to display in original, scale down otherwise
+ *  (Browser limit) */
+const MAX_SIZE_HEIGHT_WIDTH:number = 1024 * 32 -1;
+
+
 
 
 export type InputImageProps = {
@@ -32,7 +48,7 @@ export type InputImageProps = {
 export class InputImage extends preact.Component<InputImageProps> {
 
     /** Ref to the HTML image element */
-    ref: preact.RefObject<AutoscaleImage> = preact.createRef()
+    ref: preact.RefObject<HTMLImageElement> = preact.createRef()
 
     /** Load image as soon as it is beeing displayed in the file table, once */
     #dispose_init?: () => void;
@@ -58,9 +74,9 @@ export class InputImage extends preact.Component<InputImageProps> {
     render(): JSX.Element {
         const css = {width: '100%'}
         const extra_css:JSX.CSSProperties = this.props.$css?.value ?? {}
-        return <AutoscaleImage 
-            max_size_mp = { 20 }
-            jpeg_ok  = {true}
+        return <img 
+            //max_size_mp = { 20 }
+            //jpeg_ok  =  { true }
             class   =   "input-image"
             onLoad  =   {this.on_load.bind(this)} 
             style   =   {{...css, ...styles.unselectable_css, ...extra_css}}
@@ -85,9 +101,10 @@ export class InputImage extends preact.Component<InputImageProps> {
 
             if(status instanceof Error){
                 // TODO
+                console.error('Failed to set image src:', status.message)
                 return
             }
-            if(status instanceof ResizedImageBlob)
+            if(status instanceof ResizedImageFile)
                 this.props.$og_size.value = status.og_size;
             
         }
@@ -313,6 +330,7 @@ export class AutoscaleImage extends preact.Component<AutoscaleImageProps> {
             Math.sqrt(this.props.max_size_mp) / Math.sqrt(size_mp), 
             1
         );
+        // TODO: still check for not exceeding 30k pixels in each size!
         // 1.0 is prone to infinite loop
         if(scale < 0.95){
             this.rescale_image(scale)
@@ -365,4 +383,165 @@ export class AutoscaleImage extends preact.Component<AutoscaleImageProps> {
     }
 
 }
+
+
+
+
+/** Set the `src` attribute of an image element as well as some other chores. */
+export async function set_image_src(
+    img:   HTMLImageElement, 
+    input: Blob|string|null
+): Promise<string|Blob|File|null|Error> {
+    if(input instanceof Blob && !(input instanceof File)){
+        input = new File([input], 'placeholder.png')
+    }
+
+    if(input instanceof File) {
+        // get image size
+        const size:ImageSize|Error = await read_image_size(input)
+        if(size instanceof Error)
+            return size as Error;
+        
+        const display_size: ImageSize = get_display_size(size)
+
+        // if image size larger than 30k need to send to flask to handle this
+        if(size.height > MAX_SIZE_HEIGHT_WIDTH || size.width > MAX_SIZE_HEIGHT_WIDTH){
+            //   send to flask and resize to display size
+            const response:File|Error = 
+                await resize_image_via_flask(input, display_size);
+            if(response instanceof Error)
+                return response as Error;
+            //else
+            input = response;
+        } else if(await is_tiff_file(input)) {
+            //const new_input:Blob|null = await load_tiff_file_as_blob(input, display_size)                                   // TODO!
+            const new_input:Blob|null = await load_tiff_file_as_blob(input)
+            if(new_input instanceof Blob) {
+                input = new File([new_input], input.name, {type: input.type});
+            }
+            else return new Error('Could not load TIFF file')
+        }
+
+        const url:string = URL.createObjectURL(input)
+        img.style.visibility = '';
+        img.addEventListener( 'load', () => URL.revokeObjectURL(url), {once:true} )
+        img.src = url;
+        return url;
+    } else if (util.is_string(input)){
+        const url = input as string;
+        img.style.visibility = '';
+        img.src = url;
+        return url;
+    } else if (input == null) {
+        //hidden to prevent the browser showing a placeholder
+        img.style.visibility = 'hidden';
+        img.removeAttribute('src')
+        return null;
+    } else {
+        // TODO: need to show some kind of error to the user
+        return TypeError(`Cannot set image src to ${input}`)
+    }
+}
+
+/** Suggest a smaller image size to display in the browser if needed */
+function get_display_size(size:ImageSize): ImageSize {
+    const { width:W, height:H } = size;
+    
+    const size_mp:number  = W * H / 1000000
+    const scale_mp:number = Math.sqrt(MAX_SIZE_MEGAPIXELS) / Math.sqrt(size_mp);
+    const scale_h:number  = MAX_SIZE_HEIGHT_WIDTH / H;
+    const scale_w:number  = MAX_SIZE_HEIGHT_WIDTH / W;
+    const scale:number = Math.min(
+        scale_mp,
+        scale_h,
+        scale_w,
+        1.0,
+    )
+
+    const display_size:ImageSize = { width: W*scale, height: H*scale }
+    return display_size;
+}
+
+
+export 
+async function load_tiff_file_as_blob(file:File, page_nr = 0): Promise<Blob|null> {
+    // cannot load bigtiffs in JS at the moment, need flask to handle it
+    if(await is_bigtiff(file)){
+        return convert_bigtiff_via_flask(file)
+    }
+    const rgba: ImageData|null = await load_tiff_file(file, page_nr)
+    if(rgba != null) {
+        const canvas: HTMLCanvasElement = document.createElement('canvas')
+        canvas.width  = rgba.width
+        canvas.height = rgba.height
+        
+        const ctx: CanvasRenderingContext2D|null = canvas.getContext('2d')
+        if(!ctx)
+            return null;
+        
+        ctx.putImageData(rgba, 0, 0);
+        return new Promise( (resolve: (x:Blob|null) => void) => {
+            canvas.toBlob((blob: Blob|null )=>  resolve(blob), 'image/jpeg', 0.92);
+        } )
+    }
+    return null;
+}
+
+
+/** An image blob that used to be larger. Contains its original size. */
+export class ResizedImageFile extends File {
+    constructor(
+        public og_size:  ImageSize,
+        ...args: ConstructorParameters<typeof File>
+    ){
+        super(...args)
+    }
+}
+
+
+/** Send bigtiff file to flask to convert it to a smaller jpeg */
+async function convert_bigtiff_via_flask(file:File): Promise<Blob|null> {
+    const response:Response|Error = 
+        await util.upload_file_no_throw(file, 'bigtiff')
+    if(response instanceof Error)
+        return null;
+
+    const og_width: string|null = response.headers.get('X-Original-Image-Width');
+    const og_height:string|null = response.headers.get('X-Original-Image-Height');
+    const og_size: ImageSize = {
+        width:  Number(og_width), 
+        height: Number(og_height),
+    }
+
+    const blob:Blob|null = await response.blob()
+    return new ResizedImageFile(og_size, [blob], file.name, {type:file.type})
+}
+
+
+/** Send image to flask to resize it */
+async function resize_image_via_flask(
+    file:     File, 
+    new_size: ImageSize
+): Promise<File|Error> {
+    const params:Record<string, string> = {
+        width:  new_size.width.toFixed(0),
+        height: new_size.height.toFixed(0),
+    }
+    const response:Response|Error = 
+        await util.upload_file_no_throw(file, 'resize_image', params)
+    if(response instanceof Error)
+        return response as Error;
+    
+    // TODO: we already have the original size, dont we
+    const og_width: string|null = response.headers.get('X-Original-Image-Width');
+    const og_height:string|null = response.headers.get('X-Original-Image-Height');
+    const og_size: ImageSize = {
+        width:  Number(og_width), 
+        height: Number(og_height),
+    }
+
+    const blob:Blob|null = await response.blob()
+    return new ResizedImageFile(og_size, [blob], file.name, {type:file.type})
+}
+
 

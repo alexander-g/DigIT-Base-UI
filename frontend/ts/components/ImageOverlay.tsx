@@ -5,7 +5,7 @@ import * as styles                              from "./styles.ts"
 import { black_to_transparent_css }             from "./SVGFilters.tsx";
 
 import { SingleFileContent }                    from "./FileTable.tsx";
-import { set_image_src }                        from "./file_input.ts";
+import { set_image_src }                        from "./ImageComponents.tsx";
 import { type SegmentationResult }              from "../logic/segmentation.ts";
 import { type InstanceSegmentationResult }      from "../logic/instancesegmentation.ts";
 
@@ -48,7 +48,7 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
 
     ref: preact.RefObject<HTMLImageElement> = preact.createRef()
 
-    render(props:P): JSX.Element {        
+    render(_props:P): JSX.Element {        
         //img.src set manually
         return <img 
             class       =   "overlay unselectable pixelated" 

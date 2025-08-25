@@ -1,8 +1,12 @@
+import os
+import typing as tp
+
 from . import GLOBALS
 from .app import get_cache_path
+from .imageutils import is_tiff
 
-import os
 import PIL.Image
+import tifffile
 
 def process_image(imagepath, settings):
     with GLOBALS.processing_lock:
@@ -22,3 +26,34 @@ def process_image(imagepath, settings):
         'boxes'        : result['boxes'].tolist(),
         'labels'       : labels,
     }
+
+
+
+class ImageSize(tp.NamedTuple):
+    width:  int
+    height: int
+
+
+def resize_image(
+    path:     str, 
+    new_size: ImageSize, 
+    jpeg_ok:  bool,
+) -> tp.Tuple[str, ImageSize]:
+
+    if is_tiff(path):
+        # tifffile is faster than PIL.Image.open
+        im = PIL.Image.fromarray(tifffile.imread(path))
+    else:
+        im = PIL.Image.open(path)
+    
+    og_size = ImageSize(*im.size)
+    im = im.convert('RGB').resize(new_size)
+
+    ending = '.jpg' if jpeg_ok else '.png'
+    output_path = path + ending
+    im.save(output_path)
+
+    return output_path, og_size
+
+
+

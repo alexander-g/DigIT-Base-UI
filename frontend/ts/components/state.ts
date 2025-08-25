@@ -3,7 +3,7 @@ import { Settings, AvailableModels }            from "../logic/settings.ts";
 import { Result, Input }                        from "../logic/files.ts";
 import * as files                               from "../logic/files.ts";
 import { Constructor }                          from "../util.ts";
-import { set_image_src }                        from "./file_input.ts";
+import { set_image_src }                        from "./ImageComponents.tsx";
 
 import * as util       from "../util.ts";
 import * as file_input from "./file_input.ts";
