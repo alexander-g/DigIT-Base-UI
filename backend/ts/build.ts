@@ -1,8 +1,8 @@
-#!./deno.sh run  --no-prompt --allow-read=./ --allow-write=./ --allow-env=DENO_DIR --allow-net=cdn.jsdelivr.net
+#!./deno.sh run  --no-prompt --allow-read=./ --allow-write=./ --allow-run=deno
 
 import { preact_ssr }                   from "./dep.ts";
 import { path, fs, cli }              from "./dep.ts"
-import * as esbuild                     from "./esbuild.ts";
+//import * as esbuild                     from "./esbuild.ts";
 
 import * as paths                       from "./paths.ts"
 
@@ -82,8 +82,8 @@ export async function compile_everything(
     if(clear)
         clear_folder(paths.static)
     
-    const build:esbuild.ESBuild|Error = await esbuild.ESBuild.initialize(
-        path.dirname(paths.frontend),   // too hard-coded
+    const build:DenoBundle|Error = await DenoBundle.initialize(
+        paths.frontend,   // too hard-coded
         paths.static
     )
     if(build instanceof Error){
@@ -100,19 +100,22 @@ export async function compile_everything(
     const dep_ts_output:string = path.join(paths.static,   paths.dep_ts)
     //except some specified modules (e.g. deno modules)
     const stub_remap: Record<string,string> = create_stub_file(
-        paths.frontend, path.dirname(dep_ts_output), paths.stubs ?? []
+        paths.frontend, 
+        path.dirname(dep_ts_output), 
+        paths.stubs ?? [],
     )
-    promises.push(
-        build.compile_esbuild(dep_ts_input, dep_ts_output+'.js', stub_remap)
-    )
+    // console.log('>>', dep_ts_input, dep_ts_output+'.js', stub_remap)
+    // promises.push(
+    //     build.bundle(dep_ts_input, dep_ts_output+'.js', stub_remap)
+    // )
 
     //transpile and bundle index.tsx
     const index_remap: Record<string,string> = {
-        [dep_ts_input]: './dep.ts.js', 
+        //[dep_ts_input]: './dep.ts.js', 
         ...stub_remap
     }
     promises.push(
-        build.compile_esbuild(
+        build.bundle(
             path.join(paths.frontend, paths.index_tsx), 
             path.join(paths.static,   paths.index_tsx)+'.js', 
             index_remap
@@ -122,9 +125,12 @@ export async function compile_everything(
     //compile the main JSX <Index /> element into index.html
     promises.push(
         compile_index(paths)
-    )
+    );
     
-    await Promise.all(promises)
+    const status:boolean = ( await Promise.all(promises) ).every(Boolean)
+    if(!status)
+        return new Error('Compilation failed')
+    // else
     return true;
 }
 
@@ -134,8 +140,95 @@ export async function compile_default(
     return await compile_everything({...DEFAULT_PATHS, ...overrides}, true)
 }
 
+
+class DenoBundle {
+    async bundle(
+        inputfile:  string, 
+        outputfile: string, 
+        stubs:      Record<string,string>,
+    ): Promise<true|false> {
+        const workdir:string = this.copy_and_stub(stubs)
+        inputfile = path.join(workdir, path.relative(this.root, inputfile))
+
+        const command = new Deno.Command(
+            Deno.execPath(), 
+            {
+                args: [
+                    'bundle',
+                    `--output=${outputfile}`, 
+                    '--platform=browser',
+                    '--sourcemap=inline',
+                    '--minify',
+                    inputfile,
+                ],
+                stderr: "null"
+            }
+        );
+        
+        const output:Deno.CommandOutput = command.outputSync()
+        return output.success;
+    }
+
+    /** Factory function */
+    static initialize(root:string, outputdir:string): DenoBundle|Error {
+        const status:true|Error = 
+            DenoBundle.check_permissions(root, outputdir)
+        if(status instanceof Error)
+            return status as Error;
+        
+        return new DenoBundle(root, outputdir)
+    }
+
+    private constructor(
+        private readonly root:      string, 
+        private readonly outputdir: string
+    ){}
+
+    private copy_and_stub(stubs:Record<string,string>): string {
+        const dst:string = path.join(this.outputdir, self.crypto.randomUUID())
+        fs.copySync(this.root, dst)
+        
+        for(const [stubsrc, _] of Object.entries(stubs)){
+            const stubthis:string = 
+                path.join(dst, path.relative(this.root, stubsrc))
+            Deno.writeTextFileSync(stubthis, ``);
+        }
+
+        return dst;
+    }
+
+    static check_permissions(root:string, outputdir:string): true|Error {
+        if(!path.isAbsolute(root)){
+            return new Error(`Root path must be absolute. Got:${root}`)
+        }
+
+        const perms:Deno.Permissions = Deno.permissions;
+        if(
+            perms.querySync({name:"run", command:"deno"}).state != "granted"
+        ||  perms.querySync({name:"read", path:root}).state != "granted"
+        ||  perms.querySync({name:"write", path:outputdir}).state !=  "granted"
+        ){
+            return new Error(`Required permissions (relative to ${root}):\n`
+            +`--allow-run=deno\n`
+            +`--allow-read=./${path.relative(root, root)}\n`
+            +`--allow-write=./${path.relative(root, outputdir)}\n`
+            )
+        }
+        // else
+        return true;
+    }
+}
+
+export function wait(ms: number): Promise<unknown> {
+    return new Promise((resolve: (x:unknown) => void) => {
+        setTimeout(() => resolve(0), ms)
+    })
+}
+
+
+
 /** Compile the main frontend JSX component `<Index/>` and write to the static folder */
-export async function compile_index(paths: CompilationPaths, props?:Record<string, unknown>): Promise<void> {
+export async function compile_index(paths: CompilationPaths, props?:Record<string, unknown>): Promise<true> {
     const path_to_index: string = path.toFileUrl( 
         path.join(paths.frontend, paths.index_tsx) 
     ).href
@@ -150,6 +243,7 @@ export async function compile_index(paths: CompilationPaths, props?:Record<strin
     write_to_static(
         path.basename(paths.index_tsx).replace('.tsx', '.html'), paths.static, rendered
     )
+    return true;
 }
 
 type GlobPaths = Pick<CompilationPaths, 'frontend'|'static'|'copy_globs'>

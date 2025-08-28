@@ -276,7 +276,7 @@ class DenoConfig:
         self.root       = root or base_root
         if executable is None:
             scriptname =  ('deno.bat' if sys.platform == 'win32' else 'deno.sh')
-            executable = os.path.join(root, scriptname)
+            executable = os.path.join(self.root, scriptname)
             if not os.path.exists(executable):
                 executable = os.path.join(base_root, scriptname)
                 if not os.path.exists(executable):
@@ -290,13 +290,13 @@ class DenoConfig:
         self.dep_ts     = dep_ts    or 'ts/dep.ts'
         self.assets     = assets    or os.path.join(self.root, 'assets/')
 
+
         self.build_cmd = (
             f'{self.executable} run' 
             f' --config {self.configfile}'
             f' --allow-read={self.root}'
-            f' --allow-write={self.static},{self.assets}'
-            f' --allow-env=DENO_DIR'
-            f' --allow-net=cdn.jsdelivr.net'
+            f' --allow-write={self.static}'
+            f' --allow-run=deno'
             f' --no-prompt'
             f' --cached-only'
             f' {self.buildfile}'

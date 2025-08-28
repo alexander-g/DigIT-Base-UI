@@ -207,7 +207,7 @@ export function Head(props:HeadProps): JSX.Element {
 /** Main JSX entry point */
 export function Index(): JSX.Element {
     return <html>
-        <Head title={"Base UI"} import_src={"ts/index.tsx.js"} />
+        <Head title="Base UI" import_src="ts/index.tsx.js" />
         <App />
     </html>
 }
