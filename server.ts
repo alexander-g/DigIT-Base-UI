@@ -229,7 +229,7 @@ function open_webbrowser(url:URL): void {
 if(import.meta.main){
     const app = new App(
         //"./", 
-        build.DEFAULT_PATHS,
+        build.BASE_PATHS,
         instseg.InstanceSegmentationResult,
         path.fromFileUrl(
             import.meta.resolve('./assets/libTSinterface.so'),

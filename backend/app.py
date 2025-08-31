@@ -262,7 +262,7 @@ class DenoConfig:
         configfile:tp.Optional[str] = None,
         buildfile: tp.Optional[str] = None,
         static:    tp.Optional[str] = None,
-        frontend:  tp.Optional[str] = None,
+        srcdirs :  tp.Optional[str] = None,
         index_tsx: tp.Optional[str] = None,
         dep_ts:    tp.Optional[str] = None,
         copy_globs:tp.Optional[str] = None,
@@ -285,7 +285,7 @@ class DenoConfig:
         self.configfile = configfile or os.path.join(base_root, 'deno.jsonc')
         self.buildfile  = buildfile or os.path.join(base_root, 'backend/ts/build.ts')
         self.static     = static    or os.path.join(self.root, 'static/')
-        self.frontend   = frontend  or os.path.join(self.root, 'frontend/')
+        self.srcdirs    = srcdirs   or os.path.join(self.root, 'frontend/')
         self.index_tsx  = index_tsx or 'ts/index.tsx'
         self.dep_ts     = dep_ts    or 'ts/dep.ts'
         self.assets     = assets    or os.path.join(self.root, 'assets/')
@@ -301,7 +301,7 @@ class DenoConfig:
             f' --cached-only'
             f' {self.buildfile}'
             f' --static={self.static}'
-            f' --frontend={self.frontend}'
+            f' --srcdirs={self.srcdirs}'
             f' --index_tsx={self.index_tsx}'
             f' --dep_ts={self.dep_ts}'
             + (f' --copy_globs={copy_globs}' if copy_globs else '')

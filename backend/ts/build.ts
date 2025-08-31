@@ -2,73 +2,80 @@
 
 import { preact_ssr }                   from "./dep.ts";
 import { path, fs, cli }              from "./dep.ts"
-//import * as esbuild                     from "./esbuild.ts";
 
 import * as paths                       from "./paths.ts"
 
 
 
 export type CompilationPaths = {
-    /** The destination folder */
-    static:         string;
-    
-    /** The root path that contains the files to be compiled.
-     *  Compiled files are saved into `static` in subfolders relative to this one.
-     */
-    frontend:       string;
-    
-    /** Path to the main tsx file, relative to `frontend` */
-    index_tsx:      string;
+    /** The destination folder. */
+    static: string
 
-    /** Path to third-party dependencies/imports, relative to `frontend` */
-    dep_ts:         string;
+    /** All directories that contain the sources to be compiled. */
+    srcdirs: string[]
 
-    /** Paths to modules that should be replaced with empty stubs.
-     *  Relative to `frontend` or absolute path */
-    stubs?:         string[];
+    /** Absolute path to main tsx file, must be in one of `srcdirs`. */
+    index_tsx: string
 
-    /** Additional glob patterns relative to `frontend` to find files
-     *  that need to be copied into `static` */
-    copy_globs?:    string[];
+    /** Absolute paths to modules that should be replaced with empty stubs.
+     *  Must be in one of `srcdirs`. */
+    stubs?: string[];
+
+    /** Additional glob patterns for files that need to be copied into `static`.
+     *  Absolute paths, must be in one of `srcdirs`. */
+    copy_globs?: string[]
+}
+
+
+function path_from_this_file(relpath:string): string {
+    return path.fromFileUrl(import.meta.resolve(relpath))
 }
 
 /** This stub is local to this repo and should be always included */
-const DENO_DEP_DEFAULT_STUB:string = path.fromFileUrl(
-    import.meta.resolve('../../frontend/ts/dep.deno.ts')
-)
+const DENO_DEP_DEFAULT_STUB:string = 
+    path_from_this_file('../../frontend/ts/dep.deno.ts')
 
-//TODO: too many assumptions, at least rename to BASE_PATHS
-export const DEFAULT_PATHS: CompilationPaths = {
+const BASE_INDEX_TSX:string = 
+    path_from_this_file('../../frontend/ts/index.tsx')
+
+const BASE_COPY_GLOBS: string[] = [
+    '../../frontend/css/**/*.*',
+    '../../frontend/thirdparty/**/*.*',
+    '../../frontend/favicon.ico',
+    '../../frontend/logo.svg',
+].map( path_from_this_file )
+
+
+export const BASE_PATHS: CompilationPaths = {
     static          :   paths.static_folder(),
-    frontend        :   paths.frontend(),
-    index_tsx       :   'ts/index.tsx',
-    dep_ts          :   'ts/dep.ts',
+    srcdirs         :   [paths.frontend()],
+    index_tsx       :   BASE_INDEX_TSX,
     stubs           :   [DENO_DEP_DEFAULT_STUB],
-    copy_globs      :   [
-        'css/**/*.*',
-        'thirdparty/**/*.*',
-        'favicon.ico',
-        'logo.svg',
-    ]
+    copy_globs      :   BASE_COPY_GLOBS
 }
 
 
-/** Collect all files matching a glob pattern in a root directory.
- * @return Matched paths, relative to `root`
- */
-function collect_files(glob_pattern:string, root:string): string[] {
-    const full_glob_pattern:string = path.join(root, glob_pattern)
-    const paths:string[] = Array.from( 
-        fs.expandGlobSync(full_glob_pattern, {root:'/'}) 
-    ).map(
-        (entry: fs.WalkEntry) => path.relative(root, entry.path)
-    )
-    return paths;
-}
 
-function check_paths(paths: CompilationPaths): void {
-    if(!path.isAbsolute(paths.frontend) || !path.isAbsolute(paths.static)) {
-        throw new Error('Compilation paths `frontend` and `static` must be absolute')
+
+function resolve_paths(paths: CompilationPaths): CompilationPaths {
+    const new_srcdirs:string[] = []
+    for(const srcdir of paths.srcdirs)
+        new_srcdirs.push( path.resolve(srcdir) )
+    
+    const new_stubs:string[] = []
+    for(const stub of paths.stubs ?? [])
+        new_stubs.push( path.resolve(stub) )
+    
+    const new_copy_globs:string[] = []
+    for(const glob of paths.copy_globs ?? [])
+        new_copy_globs.push( path.resolve(glob) )
+
+    return {
+        static:    path.resolve(paths.static),
+        srcdirs:   new_srcdirs,
+        index_tsx: path.resolve(paths.index_tsx),
+        stubs:     new_stubs,
+        copy_globs:new_copy_globs,
     }
 }
 
@@ -77,13 +84,13 @@ export async function compile_everything(
     paths: CompilationPaths, 
     clear: boolean
 ): Promise<true|Error> {
-    check_paths(paths)
+    paths = resolve_paths(paths);
 
     if(clear)
         clear_folder(paths.static)
     
     const build:DenoBundle|Error = await DenoBundle.initialize(
-        paths.frontend,   // too hard-coded
+        paths.srcdirs,
         paths.static
     )
     if(build instanceof Error){
@@ -92,33 +99,15 @@ export async function compile_everything(
     
     const promises: Promise<unknown>[] = []
 
-    //copy css, assets and thirdparty JS into the static folder
-    copy_files_to_static(paths)
-    
-    //bundle third-party dependencies into a dep.ts
-    const dep_ts_input:string  = path.join(paths.frontend, paths.dep_ts)
-    const dep_ts_output:string = path.join(paths.static,   paths.dep_ts)
-    //except some specified modules (e.g. deno modules)
-    const stub_remap: Record<string,string> = create_stub_file(
-        paths.frontend, 
-        path.dirname(dep_ts_output), 
-        paths.stubs ?? [],
-    )
-    // console.log('>>', dep_ts_input, dep_ts_output+'.js', stub_remap)
-    // promises.push(
-    //     build.bundle(dep_ts_input, dep_ts_output+'.js', stub_remap)
-    // )
 
-    //transpile and bundle index.tsx
-    const index_remap: Record<string,string> = {
-        //[dep_ts_input]: './dep.ts.js', 
-        ...stub_remap
-    }
+    //transpile and bundle index.tsx into index.tsx.js
+    const outputfile:string = 
+        path.join(paths.static, path.basename(paths.index_tsx))+'.js'
     promises.push(
         build.bundle(
-            path.join(paths.frontend, paths.index_tsx), 
-            path.join(paths.static,   paths.index_tsx)+'.js', 
-            index_remap
+            paths.index_tsx, 
+            outputfile, 
+            paths.stubs ?? [],
         )
     )
 
@@ -126,6 +115,9 @@ export async function compile_everything(
     promises.push(
         compile_index(paths)
     );
+    
+    //copy css, assets and thirdparty JS into the static folder
+    copy_files_to_static(paths)
     
     const status:boolean = ( await Promise.all(promises) ).every(Boolean)
     if(!status)
@@ -137,18 +129,29 @@ export async function compile_everything(
 export async function compile_default(
     overrides:Partial<CompilationPaths> = {}
 ): Promise<true|Error> {
-    return await compile_everything({...DEFAULT_PATHS, ...overrides}, true)
+    return await compile_everything({...BASE_PATHS, ...overrides}, true)
 }
 
 
 class DenoBundle {
+    // the location where source files are copied into
+    private bundleroot:string;
+
     async bundle(
         inputfile:  string, 
         outputfile: string, 
-        stubs:      Record<string,string>,
-    ): Promise<true|false> {
-        const workdir:string = this.copy_and_stub(stubs)
-        inputfile = path.join(workdir, path.relative(this.root, inputfile))
+        stubs:      string[],
+    ): Promise<boolean> {
+        const srcdir_map:Record<string,string> = this.copy_and_stub(stubs)
+        const index_root:string|Error = 
+            find_file_in_folders(inputfile, this.srcdirs)
+        if(index_root instanceof Error)
+            return false;
+            //return index_root as Error
+        inputfile = path.join(
+            srcdir_map[index_root]!, 
+            path.relative(index_root, inputfile)
+        )
 
         const command = new Deno.Command(
             Deno.execPath(), 
@@ -161,64 +164,99 @@ class DenoBundle {
                     '--minify',
                     inputfile,
                 ],
-                stderr: "null"
+                stderr: "inherit"
             }
         );
+        console.log(fs.existsSync(inputfile))
+        console.log([
+            'bundle',
+            `--output=${outputfile}`, 
+            '--platform=browser',
+            '--sourcemap=inline',
+            '--minify',
+            inputfile,
+        ].join('\n'))
         
-        const output:Deno.CommandOutput = command.outputSync()
-        return output.success;
+        const output:Deno.CommandOutput = await command.outputSync()
+        if(!output.success)
+            return false;
+            //return new Error(`deno bundle failed with code ${output.code}`)
+        //else
+
+        return true;
     }
 
     /** Factory function */
-    static initialize(root:string, outputdir:string): DenoBundle|Error {
+    static initialize(srcdirs:string[], outputdir:string): DenoBundle|Error {
         const status:true|Error = 
-            DenoBundle.check_permissions(root, outputdir)
+            DenoBundle.check_permissions(srcdirs, outputdir)
         if(status instanceof Error)
             return status as Error;
         
-        return new DenoBundle(root, outputdir)
+        return new DenoBundle(srcdirs, outputdir)
     }
 
     private constructor(
-        private readonly root:      string, 
+        private readonly srcdirs:   string[], 
         private readonly outputdir: string
-    ){}
-
-    private copy_and_stub(stubs:Record<string,string>): string {
-        const dst:string = path.join(this.outputdir, self.crypto.randomUUID())
-        fs.copySync(this.root, dst)
-        
-        for(const [stubsrc, _] of Object.entries(stubs)){
-            const stubthis:string = 
-                path.join(dst, path.relative(this.root, stubsrc))
-            Deno.writeTextFileSync(stubthis, ``);
-        }
-
-        return dst;
+    ){
+        this.bundleroot = path.join(this.outputdir, self.crypto.randomUUID())
     }
 
-    static check_permissions(root:string, outputdir:string): true|Error {
-        if(!path.isAbsolute(root)){
-            return new Error(`Root path must be absolute. Got:${root}`)
+    private copy_and_stub(stubs:string[]):Record<string,string> {
+        const srcdir_map:Record<string,string> = {}
+        
+        for(const srcdir of this.srcdirs){
+            // TODO: technically not correct, should be not relative to cwd
+            const basename:string = path.relative(Deno.cwd(), srcdir)
+            const new_srcdir:string = path.join(this.bundleroot, basename)
+            fs.copySync(srcdir, new_srcdir)
+            srcdir_map[srcdir] = new_srcdir
         }
+        console.log(srcdir_map)
+        
+        for(const stub of stubs){
+            const stubroot:string|Error = 
+                find_file_in_folders(stub, this.srcdirs)
+            if(stubroot instanceof Error)
+                throw stubroot as Error;
+            
+            const stubthis:string = 
+                path.join(
+                    srcdir_map[stubroot]!, 
+                    path.relative(stubroot, stub)
+                )
+            console.log('DBG:stub', stub, stubthis)
+            //fs.ensureFileSync(stubthis)
+            Deno.writeTextFileSync(stubthis, ``);
+        }
+        return srcdir_map;
+    }
+
+    static check_permissions(srcdirs:string[], outputdir:string): true|Error {
+        const permissions_error = new Error(`Required permissions):\n`
+            +`--allow-run=deno\n`
+            +`--allow-read=./${srcdirs.join(',')}\n`
+            +`--allow-write=./${outputdir}\n`
+        )
 
         const perms:Deno.Permissions = Deno.permissions;
-        if(
-            perms.querySync({name:"run", command:"deno"}).state != "granted"
-        ||  perms.querySync({name:"read", path:root}).state != "granted"
-        ||  perms.querySync({name:"write", path:outputdir}).state !=  "granted"
+        for(const srcdir of srcdirs){
+            if(perms.querySync({name:"read", path:srcdir}).state != "granted")
+                return permissions_error
+        }
+
+        if(perms.querySync({name:"run", command:"deno"}).state != "granted"
+        || perms.querySync({name:"write", path:outputdir}).state !=  "granted"
         ){
-            return new Error(`Required permissions (relative to ${root}):\n`
-            +`--allow-run=deno\n`
-            +`--allow-read=./${path.relative(root, root)}\n`
-            +`--allow-write=./${path.relative(root, outputdir)}\n`
-            )
+            return permissions_error;
         }
         // else
         return true;
     }
 }
 
+// TODO: remove, only here for debugging
 export function wait(ms: number): Promise<unknown> {
     return new Promise((resolve: (x:unknown) => void) => {
         setTimeout(() => resolve(0), ms)
@@ -228,12 +266,13 @@ export function wait(ms: number): Promise<unknown> {
 
 
 /** Compile the main frontend JSX component `<Index/>` and write to the static folder */
-export async function compile_index(paths: CompilationPaths, props?:Record<string, unknown>): Promise<true> {
-    const path_to_index: string = path.toFileUrl( 
-        path.join(paths.frontend, paths.index_tsx) 
-    ).href
-    // deno-lint-ignore no-explicit-any
-    const module: { Index?: (props?:Record<string, any>) => any } = await import(path_to_index)
+export async function compile_index(
+    paths: CompilationPaths, 
+    props?:Record<string, unknown>
+): Promise<true> {
+    const path_to_index: string = path.toFileUrl( paths.index_tsx).href
+    const module: { Index?: (props?:Record<string, unknown>) => unknown } = 
+        await import(path_to_index)
     if(!module.Index)
         throw new Error('Could not find <Index/> component')
     
@@ -241,25 +280,70 @@ export async function compile_index(paths: CompilationPaths, props?:Record<strin
     const main_element:any = module.Index(props)
     const rendered:string  = preact_ssr.render(main_element, {}, {pretty:true})
     write_to_static(
-        path.basename(paths.index_tsx).replace('.tsx', '.html'), paths.static, rendered
+        path.basename(paths.index_tsx).replace('.tsx', '.html'), 
+        paths.static, 
+        rendered
     )
     return true;
 }
 
-type GlobPaths = Pick<CompilationPaths, 'frontend'|'static'|'copy_globs'>
+
+function is_subpath(candidate: string, parent: string): boolean {
+    const c:string = path.resolve(candidate);
+    const p:string = path.resolve(parent);
+    return c === p || c.startsWith(p.endsWith("/") ? p : p + "/");
+}
+
+function find_file_in_folders(filepath:string, folders:string[]): string|Error {
+    for(const folder of folders) {
+        if(is_subpath(filepath, folder))
+            return folder;
+    }
+    return new Error(`${filepath} is not in ${folders}`)
+}
+
+
+type AbsoluteAndRelativePaths = {
+    abspath: string;
+    relpath: string;
+}
+
+/** Collect all files matching a glob pattern, returning absolute path and 
+ *  path relative to a srcdir */
+function collect_files(
+    glob_pattern: string, 
+    srcdirs:      string[],
+): AbsoluteAndRelativePaths[]|Error {
+    const result:AbsoluteAndRelativePaths[] = []
+    for(const entry of fs.expandGlobSync(glob_pattern, {root:'/'})){
+        const abspath:string = path.resolve(entry.path)
+        const root:string|Error = find_file_in_folders(abspath, srcdirs)
+        if(root instanceof Error)
+            return root as Error;
+        
+        const relpath:string = path.relative(root, abspath)
+        result.push({abspath, relpath})
+    }
+    return result;
+}
+
+
+type GlobPaths = Pick<CompilationPaths, 'srcdirs'|'static'|'copy_globs'>
 
 export function copy_files_to_static(paths:GlobPaths): void {
     //TODO: make async
     for(const pattern of paths.copy_globs ?? []) {
-        const files_to_copy:string[] = collect_files(pattern, paths.frontend)
+        const files_to_copy:AbsoluteAndRelativePaths[]|Error = 
+            collect_files(pattern, paths.srcdirs)
+        if(files_to_copy instanceof Error)
+            throw files_to_copy as Error;
         if(files_to_copy.length == 0)
             throw new Error(`No files found for glob pattern "${pattern}"`)
         
-        for(const file of files_to_copy){
-            const fullpath:string    = path.join(paths.frontend, file)
-            const destination:string = path.join(paths.static, file)
+        for(const {relpath, abspath} of files_to_copy){
+            const destination:string = path.join(paths.static, relpath)
             fs.ensureFileSync(destination)
-            fs.copySync(fullpath, destination, {overwrite:true})
+            fs.copySync(abspath, destination, {overwrite:true})
         }
     }
 }
@@ -280,39 +364,6 @@ export function clear_folder(path:string): void {
     fs.ensureDirSync(path)
 }
 
-function join_if_relative(...paths:string[]): string {
-    if(paths.length == 0)
-        return '';
-    
-    const lastpath:string = paths[paths.length-1]!;
-    if(path.isAbsolute(lastpath))
-        return lastpath;
-    //else
-    return path.join(...paths);
-}
-
-/** Create an empty file in the output folder that will serve as a replacement
- *  for `modules_to_stub`. */
-function create_stub_file(
-    inputfolder:     string,
-    outputfolder:    string, 
-    modules_to_stub: string[],
-): Record<string, string> {
-    if(modules_to_stub.length == 0)
-        return {}
-    
-    // deno-lint-ignore no-inferrable-types
-    const stubfilename:string = './stub.ts.js'
-    write_to_static(stubfilename, outputfolder, '')
-
-    const remap: Record<string, string> = Object.fromEntries(
-        modules_to_stub.map(
-            (p:string) => [join_if_relative(inputfolder, p), stubfilename]
-        )
-    )
-    return remap;
-}
-
 
 export async function compile_and_copy(
     paths: CompilationPaths,
@@ -320,8 +371,8 @@ export async function compile_and_copy(
     clear_folder(paths.static);
     //copy assets/thirdparty files even from downstream //TODO: need some kind of flag
     copy_files_to_static({
-        frontend:   DEFAULT_PATHS.frontend,   //!
-        copy_globs: DEFAULT_PATHS.copy_globs, //!
+        srcdirs:    paths.srcdirs,
+        copy_globs: BASE_PATHS.copy_globs, //!
         static:     paths.static,
     })
 
@@ -333,17 +384,22 @@ export async function compile_and_copy(
 function parse_args(): Record<string, string> & {copy_globs:string[]} {
     const args:Record<string, string>  = cli.parseArgs(
         Deno.args, 
-        {default: {...DEFAULT_PATHS, copy_globs:undefined} }
+        {default: {
+            ...BASE_PATHS, 
+            copy_globs:undefined, 
+            srcdirs:   BASE_PATHS.srcdirs.join(','),
+        } }
     )
     const copy_globs:string[] = args.copy_globs?.split(',') ?? [];
+    const srcdirs:string[] = args.srcdirs?.split(',') ?? []
     
-    return Object.assign(args, {copy_globs})
+    return Object.assign(args, {srcdirs, copy_globs})
 }
 
 if(import.meta.main){
     const args: Record<string,string> = parse_args()
 
-    const paths:CompilationPaths = {...DEFAULT_PATHS, ...args}
+    const paths:CompilationPaths = {...BASE_PATHS, ...args}
     const status: true|Error = await compile_and_copy(paths)
     if(status instanceof Error){
         console.log(status.message+'\n')

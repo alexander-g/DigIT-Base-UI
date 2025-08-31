@@ -11,7 +11,7 @@
   "tasks": {
     "compile_index": "./backend/ts/build.ts",
     "bundle_deps"  : "./backend/ts/esbuild.ts",
-    "cache":         "./deno.sh cache ./backend/ts/dep.ts ./frontend/ts/index.tsx ./tests/testcases_deno/dep.ts",
+    "cache":         "./deno.sh cache ./backend/ts/dep.ts ./frontend/ts/index.tsx ./tests/testcases_deno/dep.ts && touch /tmp/blargh.js && ./deno.sh bundle /tmp/blargh.js && rm /tmp/blargh.js",
     //vendoring currently not recommended, typechecking issues
     //"vendor":"./deno.sh vendor --reload --force --no-config --output=.deno/vendor frontend/ts/index.tsx backend/ts/preact.ts tests/testcases_deno/dep.ts "
   }

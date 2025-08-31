@@ -26,12 +26,15 @@ export * as fflate from "https://esm.sh/fflate@0.7.4"
 import "./jquery_mock.ts";
 
 
-//@deno-types="https://esm.sh/v135/onnxruntime-common@1.16.3/dist/esm/index.d.ts"
+////@deno-types="https://esm.sh/v135/onnxruntime-common@1.16.3/dist/esm/index.d.ts"
 //export {default as ort} from "https://esm.sh/onnxruntime-web@1.16.3?no-dts"
 //export {default as ort} from "https://esm.run/onnxruntime-web@1.16.3"
 
-//@deno-types="https://esm.sh/v135/onnxruntime-common@1.20.0/dist/esm/index.d.ts"
-export {default as ort} from "https://esm.sh/onnxruntime-web@1.20.0?target=es2022&no-dts"
+///// //@deno-types="https://esm.sh/v135/onnxruntime-common@1.20.0/dist/esm/index.d.ts"
+// export {default as ort} from "https://esm.sh/onnxruntime-web@1.20.0?target=es2022&no-dts"
+
+export * as ort from "npm:onnxruntime-web@1.22.0";
+
 
 
 export * as denolibs from "./dep.deno.ts"
