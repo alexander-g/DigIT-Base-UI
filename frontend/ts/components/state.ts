@@ -114,11 +114,16 @@ SETTINGS extends Settings = Settings
     ResultClass:files.ResultClassInterface<files.Result> = files.Result;
 
     /** Filter a list of potential input or result files and set $files.
+     *  Returns `true` if the inputs changed.
      *  @virtual */
-     async set_files(files_raw: FileList|File[]): Promise<void>{
+     async set_files(files_raw: FileList|File[]): Promise<boolean>{
         const previous_pairs: files.InputResultPair<Input,Result>[] 
             = input_result_simple_pairs_from_signals(this.$files.value)
         
+        const inputs_before:Input[] = this.$files.value.map(
+            (pair:{input:Input}) => pair.input
+        )
+
         //reset state
         //TODO: send clear cache request to backend
         this.$files.value = []
@@ -133,7 +138,31 @@ SETTINGS extends Settings = Settings
                 previous_pairs
             )
         )
+
+        const inputs_after:Input[] = this.$files.value.map(
+            (pair:{input:Input}) => pair.input
+        )
+        return !are_inputs_equal(inputs_before, inputs_after)
     }
+}
+
+/** Non-exhaustive check if two lists of inputs are equal. 
+ * Checks file names, sizes but not contents. */
+function are_inputs_equal(A:Input[], B:Input[]): boolean {
+    if(A.length != B.length)
+        return false;
+    
+    for(const index in A){
+        const a:Input = A[index]!
+        const b:Input = B[index]!
+        if(a.name != b.name)
+            return false;
+        
+        if(a instanceof File && b instanceof File)
+            if(a.size != b.size || a.type != b.type)
+                return false;
+    }
+    return true;
 }
 
 
