@@ -93,7 +93,10 @@ extends SettingsHandler<S> {
         ){
             return jsondata as SettingsResponse<S>;
         }
-        else return new Error(`Unexpected settings format: ${jsondata}`)
+        else {
+            console.error('Unexpected settings format:', jsondata)
+            return new Error(`Unexpected settings format`)
+        }
     }
 
     
