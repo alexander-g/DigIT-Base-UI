@@ -29,23 +29,37 @@ extends preact.Component<P> {
     ref: preact.RefObject<HTMLDivElement>            = preact.createRef()
     model_selection:preact.RefObject<ModelSelection> = preact.createRef()
 
+    /** In the process of saving settings (ie sending to flask), not finished */
     $saving: Signal<boolean> = new Signal(false);
 
-    render(props:P): JSX.Element {
+    /** Can the user cancel or is an input strictly necessary? */
+    $cancel_ok: Signal<boolean> = new Signal(false);
+
+    /** Should the OK/Save button be disabled? @virtual */
+    $ok_disabled: Readonly<Signal<boolean>>|undefined = undefined;
+
+
+    render(_props:P): JSX.Element {
         return <div class="ui tiny modal" id="settings-dialog" ref={this.ref}>
-            <i class="close icon"></i>
+            {
+                this.$cancel_ok.value? <i class="close icon"></i> : null
+            }
             <div class="header"> Settings </div>
 
             <div class="ui form content">
                 { this.form_content() }
                 <div class="ui divider"></div>
-                <OkCancelButtons $saving={this.$saving}/>
+                <OkCancelButtons 
+                    $saving    = {this.$saving} 
+                    $cancel_ok = {this.$cancel_ok}
+                    $ok_disabled = {this.$ok_disabled}
+                />
             </div>
         </div>
     }
 
     /** @virtual The main content, what to display in the modal */
-    abstract form_content(): JSX.Element[];
+    abstract form_content(): JSX.Element|JSX.Element[]|null;
 
     async #load_settings(): Promise<true|Error> {
         const settingsresponse:SettingsResponse<S>|Error 
@@ -59,15 +73,17 @@ extends preact.Component<P> {
         return true;
     }
 
-    async show_modal(): Promise<void> {
+    async show_modal(cancel_ok:boolean = true): Promise<void> {
         this.$saving.value = false;
         const status: true|Error = await this.#load_settings()
         if(status instanceof Error)
             return
 
         $(this.ref.current).modal({
-            onApprove: this.on_save_settings
+            onApprove: this.on_save_settings,
+            closable:  cancel_ok,
         }).modal('show');
+        this.$cancel_ok.value = cancel_ok;
     }
 
     /** Get all values in the modal as set by user and convert to a Settings object 
@@ -120,20 +136,18 @@ export class BaseSettingsModal extends SettingsModal<settings.BaseSettings>{
     }
 
     /** @override */
-    form_content(): JSX.Element[] {
+    form_content(): JSX.Element {
         const avmodels: ModelInfo[]|undefined 
             = this.props.$available_models.value?.detection
         const activemodel: string|undefined 
             = this.props.$settings.value?.active_models?.detection
 
-        return [
-             <ModelSelection 
-                active_model     = {activemodel}
-                available_models = {avmodels}
-                ref              = {this.model_selection}
-                label            = {"Active model"}
-            />
-        ]
+        return  <ModelSelection 
+            active_model     = {activemodel}
+            available_models = {avmodels}
+            ref   = {this.model_selection}
+            label = "Active model"
+        />
     }
 }
 
@@ -153,7 +167,7 @@ type ModelDropdownProps = {
 class ModelDropdown extends preact.Component<ModelDropdownProps> {
     dropdown_ref: preact.RefObject<HTMLDivElement> = preact.createRef()
 
-    render(props:ModelDropdownProps): JSX.Element {
+    render(_props:ModelDropdownProps): JSX.Element {
         return (
             <div class="ui dropdown selection" id="settings-active-model" ref={this.dropdown_ref}>
                 <input type="hidden" name="active-model" />
@@ -202,7 +216,7 @@ class ModelDropdown extends preact.Component<ModelDropdownProps> {
             $(dropdown_el).dropdown({
                 values:      dropdown_items, 
                 showOnFocus: false,
-                onChange:    (_i:number, modelname:string) => {
+                onChange:    (_i:number, _modelname:string) => {
                     //props.$selected_model.value = modelname
                 },
             })
@@ -269,20 +283,31 @@ export class ModelSelection extends preact.Component<ModelSelectionProps> {
 type OkCancelButtonProps = {
     /** Optional flag indicating if to disable buttons and show a spinner */
     $saving?: Readonly<Signal<boolean>>
+
+    /** Flag indicating if to hide the cancel button. Default: dont hide */
+    $cancel_ok?: Readonly<Signal<boolean>>
+
+    /** Should the OK button be disabled? Default: enabled */
+    $ok_disabled?: Readonly<Signal<boolean>>
 }
 
 export function OkCancelButtons(props:OkCancelButtonProps): JSX.Element {
-    const saving:boolean   = props.$saving?.value ?? false;
-    const disabled:string  = saving? 'disabled' : '';
+    const ok_disabled:boolean = props.$ok_disabled?.value ?? false;
+    const saving:boolean      = props.$saving?.value ?? false;
+    const cancel_disabled_cls:string = saving? 'disabled' : '';
+    const save_disabled_cls:string   = (saving || ok_disabled)? 'disabled' : '';
     const save_text:string = saving? 'Saving...' : 'Save'
     const save_icon:string = saving? 'loading spinner' : 'checkmark';
+    const cancel_css:JSX.CSSProperties = {
+        display: ui_util.boolean_to_display_css(props.$cancel_ok?.value ?? true)
+    }
     return <div class="ui form content">
         <div class="actions">
-            <div class={"ui negative button "+disabled}>
+            <div class={"ui negative button "+cancel_disabled_cls} style={cancel_css}>
                 Cancel
             </div>
             <div 
-                class={"ui positive right labeled icon button "+disabled} 
+                class={"ui positive right labeled icon button "+save_disabled_cls} 
                 id="settings-ok-button"
             >
                 { save_text }
@@ -309,7 +334,7 @@ function KnownClasses(props:{modelinfo:ModelInfo}): JSX.Element {
     }
     const known_class_labels: JSX.Element[] | undefined 
         = props.modelinfo?.properties?.known_classes.map( 
-            (c:string) => <KnownClassLabel classname={c} /> 
+            (c:string, i:number) => <KnownClassLabel classname={c} key={i}/> 
         )
     
     if(known_class_labels)
@@ -320,6 +345,7 @@ function KnownClasses(props:{modelinfo:ModelInfo}): JSX.Element {
             </div>
         )
     else
+        // deno-lint-ignore jsx-no-useless-fragment
         return <></>
 }
 
