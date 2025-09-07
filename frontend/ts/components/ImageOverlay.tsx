@@ -85,7 +85,7 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
             if(blob instanceof Blob)
                 image = blob;
         }
-        set_image_src(this.ref.current, image)
+        set_image_src(this.ref.current, image, /*lossless=*/true)
     }
 }
 

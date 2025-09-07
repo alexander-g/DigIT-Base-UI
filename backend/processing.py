@@ -47,7 +47,8 @@ def resize_image(
         im = PIL.Image.open(path)
     
     og_size = ImageSize(*im.size)
-    im = im.convert('RGB').resize(new_size)
+    mode    = PIL.Image.BICUBIC if jpeg_ok else PIL.Image.NEAREST
+    im = im.convert('RGB').resize(new_size, resample=mode)
 
     ending = '.jpg' if jpeg_ok else '.png'
     output_path = path + ending

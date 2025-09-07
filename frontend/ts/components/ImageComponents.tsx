@@ -72,7 +72,7 @@ export class InputImage extends preact.Component<InputImageProps> {
     }
 
     render(): JSX.Element {
-        const css = {width: '100%'}
+        const css:JSX.CSSProperties = {width: '100%', imageRendering:'pixelated'}
         const extra_css:JSX.CSSProperties = this.props.$css?.value ?? {}
         return <img 
             //max_size_mp = { 20 }
@@ -173,8 +173,9 @@ export class ImageControls extends preact.Component<ImageControlsProps> {
             display:            'flex',
             justifyContent:     'center',
             alignItems:         'center',
-            marginLeft:         '2px',
-            marginRight:        '2px',
+            // NOTE: these margins are to keep side-by-side images apart but interfere with coordinate calculations
+            // marginLeft:         '2px',
+            // marginRight:        '2px',
         }
 
         const set_aspect_ratio_css = {
@@ -390,7 +391,8 @@ export class AutoscaleImage extends preact.Component<AutoscaleImageProps> {
 /** Set the `src` attribute of an image element as well as some other chores. */
 export async function set_image_src(
     img:   HTMLImageElement, 
-    input: Blob|string|null
+    input: Blob|string|null,
+    lossless: boolean = false,
 ): Promise<string|Blob|File|null|Error> {
     if(input instanceof Blob && !(input instanceof File)){
         input = new File([input], 'placeholder.png')
@@ -408,14 +410,14 @@ export async function set_image_src(
         if(size.height > MAX_SIZE_HEIGHT_WIDTH || size.width > MAX_SIZE_HEIGHT_WIDTH){
             //   send to flask and resize to display size
             const response:File|Error = 
-                await resize_image_via_flask(input, display_size);
+                await resize_image_via_flask(input, display_size, lossless);
             if(response instanceof Error)
                 return response as Error;
             //else
             input = response;
         } else if(await is_tiff_file(input)) {
             //const new_input:Blob|null = await load_tiff_file_as_blob(input, display_size)                                   // TODO!
-            const new_input:Blob|null = await load_tiff_file_as_blob(input)
+            const new_input:Blob|null = await load_tiff_file_as_blob(input, lossless)
             if(new_input instanceof Blob) {
                 input = new File([new_input], input.name, {type: input.type});
             }
@@ -464,7 +466,11 @@ function get_display_size(size:ImageSize): ImageSize {
 
 
 export 
-async function load_tiff_file_as_blob(file:File, page_nr = 0): Promise<Blob|null> {
+async function load_tiff_file_as_blob(
+    file:     File, 
+    lossless: boolean = false,
+    page_nr:  number = 0,
+): Promise<Blob|null> {
     // cannot load bigtiffs in JS at the moment, need flask to handle it
     if(await is_bigtiff(file)){
         return convert_bigtiff_via_flask(file)
@@ -480,8 +486,9 @@ async function load_tiff_file_as_blob(file:File, page_nr = 0): Promise<Blob|null
             return null;
         
         ctx.putImageData(rgba, 0, 0);
+        const mime:string = lossless? 'image/png' : 'image/jpeg';
         return new Promise( (resolve: (x:Blob|null) => void) => {
-            canvas.toBlob((blob: Blob|null )=>  resolve(blob), 'image/jpeg', 0.92);
+            canvas.toBlob((blob: Blob|null )=>  resolve(blob), mime, 0.92);
         } )
     }
     return null;
@@ -521,11 +528,13 @@ async function convert_bigtiff_via_flask(file:File): Promise<Blob|null> {
 /** Send image to flask to resize it */
 async function resize_image_via_flask(
     file:     File, 
-    new_size: ImageSize
+    new_size: ImageSize,
+    lossless: boolean = false,
 ): Promise<File|Error> {
     const params:Record<string, string> = {
         width:  new_size.width.toFixed(0),
         height: new_size.height.toFixed(0),
+        lossless: lossless.toString(),
     }
     const response:Response|Error = 
         await util.upload_file_no_throw(file, 'resize_image', params)

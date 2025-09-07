@@ -116,6 +116,7 @@ class App(flask.Flask):
                 W = int(flask.request.form.get('width'))
                 H = int(flask.request.form.get('height'))
                 new_size = (W,H)
+                lossless = flask.request.form.get('lossless', type=json.loads)
             except:
                 flask.abort(400, 'No Size')
 
@@ -129,7 +130,7 @@ class App(flask.Flask):
             os.replace(temppath, fullpath)
 
             jpeg_path, [og_height, og_width] = \
-                backend.processing.resize_image(fullpath, new_size, jpeg_ok=True)
+                backend.processing.resize_image(fullpath, new_size, jpeg_ok=not lossless)
             
             response = flask.send_file(jpeg_path)
             response.headers['X-Original-Image-Width']  = og_width
