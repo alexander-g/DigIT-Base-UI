@@ -8,7 +8,7 @@ import { ModelInfo }                from "../logic/settings.ts";
 import { 
     validate_ort_tensor, 
     PartialTensor, 
-    SessionOutput 
+    SingleImageSessionOutput 
 } from "../logic/onnxruntime.ts";
 
 
@@ -266,7 +266,7 @@ export type ONNX_Output = {
     scores:  PartialTensor;
 }
 
-export type ONNX_Session_Output = SessionOutput & {
+export type ONNX_Session_Output = Omit<SingleImageSessionOutput, 'raw'> & {
     output: ONNX_Output;
 }
 
@@ -292,10 +292,10 @@ export function validate_onnx_output(raw:unknown): ONNX_Output|null {
 
 export function validate_onnx_session_output(x:unknown): ONNX_Session_Output|null {
     if(util.is_object(x)
-    && util.has_property_of_type(x, 'output',    validate_onnx_output)
+    && util.has_property_of_type(x, 'raw',       validate_onnx_output)
     && util.has_property_of_type(x, 'imagesize', util.validate_imagesize)
     && util.has_property_of_type(x, 'inputsize', util.validate_imagesize)){
-        return x;
+        return {...x, output:x.raw};
     }
     else return null;
 }

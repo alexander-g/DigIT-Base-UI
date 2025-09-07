@@ -7,7 +7,7 @@ import * as util from "../util.ts";
 export class ORT_Processing<R extends Result> 
 extends DetectionModule<File,R> {   
 
-    #session:ort.Session|null = null;
+    #session:ort.SingleImageSession|null = null;
 
     async process(
         input:        File, 
@@ -20,26 +20,27 @@ extends DetectionModule<File,R> {
             const active_model:string = this.settings.active_models.detection;
             const model_path:string = modelname_to_path(active_model);
             const initresult:ort.Session|Error 
-                = await ort.Session.initialize(model_path)
+                = await ort.SingleImageSession.initialize(model_path)
             if(initresult instanceof Error){
                 return new this.ResultClass('failed', initresult as Error);
             }
-            this.#session = initresult as ort.Session;
+            this.#session = initresult as ort.SingleImageSession;
         }
 
         // run
-        let output: ort.SessionOutput|Error 
+        let output: ort.SingleImageSessionOutput|Error 
             = await this.#session.process_image_from_blob(input)
 
         // run again if this is an multistep/iterative model
         while(!(output instanceof Error) 
-        && is_multistep_output(output.output)
-        && (output.output.completed.data[0] != 1) ) {
+        && is_multistep_output(output.raw)
+        && (output.raw.completed.data[0] != 1) ) {
             const inputfeed: ort.TensorDict = onnx_output_to_multistep_input(
-                output.output as UnknownOutput
+                output.raw as UnknownOutput
             )
-            output = await this.#session.process_image_from_statedict(
-                inputfeed, {imagesize: output.imagesize, inputsize:output.inputsize}
+            output = await this.#session.process_inputfeed_single_image(
+                inputfeed,
+                {imagesize: output.imagesize, inputsize:output.inputsize}
             )
         }
 

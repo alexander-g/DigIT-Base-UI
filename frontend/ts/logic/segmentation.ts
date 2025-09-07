@@ -5,7 +5,7 @@ import { FlaskProcessing }      from "./flask_processing.ts";
 import { 
     validate_ort_tensor, 
     PartialTensor, 
-    SessionOutput 
+    SingleImageSessionOutput 
 } from "./onnxruntime.ts";
 import * as backend_common from "./backends/common.ts"
 import * as imagetools from "./imagetools.ts";
@@ -132,7 +132,7 @@ export type TS_Output = {
     "y.output": backend_common.AnyTensor;
 }
 
-export type ONNX_Session_Output = SessionOutput & {
+export type ONNX_Session_Output = Omit<SingleImageSessionOutput, 'raw'> & {
     output: ONNX_Output|TS_Output;
 }
 
@@ -168,12 +168,12 @@ export function validate_onnx_session_output(x:unknown): ONNX_Session_Output|nul
     //TODO: code duplication with objectdetection.ts
     if(util.is_object(x)
     && (
-        util.has_property_of_type(x, 'output',    validate_onnx_output)
-        || util.has_property_of_type(x, 'output', validate_ts_output)
+        util.has_property_of_type(x, 'raw',    validate_onnx_output)
+        || util.has_property_of_type(x, 'raw', validate_ts_output)
     )
     && util.has_property_of_type(x, 'imagesize', util.validate_imagesize)
     && util.has_property_of_type(x, 'inputsize', util.validate_imagesize)){
-        return x;
+        return {...x, output:x.raw};
     }
     else return null;
 }

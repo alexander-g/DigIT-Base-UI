@@ -10,6 +10,7 @@ export * as boxes           from "./ts/logic/boxes.ts";
 export * as backend_common  from "./ts/logic/backends/common.ts";
 export { RemoteProcessing } from "./ts/logic/backends/remote.ts";
 export * as imagetools      from "./ts/logic/imagetools.ts";
+export * as ort_backend     from "./ts/logic/onnxruntime.ts"
 
 // TODO: separate logic and ui
 export * as state           from "./ts/components/state.ts"
@@ -34,5 +35,8 @@ export * as errors          from "./ts/components/errors.ts"
 
 
 export { preact, signals, Signal, type JSX } from "./ts/dep.ts"
+export { ort } from "./ts/dep.ts"
+
+
 
 

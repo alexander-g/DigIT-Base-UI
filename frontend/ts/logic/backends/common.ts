@@ -16,7 +16,7 @@ export type DTypeArray = InstanceType<typeof DataTypeMap[DType]>;
 export type Tensor<T extends DType> = {
     data:  InstanceType<typeof DataTypeMap[T]>;
     dtype: T;
-    shape: number[];
+    shape: readonly number[];
 }
 
 export type AnyTensor  = Tensor<DType>

@@ -11,23 +11,25 @@ const TESTIMAGE_PATH:string = path.fromFileUrl(
 )
 
 Deno.test('load_pt_zip', async () => {
-    const loaded: ort.PT_ZIP|Error = await ort.load_pt_zip(PTZIP_FILEPATH)
+    const loaded: ort.ModelDescriptor|Error = await ort.load_pt_zip(PTZIP_FILEPATH)
     //console.log(loaded)
     asserts.assertNotInstanceOf(loaded, Error)
 })
 
-//NOTE: currently disabled
-Deno.test('Session.basic', {ignore:true}, async () => {
-    const session: ort.Session|Error 
-        = await ort.Session.initialize(PTZIP_FILEPATH)
+
+Deno.test('Session.basic', {sanitizeResources:false}, async () => {
+    const session: ort.SingleImageSession|Error 
+        = await ort.SingleImageSession.initialize(PTZIP_FILEPATH) as ort.SingleImageSession
     
     console.log(session)
     asserts.assertNotInstanceOf(session, Error)
 
     
     const result = await session.process_image_from_path(TESTIMAGE_PATH)
-    asserts.assertNotInstanceOf(result, Error)
+    await session.release()
 
+    console.log(result)
+    asserts.assertNotInstanceOf(result, Error)
 })
 
 //NOTE: currently disabled
@@ -42,7 +44,7 @@ Deno.test('Session.initialize-non-deno', {ignore:true}, async () => {
     const session: ort.Session|Error 
         = await ort.Session.initialize(PTZIP_FILEPATH)
     
-    //console.log(session)
+    console.log(session)
     asserts.assertNotInstanceOf(session, Error)
 
 })
