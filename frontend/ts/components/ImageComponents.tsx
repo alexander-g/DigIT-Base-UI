@@ -10,15 +10,9 @@ import {
     is_tiff_file, 
     is_bigtiff,
     read_image_size,
+    get_display_size,
+    MAX_SIZE_HEIGHT_WIDTH,
 } from "../logic/imagetools.ts"
-
-
-
-/** Maximum image size to display in original, scale down otherwise */
-const MAX_SIZE_MEGAPIXELS = 20;
-/** Maximum image height/width to display in original, scale down otherwise
- *  (Browser limit) */
-const MAX_SIZE_HEIGHT_WIDTH:number = 1024 * 32 -1;
 
 
 
@@ -445,24 +439,6 @@ export async function set_image_src(
     }
 }
 
-/** Suggest a smaller image size to display in the browser if needed */
-function get_display_size(size:ImageSize): ImageSize {
-    const { width:W, height:H } = size;
-    
-    const size_mp:number  = W * H / 1000000
-    const scale_mp:number = Math.sqrt(MAX_SIZE_MEGAPIXELS) / Math.sqrt(size_mp);
-    const scale_h:number  = MAX_SIZE_HEIGHT_WIDTH / H;
-    const scale_w:number  = MAX_SIZE_HEIGHT_WIDTH / W;
-    const scale:number = Math.min(
-        scale_mp,
-        scale_h,
-        scale_w,
-        1.0,
-    )
-
-    const display_size:ImageSize = { width: W*scale, height: H*scale }
-    return display_size;
-}
 
 
 export 

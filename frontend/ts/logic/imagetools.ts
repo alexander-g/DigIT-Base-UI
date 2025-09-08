@@ -630,3 +630,33 @@ export async function read_image_size(x:Blob): Promise<util.ImageSize|Error> {
     return new Error('Could not get image size')
 }
 
+
+
+
+/** Maximum image size to display in original, scale down otherwise */
+export const MAX_SIZE_MEGAPIXELS = 20;
+/** Maximum image height/width to display in original, scale down otherwise
+ *  (Browser limit) */
+export const MAX_SIZE_HEIGHT_WIDTH:number = 1024 * 32 -1;
+
+
+
+
+/** Suggest a smaller image size to display in the browser if needed */
+export function get_display_size(size:util.ImageSize): util.ImageSize {
+    const { width:W, height:H } = size;
+    
+    const size_mp:number  = W * H / 1000000
+    const scale_mp:number = Math.sqrt(MAX_SIZE_MEGAPIXELS) / Math.sqrt(size_mp);
+    const scale_h:number  = MAX_SIZE_HEIGHT_WIDTH / H;
+    const scale_w:number  = MAX_SIZE_HEIGHT_WIDTH / W;
+    const scale:number = Math.min(
+        scale_mp,
+        scale_h,
+        scale_w,
+        1.0,
+    )
+
+    const display_size:util.ImageSize = { width: W*scale, height: H*scale }
+    return display_size;
+}
