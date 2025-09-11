@@ -161,7 +161,7 @@ class DenoBundle {
                     `--output=${outputfile}`, 
                     '--platform=browser',
                     '--sourcemap=inline',
-                    '--minify',
+                    //'--minify',
                     inputfile,
                 ],
                 stderr: "inherit"
@@ -213,7 +213,6 @@ class DenoBundle {
             fs.copySync(srcdir, new_srcdir)
             srcdir_map[srcdir] = new_srcdir
         }
-        console.log(srcdir_map)
         
         for(const stub of stubs){
             const stubroot:string|Error = 
@@ -226,7 +225,6 @@ class DenoBundle {
                     srcdir_map[stubroot]!, 
                     path.relative(stubroot, stub)
                 )
-            console.log('DBG:stub', stub, stubthis)
             //fs.ensureFileSync(stubthis)
             Deno.writeTextFileSync(stubthis, ``);
         }
