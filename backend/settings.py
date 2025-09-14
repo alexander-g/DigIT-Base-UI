@@ -3,6 +3,10 @@ from . import app
 
 import torch
 
+
+DEFAULT_ENDINGS = ['.pt.zip', '.pt', '.pkl']  #TODO: remove pkl files
+
+
 class Settings:
     FILENAME = 'settings.json'   #FIXME: hardcoded
 
@@ -53,14 +57,14 @@ class Settings:
         }
 
     @classmethod
-    def get_available_models(cls, with_properties=False):
+    def get_available_models(cls, with_properties=False, endings=DEFAULT_ENDINGS):
         modelsdir  = app.get_models_path()
         contents   = glob.glob(os.path.join(modelsdir, '*'))
         modeltypes = [os.path.basename(x) for x in contents if os.path.isdir(x)]
         models     = dict()
         for modeltype in modeltypes:
             modelfiles, modelnames = [], []
-            for ending in ['.pt.zip', '.pt', '.pkl']:       #TODO: remove pkl files
+            for ending in endings:
                 _modelfiles = glob.glob(os.path.join(modelsdir, modeltype, '*'+ending))
                 modelfiles += _modelfiles
                 modelnames += [os.path.basename(m)[:-len(ending)] for m in _modelfiles]
