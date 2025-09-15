@@ -29,6 +29,7 @@ export {
     FileTableContent, 
     SingleFileContent 
 } from "./ts/components/FileTable.tsx";
+export { Checkbox }         from "./ts/components/ContentMenu.tsx"
 export * as styles          from "./ts/components/styles.ts"
 export * as ui_util         from "./ts/components/ui_util.ts"
 export * as errors          from "./ts/components/errors.ts"
