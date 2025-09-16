@@ -36,7 +36,7 @@ export abstract class TrainingTab<AS extends AppState> extends TabContent<AS> {
             >
                 <div style = {css}>
                     { this.training_controls() }
-                    {/* <TrainingInstructions /> */}
+                    { this.instructions() }
                 </div>
             </div>
 
@@ -93,6 +93,10 @@ export abstract class TrainingTab<AS extends AppState> extends TabContent<AS> {
             </div>
         </div>
         )
+    }
+
+    instructions(): JSX.Element {
+        return <TrainingInstructions />
     }
 
     abstract on_start_training(): Promise<void>;
@@ -338,10 +342,24 @@ export class TrainingModal extends preact.Component<TrainingModalProps> {
 }
 
 
-/** TODO */
-function TrainingInstructions(): JSX.Element {
-    return <div class="ui segment form" style="margin-top:0px;">
-        Instructions
+export function TrainingInstructions(
+    props:{children?:preact.ComponentChildren}
+): JSX.Element {
+    return <div class="ui message" style="margin-top:0px;">
+        <div class="header">
+            Hints
+        </div>
+        <ul class="list">
+            {
+                props.children? 
+                props.children :
+            <>
+            <li>Load training images and annotations or annotate via the edit tool.</li>
+            <li>Make sure the images are fully annotated. 
+                Partial annotation will result in suboptimal training.</li>
+            </>
+            }
+        </ul>
     </div>
 }
 
