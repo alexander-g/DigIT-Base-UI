@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 import typing as tp
+import urllib.request
+import urllib.parse
 import webbrowser
 import warnings
 warnings.simplefilter('ignore')
@@ -172,6 +174,7 @@ class App(flask.Flask):
         self.route('/training', methods=['POST'])(self.training)
         self.route('/save_model')(self.save_model)
         self.route('/stop_training')(self.stop_training)
+        self.route('/proxy')(self.proxy)
 
         @self.after_request
         def add_header(r):
@@ -233,6 +236,29 @@ class App(flask.Flask):
             if hasattr(m, 'stop_training'):
                 m.stop_training()
         return 'OK'
+    
+    
+    ALLOWED_HOSTS = {"github.com", "dropbox.com", "www.dropbox.com"}
+
+    def proxy(self):
+        '''GET /proxy?url=https://example.com/path/to/file'''
+        url = flask.request.args.get("url")
+        if not url:
+            return flask.Response("Missing 'url' parameter", status=400)
+        
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return flask.Response("Invalid URL scheme", status=400)
+        if not parsed.hostname in self.ALLOWED_HOSTS:
+            print(f'/proxy: host not allowed: {parsed.hostname}')
+            return flask.Response("Host not allowed", status=403)
+        
+        request  = urllib.request.Request(url, method="GET")
+        response = urllib.request.urlopen(request)
+
+        headers = {name:response.headers[name] for name in response.headers}
+        return flask.Response(response, status=response.status, headers=headers)
+
     
     def recompile_static(self, force=False):
         '''Compile frontend into the static folder from which flask serves files'''
