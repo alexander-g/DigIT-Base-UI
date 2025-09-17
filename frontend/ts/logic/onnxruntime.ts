@@ -110,48 +110,25 @@ async function try_fetch_wasm_browser(): Promise<Uint8Array|Error> {
 }
 
 
+async function cached_fetch(
+    ...x:Parameters<typeof fetch>
+): Promise<Response|Error> {
+    const request: RequestInfo|URL = x[0]
 
-/** Replace the original fetch with a cached version for requests that match `pattern` */
-function _monkeypatch_fetch(pattern:RegExp) {
-    const _original_fetch: typeof fetch = self.fetch;
-
-    self.fetch = async function(
-        ...x: Parameters<typeof fetch>
-    ): ReturnType<typeof fetch>{
-        const request: RequestInfo|URL = x[0]
-        let url_string:string;
-        if(request instanceof URL){
-            url_string = request.href
-        } else if(request instanceof Request){
-            url_string = request.url
-        } else {
-            url_string = request;
-        }
+    const cache:Cache = await caches.open("default")
+    const cached_response:Response|undefined = await cache.match(request)
+    if(cached_response != undefined)
+        return cached_response.clone();
+    //else
+    const response:Response|Error = await util.fetch_no_throw(...x)
+    if(response instanceof Error)
+        return response as Error;
     
-        if(pattern.test(url_string)){
-            const cache:Cache = await caches.open("default")
-            const response:Response|undefined = await cache.match(request)
-            if(response != undefined){
-                return response;
-            }
-            else {
-                const response:Response = await _original_fetch(...x)
-                await cache.put(request, response)
-                return response
-            }
-        }
-        else return _original_fetch(...x)
-    }
+    await cache.put(request, response.clone())
+    return response
 }
 
 async function set_ort_env(): Promise<true|Error> {
-    // //NOTE: threaded wasm currently doesnt work. fix it to single-threaded
-    // ort.env.wasm.numThreads = 1;
-
-    // ort.env.wasm.wasmPaths = wasmpath;
-    // //TODO: do this only once?
-    // monkeypatch_fetch(new RegExp('^'+wasmpath))
-
     const wasmbytes:Uint8Array|Error = await get_ort_wasm_binary()
     if(wasmbytes instanceof Error)
         return wasmbytes as Error;
@@ -171,7 +148,7 @@ async function load_file(path:string): Promise<ArrayBuffer|Error> {
             return error as Error; 
         }
     } else {
-        const response: Response|Error = await util.fetch_no_throw(path)
+        const response: Response|Error = await cached_fetch(path)
         if(response instanceof Error){
             return response as Error;
         }
