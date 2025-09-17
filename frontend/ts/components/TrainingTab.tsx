@@ -63,14 +63,7 @@ export abstract class TrainingTab<AS extends AppState> extends TabContent<AS> {
             <div class="ui segment form" style="margin-top:0px;">
                 { this.modeltype_dropdown() }
 
-                <div class="ui divider"></div>
-
-                <LR_EpochsField 
-                    label          = "Hyperparameters" 
-                    default_lr     = {1e-3} 
-                    default_epochs = {10}
-                    ref            = {this.lr_epochs_ref}
-                />
+                
     
                 <div class="ui divider"></div>
 
@@ -93,6 +86,19 @@ export abstract class TrainingTab<AS extends AppState> extends TabContent<AS> {
             </div>
         </div>
         )
+    }
+
+    /** @virtual */
+    hyperparameters(): JSX.Element {
+        return <>
+            <div class="ui divider"></div>
+            <LR_EpochsField 
+                label          = "Hyperparameters" 
+                default_lr     = {1e-3} 
+                default_epochs = {10}
+                ref            = {this.lr_epochs_ref}
+            />
+        </>
     }
 
     instructions(): JSX.Element {
@@ -168,7 +174,7 @@ function StartingPointInfoBox(props:{modelname:string}): JSX.Element {
         (props.modelname == '') ? '[UNSAVED MODEL]' : props.modelname;
     return <div class="ui message" id="training-model-info-message">
         <p>
-            Starting point for retraining: 
+            Finetuning from currently set model: 
             <b id="training-model-info-label"> {labeltext} </b>
         </p>
     </div>
