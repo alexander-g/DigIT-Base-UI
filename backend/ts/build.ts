@@ -289,7 +289,8 @@ export async function compile_index(
 function is_subpath(candidate: string, parent: string): boolean {
     const c:string = path.resolve(candidate);
     const p:string = path.resolve(parent);
-    return c === p || c.startsWith(p.endsWith("/") ? p : p + "/");
+    const sep:string = path.SEPARATOR;
+    return c === p || c.startsWith(p.endsWith(sep) ? p : p + sep);
 }
 
 function find_file_in_folders(filepath:string, folders:string[]): string|Error {
@@ -397,7 +398,7 @@ function parse_args(): Record<string, string> & {copy_globs:string[]} {
 if(import.meta.main){
     const args: Record<string,string> = parse_args()
 
-    const paths:CompilationPaths = {...BASE_PATHS, ...args}
+    const paths:CompilationPaths = resolve_paths({...BASE_PATHS, ...args})
     const status: true|Error = await compile_and_copy(paths)
     if(status instanceof Error){
         console.log(status.message+'\n')
