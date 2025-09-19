@@ -282,6 +282,13 @@ export function validate_file(x:unknown): File|null {
     return (x instanceof File) ? x : null;
 }
 
+export function validate_files(x:unknown): File[]|null {
+    if(is_array_of_type(x, validate_file)){
+        return x
+    }
+    else return null;
+}
+
 export function validate_imagesize(x:unknown): ImageSize|null {
     if(is_object(x)
     && has_number_property(x, 'width')
@@ -324,5 +331,5 @@ export function is_browser(): boolean {
 }
 
 export function is_deno(): boolean {
-    return !is_browser()
+    return !is_browser() // should rather check for self.Deno
 }

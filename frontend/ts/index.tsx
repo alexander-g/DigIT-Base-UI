@@ -109,7 +109,7 @@ SETTINSMODAL extends SettingsModal<SETTINGS>,
         }
 
         /** File drop event handler. */
-        async on_drop(event:JSX.TargetedDragEvent<HTMLElement>): Promise<void> {
+        async on_drop(event:JSX.TargetedDragEvent<HTMLElement>): Promise<boolean> {
             event.preventDefault()
             const files: FileList | File[] = event.dataTransfer?.files ?? []
             
@@ -117,7 +117,7 @@ SETTINSMODAL extends SettingsModal<SETTINGS>,
         }
 
         /** New files callback */
-        async on_new_files(files: FileList|File[]): Promise<void> {
+        async on_new_files(files: FileList|File[]): Promise<boolean> {
             return await this.appstate.set_files(files);
         }
     }

@@ -65,7 +65,8 @@ export async function load_list_of_files<I extends Input, R extends Result>(
     ResultClass:       files.ResultClassInterface<R>,
     previous_pairs?:   InputResultPair<I,R>[],
 ): Promise<InputResultPair<I, R>[]> {
-    let {inputs, resultfiles:mayberesultfiles} = await categorize_files(list_of_files, InputClass)
+    let {inputs, resultfiles:mayberesultfiles} = 
+        await categorize_files(list_of_files, InputClass)
     if(inputs.length == 0 && previous_pairs?.length != undefined){
         //use already loaded inputs and try to assign results to them
         inputs = previous_pairs.map(p => p.input)
@@ -82,9 +83,17 @@ export async function try_load_results<R extends Result>(
     mayberesultfiles: readonly File[],
     ResultClass:      files.ResultClassInterface<R>,
 ): Promise<R[]> {
-    const results: R[] =[]
+    const results: R[] = []
     for(const input of inputs){
         let result: R|null = null
+        // try passing all files to ResultClass, if it needs more than one
+        result = await ResultClass.validate({input, files:mayberesultfiles})
+        if(result != null){
+            results.push(result);
+            break;
+        }
+
+        // then try individual files
         for(const result_candidate of mayberesultfiles) {
             result = await ResultClass.validate({input, file:result_candidate})
             if(result != null)

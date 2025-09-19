@@ -308,3 +308,23 @@ function validate_input_and_file_pair(x:unknown): InputAndFilePair|null {
 export function is_input_and_file_pair(x:unknown): x is InputAndFilePair{
     return validate_input_and_file_pair(x) === x;
 }
+
+
+
+type InputAndFileList = {
+    input: Input;
+    files: File[];
+}
+
+function validate_input_and_file_list_pair(x:unknown): InputAndFileList|null {
+    if(util.is_object(x)
+    && util.has_property_of_type(x, 'files', util.validate_files)
+    && util.has_property_of_type(x, 'input', validate_baseinput_type)){
+        return x;
+    }
+    else return null;
+}
+
+export function is_input_and_file_list_pair(x:unknown): x is InputAndFileList{
+    return validate_input_and_file_list_pair(x) === x;
+}
