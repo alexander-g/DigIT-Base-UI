@@ -95,7 +95,7 @@ export class InputImage extends preact.Component<InputImageProps> {
 
             if(status instanceof Error){
                 // TODO
-                console.error('Failed to set image src:', status.message)
+                console.error('Failed to set image src:', status)
                 return
             }
             if(status instanceof ResizedImageFile)
@@ -410,12 +410,21 @@ export async function set_image_src(
             //else
             input = response;
         } else if(await is_tiff_file(input)) {
-            //const new_input:Blob|null = await load_tiff_file_as_blob(input, display_size)                                   // TODO!
-            const new_input:Blob|null = await load_tiff_file_as_blob(input, lossless)
-            if(new_input instanceof Blob) {
-                input = new File([new_input], input.name, {type: input.type});
-            }
-            else return new Error('Could not load TIFF file')
+            //const new_input:Blob|null = await load_tiff_file_as_blob(input, display_size)         // TODO!
+            const new_input:Blob|Error = 
+                await load_tiff_file_as_blob(input, lossless, display_size)
+            if(new_input instanceof Error)
+                return new_input as Error;
+            //else
+            input = new File([new_input], input.name, {type: input.type});
+        } else if(size.width  != display_size.width 
+               || size.height != display_size.height) {
+            const new_input:File|Error = 
+                await imagetools.resize_imagefile(input, display_size);
+            if(new_input instanceof Error)
+                return new_input as Error;
+            //else
+            input = new_input;
         }
 
         const url:string = URL.createObjectURL(input)
@@ -445,29 +454,35 @@ export
 async function load_tiff_file_as_blob(
     file:     File, 
     lossless: boolean = false,
+    display_size: ImageSize,
     page_nr:  number = 0,
-): Promise<Blob|null> {
+): Promise<Blob|Error> {
     // cannot load bigtiffs in JS at the moment, need flask to handle it
-    if(await is_bigtiff(file)){
-        return convert_bigtiff_via_flask(file)
-    }
+    if(await is_bigtiff(file))
+        return resize_image_via_flask(file, display_size)
+    
+    // TODO: still not using display_size
     const rgba: ImageData|null = await load_tiff_file(file, page_nr)
-    if(rgba != null) {
-        const canvas: HTMLCanvasElement = document.createElement('canvas')
-        canvas.width  = rgba.width
-        canvas.height = rgba.height
-        
-        const ctx: CanvasRenderingContext2D|null = canvas.getContext('2d')
-        if(!ctx)
-            return null;
-        
-        ctx.putImageData(rgba, 0, 0);
-        const mime:string = lossless? 'image/png' : 'image/jpeg';
-        return new Promise( (resolve: (x:Blob|null) => void) => {
-            canvas.toBlob((blob: Blob|null )=>  resolve(blob), mime, 0.92);
-        } )
-    }
-    return null;
+    if(rgba == null)
+        return new Error('Could not load tiff file')
+    //else
+    const canvas: HTMLCanvasElement = document.createElement('canvas')
+    canvas.width  = rgba.width
+    canvas.height = rgba.height
+    
+    const ctx: CanvasRenderingContext2D|null = canvas.getContext('2d')
+    if(!ctx)
+        return new Error('Could not create canvas context');
+    
+    ctx.putImageData(rgba, 0, 0);
+    const type:string = lossless? 'image/png' : 'image/jpeg';
+    return new Promise( (resolve: (x:Blob|Error) => void) => {
+        canvas.toBlob(
+            (blob: Blob|null) =>  resolve(blob ?? new Error('toBlob() failed')), 
+            /*type =    */ type, 
+            /*quality = */ 0.92,
+        );
+    } )
 }
 
 
@@ -482,23 +497,6 @@ export class ResizedImageFile extends File {
 }
 
 
-/** Send bigtiff file to flask to convert it to a smaller jpeg */
-async function convert_bigtiff_via_flask(file:File): Promise<Blob|null> {
-    const response:Response|Error = 
-        await util.upload_file_no_throw(file, 'bigtiff')
-    if(response instanceof Error)
-        return null;
-
-    const og_width: string|null = response.headers.get('X-Original-Image-Width');
-    const og_height:string|null = response.headers.get('X-Original-Image-Height');
-    const og_size: ImageSize = {
-        width:  Number(og_width), 
-        height: Number(og_height),
-    }
-
-    const blob:Blob|null = await response.blob()
-    return new ResizedImageFile(og_size, [blob], file.name, {type:file.type})
-}
 
 
 /** Send image to flask to resize it */

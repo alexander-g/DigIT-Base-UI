@@ -159,7 +159,7 @@ export async function image_to_rgb(
         targetsize = get_image_size(image);
     }
     const rgba:Uint8ClampedArray = canvas.context.getImageData(
-        0,0, targetsize.width, targetsize.height
+        0,0, targetsize.width, targetsize.height                                                    // TODO: probably not correct?
     ).data
     
     const rgb: Uint8ClampedArray = rgba_to_rgb(rgba)
@@ -284,6 +284,24 @@ export function get_image_size(image:Image): util.ImageSize {
         width:  typeof image.width == 'number' ? image.width :image.width(), 
         height: typeof image.height == 'number'? image.height:image.height()
     };
+}
+
+
+export async function resize_imagefile(
+    imagefile: File, 
+    size:      util.ImageSize,
+): Promise<File|Error> {
+    const rgb:ImageData|Error = await blob_to_rgb(imagefile, size)
+    if(rgb instanceof Error)
+        return rgb as Error;
+    
+    const rgba:ImageData = 
+        new ImageData(rgb_u8_to_rgba(rgb), size.height, size.width, "HWC");
+    const blob:Blob|Error = await imagedata_to_blob(rgba)
+    if(blob instanceof Error)
+        return blob as Error;
+    
+    return new File([blob], imagefile.name, {type:imagefile.type})
 }
 
 
@@ -637,7 +655,10 @@ export async function read_image_size(x:Blob): Promise<util.ImageSize|Error> {
 export const MAX_SIZE_MEGAPIXELS = 20;
 /** Maximum image height/width to display in original, scale down otherwise
  *  (Browser limit) */
-export const MAX_SIZE_HEIGHT_WIDTH:number = 1024 * 32 -1;
+//export const MAX_SIZE_HEIGHT_WIDTH:number = 1024 * 32 -1;
+
+// NOTE: in practice even lower
+export const MAX_SIZE_HEIGHT_WIDTH:number = 1024 * 8 -1;
 
 
 
@@ -657,6 +678,9 @@ export function get_display_size(size:util.ImageSize): util.ImageSize {
         1.0,
     )
 
-    const display_size:util.ImageSize = { width: W*scale, height: H*scale }
+    const display_size:util.ImageSize = { 
+        width:  Math.floor(W*scale), 
+        height: Math.floor(H*scale) 
+    }
     return display_size;
 }

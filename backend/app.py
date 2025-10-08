@@ -109,7 +109,7 @@ class App(flask.Flask):
         
         @self.route('/resize_image', methods=['POST'])
         def resize_image():
-            '''Convert bigtiff to jpeg'''
+            '''Resize images that are too large for the browser'''
             files = flask.request.files.getlist("files")
             if len(files) != 1:
                 flask.abort(400, 'No Files')
