@@ -658,7 +658,7 @@ export const MAX_SIZE_MEGAPIXELS = 20;
 //export const MAX_SIZE_HEIGHT_WIDTH:number = 1024 * 32 -1;
 
 // NOTE: in practice even lower
-export const MAX_SIZE_HEIGHT_WIDTH:number = 1024 * 8 -1;
+export const MAX_SIZE_HEIGHT_WIDTH:number = 1024 * 16 -1;
 
 
 
