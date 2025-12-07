@@ -15,6 +15,11 @@ import {
 } from "../logic/imagetools.ts"
 
 
+import {wasm_big_image_initialize, BigImage} from "../dep.ts";
+
+// TODO: not sure where to put this
+const wasm:BigImage = await wasm_big_image_initialize()
+
 
 
 export type InputImageProps = {
@@ -381,7 +386,6 @@ export class AutoscaleImage extends preact.Component<AutoscaleImageProps> {
 
 
 
-
 /** Set the `src` attribute of an image element as well as some other chores. */
 export async function set_image_src(
     img:   HTMLImageElement, 
@@ -400,32 +404,33 @@ export async function set_image_src(
         
         const display_size: ImageSize = get_display_size(size)
 
-        // if image size larger than 30k need to send to flask to handle this
-        if(size.height > MAX_SIZE_HEIGHT_WIDTH || size.width > MAX_SIZE_HEIGHT_WIDTH){
-            //   send to flask and resize to display size
-            const response:File|Error = 
-                await resize_image_via_flask(input, display_size, lossless);
-            if(response instanceof Error)
-                return response as Error;
+        const t0 = performance.now();
+
+        // tiff images and images larger than display size are handled by the wasm module
+        if(await is_tiff_file(input)
+        || size.height > display_size.height
+        || size.width > display_size.width) {
+            const loaded:File|Error = await wasm.image_read_patch_and_encode(
+                input, 
+                /*src_x = */ 0,
+                /*src_y = */ 0,
+                /*src_width  = */ size.width,
+                /*src_height = */ size.height,
+                /*dst_width  = */ display_size.width,
+                /*dst_height = */ display_size.height,
+
+                //TODO: un-hardcode
+                /*lossless   = */ false,
+            )
+            if(loaded instanceof Error)
+                return loaded as Error;
+            
             //else
-            input = response;
-        } else if(await is_tiff_file(input)) {
-            //const new_input:Blob|null = await load_tiff_file_as_blob(input, display_size)         // TODO!
-            const new_input:Blob|Error = 
-                await load_tiff_file_as_blob(input, lossless, display_size)
-            if(new_input instanceof Error)
-                return new_input as Error;
-            //else
-            input = new File([new_input], input.name, {type: input.type});
-        } else if(size.width  != display_size.width 
-               || size.height != display_size.height) {
-            const new_input:File|Error = 
-                await imagetools.resize_imagefile(input, display_size);
-            if(new_input instanceof Error)
-                return new_input as Error;
-            //else
-            input = new_input;
+            input = loaded;
         }
+
+        const t1 = performance.now();
+        console.log(`Image loaded via wasm in ${t1-t0}`)
 
         const url:string = URL.createObjectURL(input)
         img.style.visibility = '';

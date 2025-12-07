@@ -14,6 +14,16 @@ export { signals, Signal, type ReadonlySignal }
 
 
 
+// @deno-types="https://raw.githubusercontent.com/alexander-g/wasm-big-image/refs/tags/v2025-12-07/wasm-big-image.d.ts"
+export { 
+    initialize as wasm_big_image_initialize,
+    BigImage,
+} from "https://raw.githubusercontent.com/alexander-g/wasm-big-image/refs/tags/v2025-12-07/wasm-big-image.js"
+
+
+
+
+
 //export { default as UTIF } from 'https://cdn.skypack.dev/utif@3.1.0?dts'
 
 //NOTE: utif2 better at jpeg decompression
