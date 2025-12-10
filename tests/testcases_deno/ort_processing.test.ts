@@ -18,8 +18,8 @@ Deno.test('ONNX_backend_basic_inference', {ignore:true}, async () => {
     const backend = new ORT_Processing<ObjectdetectionResult>(
         ObjectdetectionResult, {active_models: {detection:PTZIP_FILEPATH}}
     )
-    const imagedata: Uint8Array = Deno.readFileSync(TESTIMAGE_PATH)
-    const imagefile             = new File([imagedata], 'image0.jpg')
+    const imagedata: Uint8Array<ArrayBuffer> = Deno.readFileSync(TESTIMAGE_PATH)
+    const imagefile = new File([imagedata], 'image0.jpg')
     const result = await backend.process(imagefile)
     
     asserts.assertEquals(result.status, 'processed')
@@ -43,8 +43,8 @@ Deno.test('ONNX_multistep_inference', {ignore:true}, async () => {
     const backend = new ORT_Processing<SegmentationResult>(
         SegmentationResult, {active_models: {detection:MULTISTEP_PTZIP_FILEPATH}}
     )
-    const imagedata: Uint8Array = Deno.readFileSync(TESTIMAGE_PATH)
-    const imagefile             = new File([imagedata], 'image0.jpg')
+    const imagedata: Uint8Array<ArrayBuffer> = Deno.readFileSync(TESTIMAGE_PATH)
+    const imagefile = new File([imagedata], 'image0.jpg')
     const result = await backend.process(imagefile)
 
     //console.trace(result.raw)

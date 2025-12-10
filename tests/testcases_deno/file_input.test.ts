@@ -7,8 +7,8 @@ const IMAGE_ASSET1_PATH: string
     = path.fromFileUrl(import.meta.resolve('./assets/test_image2.tiff'))
 
 Deno.test("imagetools.load_tiff", async () => {
-    const tiffdata: Uint8Array          = Deno.readFileSync(IMAGE_ASSET1_PATH)
-    const tifffile                      = new File([tiffdata], 'image1.tiff')
+    const tiffdata: Uint8Array<ArrayBuffer> = Deno.readFileSync(IMAGE_ASSET1_PATH)
+    const tifffile = new File([tiffdata], 'image1.tiff')
     const decoded_data:ImageData|null   = await imagetools.load_tiff_file(tifffile)
     asserts.assertExists(decoded_data)
 
@@ -69,11 +69,16 @@ Deno.test('load_list_of_files', async () => {
         static override validate = validate_spy as <T extends Result>() => Promise<T|null>
     }
     await file_input.load_list_of_files(files, InputFile, MockResultClass)
-    // 3 input files x 2 remaining files = 6
-    asserts.assertEquals(validate_spy.calls.length, 6)
-    //should pass {input:..., file:...} as an input
+    // 3 input files, each receives a full list of results 
+    // as well as individually 2 remaining files = 9
+    asserts.assertEquals(validate_spy.calls.length, 9)
+    //should pass {input:..., files:...} as an input for the first time
     asserts.assertArrayIncludes(
-        Object.keys(validate_spy.calls[0]?.args[0]), ['input', 'file']
+        Object.keys(validate_spy.calls[0]?.args[0]), ['input', 'files']
+    )
+     //should pass {input:..., file:...} as an input for the second time
+     asserts.assertArrayIncludes(
+        Object.keys(validate_spy.calls[1]?.args[0]), ['input', 'file']
     )
 
     //only input files, no result files

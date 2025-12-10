@@ -90,7 +90,7 @@ export async function try_load_results<R extends Result>(
         result = await ResultClass.validate({input, files:mayberesultfiles})
         if(result != null){
             results.push(result);
-            break;
+            continue;
         }
 
         // then try individual files

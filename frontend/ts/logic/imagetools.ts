@@ -261,6 +261,7 @@ async function imagedata_to_blob(data:ImageData): Promise<Blob|Error> {
 /** Get image data from either HTMLImageElement or EmulatedImage as a blob  */
 export
 async function canvas_to_blob(canvas:Canvas): Promise<Blob|Error> { //TODO: jpeg
+    await 0;
     if('toBlob' in canvas) {
         return new Promise( (resolve: (b:Blob|Error) => void ) => {
             canvas.toBlob((b:Blob|null) => {
@@ -272,7 +273,7 @@ async function canvas_to_blob(canvas:Canvas): Promise<Blob|Error> { //TODO: jpeg
         } )
         
     } else {
-        return await new Blob([canvas.toBuffer('image/png')])
+        return new Blob([canvas.toBuffer('image/png') as Uint8Array<ArrayBuffer>])
     }
 }
 
@@ -493,7 +494,8 @@ export async function load_tiff_file(
         } finally {
             console.log = console_log
         }
-        const rgba: Uint8ClampedArray  = Uint8ClampedArray.from(UTIF.toRGBA8(page));
+        const rgba: Uint8ClampedArray<ArrayBuffer> = 
+            Uint8ClampedArray.from(UTIF.toRGBA8(page));
         if(globalThis.ImageData)
             return new globalThis.ImageData(rgba, page.width, page.height)
         else

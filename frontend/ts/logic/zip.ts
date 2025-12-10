@@ -19,7 +19,7 @@ export function zip_files(
 
     // deno-lint-ignore no-async-promise-executor
     const promise = new Promise<File|Error>( async (resolve:(x:File|Error) => void) => {
-        const chunks: Uint8Array[] = []
+        const chunks: Uint8Array<ArrayBuffer>[] = []
 
         /** Called from `fflate` when a chunk is ready */
         const progress_cb:fflate.AsyncFlateStreamHandler = 
@@ -27,7 +27,7 @@ export function zip_files(
                 if(error) {
                     resolve(error)
                 } else {
-                    chunks.push(chunk)
+                    chunks.push(chunk as Uint8Array<ArrayBuffer>)
                     if(final)
                         resolve(new File(chunks, filename))
                 }
@@ -63,7 +63,7 @@ export async function unzip(data:Blob|Uint8Array): Promise<Files|Error> {
     }
     const files:Files = {}
     for(const [path, data] of Object.entries(unzipped)) {
-        files[path] = new File([data], path)
+        files[path] = new File([data as Uint8Array<ArrayBuffer>], path)
     }
     return files;
 }

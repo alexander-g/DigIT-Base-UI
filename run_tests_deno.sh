@@ -10,11 +10,12 @@ rm -rf $COVERAGE_DIR
     --allow-env=DENO_DIR        \
     --allow-net=cdn.jsdelivr.net \
     --allow-ffi                 \
+    --allow-run=deno            \
     --no-prompt                 \
     --cached-only               \
     --coverage=$COVERAGE_DIR/raw    \
-    --unstable                      \
-    $@
+    --ignore=.deno              \
+    ${@-tests/}
 
 NO_COLOR=1 ./deno.sh coverage --exclude=./tests $COVERAGE_DIR/raw > $COVERAGE_DIR/coverage.txt
 ./tests/combine_coverage.ts $COVERAGE_DIR/coverage.txt > $COVERAGE_DIR/coverage_summary.txt

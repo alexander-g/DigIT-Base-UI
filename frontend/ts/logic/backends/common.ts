@@ -196,7 +196,7 @@ export function create_tensor(
 }
 
 /** Compute the total number of elements for a shape */
-export function shape_to_size(shape:number[]) {
+export function shape_to_size(shape:readonly number[]) {
     if(shape.length == 0)
         //scalar
         return 1;

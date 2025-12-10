@@ -6,11 +6,11 @@ export async function encrypt_file(
     outputfilepath: string, 
     key:            string,
 ): Promise<void> {
-    const inputbuffer:Uint8Array = Deno.readFileSync(inputfilepath);
+    const inputbuffer:Uint8Array<ArrayBuffer> = Deno.readFileSync(inputfilepath);
     const iv:Uint8Array = crypto.getRandomValues(new Uint8Array(16));
 
     const algorithm = { name: "AES-GCM", iv: iv };
-    const key_u8:Uint8Array = encode_string_to_256bits(key)
+    const key_u8:Uint8Array<ArrayBuffer> = encode_string_to_256bits(key)
     const cryptokey 
         = await crypto.subtle.importKey("raw", key_u8, algorithm, false, ["encrypt"]);
     const encrypted:ArrayBuffer 
@@ -31,10 +31,10 @@ export async function decrypt_file(
     const inputbuffer:Uint8Array = Deno.readFileSync(inputfilepath);
     // Extract IV from the beginning of the file
     const iv:Uint8Array = inputbuffer.slice(0, 16);
-    const encryptedData:Uint8Array = inputbuffer.slice(16);
+    const encryptedData:Uint8Array<ArrayBuffer> = inputbuffer.slice(16);
 
     const algorithm = { name: "AES-GCM", iv: iv };
-    const key_u8:Uint8Array = encode_string_to_256bits(key)
+    const key_u8:Uint8Array<ArrayBuffer> = encode_string_to_256bits(key)
     const cryptokey 
         = await crypto.subtle.importKey("raw", key_u8, algorithm, false, ["decrypt"]);
     const decrypted:ArrayBuffer 
@@ -44,8 +44,8 @@ export async function decrypt_file(
 }
 
 /** Convert a string to binary 32 bytes. Truncated if too long, thus not secure. */
-function encode_string_to_256bits(key:string): Uint8Array {
-    const result:Uint8Array = new Uint8Array(32).fill(0)
+function encode_string_to_256bits(key:string): Uint8Array<ArrayBuffer> {
+    const result:Uint8Array<ArrayBuffer> = new Uint8Array(32).fill(0)
     new TextEncoder().encodeInto(key, result)
     return result;
 }

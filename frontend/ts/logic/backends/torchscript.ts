@@ -252,7 +252,7 @@ function _preload_torch_libs(path_to_ts_lib:string): void {
 /** Internal description of a tensor as stored in a .schema.json file.
 *   Tensor data is provided via a memory address. */
 type PointerSchemaItem = {
-    shape:   number[];
+    shape:   readonly number[];
     dtype:   common.DType;
     address: number|bigint; 
 }
