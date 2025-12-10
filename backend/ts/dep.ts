@@ -2,7 +2,6 @@ export * as path  from "jsr:@std/path@1.0.8"
 export * as fs    from "jsr:@std/fs@1.0.6"
 export * as cli   from "jsr:@std/cli@1.0.7"
 
-export * as esbuild    from 'https://deno.land/x/esbuild@v0.17.10/wasm.js';
 export * as preact_ssr from "https://esm.sh/preact-render-to-string@5.2.6?deps=preact@10.25.0";
 
 

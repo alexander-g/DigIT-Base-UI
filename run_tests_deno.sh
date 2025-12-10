@@ -10,7 +10,7 @@ rm -rf $COVERAGE_DIR
     --allow-env=DENO_DIR        \
     --allow-net=cdn.jsdelivr.net \
     --allow-ffi                 \
-    --allow-run=deno            \
+    --unstable-bundle           \
     --no-prompt                 \
     --cached-only               \
     --coverage=$COVERAGE_DIR/raw    \

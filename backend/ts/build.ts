@@ -1,9 +1,8 @@
-#!./deno.sh run  --no-prompt --allow-read=./ --allow-write=./ --allow-run=deno
+#!./deno.sh run  --no-prompt --allow-read=./ --allow-write=./ --unstable-bundle
 
-import { preact_ssr }                   from "./dep.ts";
-import { path, fs, cli }              from "./dep.ts"
-
-import * as paths                       from "./paths.ts"
+import { preact_ssr }    from "./dep.ts";
+import { path, fs, cli } from "./dep.ts"
+import * as paths        from "./paths.ts"
 
 
 
@@ -133,6 +132,41 @@ export async function compile_default(
 }
 
 
+// adding bundle etc to Deno because otherwise always get errors during checks
+// --unstable-bundle does not help
+declare global {
+    namespace Deno {
+
+        interface BundleOptions {
+            entrypoints?: string[];
+            output?: string;
+            platform?: "browser" | "deno" ;
+            minify?: boolean;
+            write?: boolean;
+            sourcemap?: 'inline'
+        }
+        
+        interface BundleResult {
+            success: boolean,
+            errors: {
+                text:string,
+            }[],
+            outputFiles: {
+                contents: Uint8Array<ArrayBuffer>,
+                text: () => string,
+                hash: string,
+            }[]
+        }
+
+        // optional because undefined if run without --unstable-bundle
+        const bundle: ((options: BundleOptions) => Promise<BundleResult>) | undefined;
+
+    }
+}
+
+
+
+
 class DenoBundle {
     // the location where source files are copied into
     private bundleroot:string;
@@ -153,36 +187,28 @@ class DenoBundle {
             path.relative(index_root, inputfile)
         )
 
-        const command = new Deno.Command(
-            Deno.execPath(), 
-            {
-                args: [
-                    'bundle',
-                    `--output=${outputfile}`, 
-                    '--platform=browser',
-                    '--sourcemap=inline',
-                    //'--minify',
-                    inputfile,
-                ],
-                stderr: "inherit"
-            }
-        );
-        console.log(fs.existsSync(inputfile))
-        console.log([
-            'bundle',
-            `--output=${outputfile}`, 
-            '--platform=browser',
-            '--sourcemap=inline',
-            '--minify',
-            inputfile,
-        ].join('\n'))
-        
-        const output:Deno.CommandOutput = await command.outputSync()
-        if(!output.success)
+        if(!Deno.bundle)
             return false;
-            //return new Error(`deno bundle failed with code ${output.code}`)
-        //else
+        
+        const output:Deno.BundleResult = await Deno.bundle({
+            entrypoints: [inputfile],
+            output:      "dist",
+            platform:    "browser",
+            minify:      true,
+            write:       false,
+            sourcemap:   'inline'
+        })
 
+        if(!output.success) {
+            //TODO: return new Error(`deno bundle failed with code ${output.code}`)
+            console.log('Bundling failed: ', output.errors.join('\n\n'))
+            return false;
+        }
+        //else
+        if(output.outputFiles.length != 1) // should not happend
+            return false;
+        
+        Deno.writeTextFileSync(outputfile, output.outputFiles[0]!.text())
         return true;
     }
 
@@ -233,7 +259,7 @@ class DenoBundle {
 
     static check_permissions(srcdirs:string[], outputdir:string): true|Error {
         const permissions_error = new Error(`Required permissions):\n`
-            +`--allow-run=deno\n`
+            +`--unstable-bundle\n`
             +`--allow-read=./${srcdirs.join(',')}\n`
             +`--allow-write=./${outputdir}\n`
         )
@@ -244,7 +270,7 @@ class DenoBundle {
                 return permissions_error
         }
 
-        if(perms.querySync({name:"run", command:"deno"}).state != "granted"
+        if(!Deno.bundle
         || perms.querySync({name:"write", path:outputdir}).state !=  "granted"
         ){
             return permissions_error;

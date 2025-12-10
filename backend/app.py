@@ -291,9 +291,7 @@ class DenoConfig:
         static:    tp.Optional[str] = None,
         srcdirs :  tp.Optional[str] = None,
         index_tsx: tp.Optional[str] = None,
-        dep_ts:    tp.Optional[str] = None,
         copy_globs:tp.Optional[str] = None,
-        assets:    tp.Optional[str] = None,
     ):
         #path to the root of the base project
         base_root = os.path.realpath(
@@ -313,24 +311,20 @@ class DenoConfig:
         self.buildfile  = buildfile or os.path.join(base_root, 'backend/ts/build.ts')
         self.static     = static    or os.path.join(self.root, 'static/')
         self.srcdirs    = srcdirs   or os.path.join(self.root, 'frontend/')
-        self.index_tsx  = index_tsx or 'ts/index.tsx'
-        self.dep_ts     = dep_ts    or 'ts/dep.ts'
-        self.assets     = assets    or os.path.join(self.root, 'assets/')
-
+        self.index_tsx  = index_tsx or 'frontend/ts/index.tsx'
 
         self.build_cmd = (
             f'{self.executable} run' 
             f' --config {self.configfile}'
             f' --allow-read={self.root}'
             f' --allow-write={self.static}'
-            f' --allow-run=deno'
+            f' --unstable-bundle'
             f' --no-prompt'
             f' --cached-only'
             f' {self.buildfile}'
             f' --static={self.static}'
             f' --srcdirs={self.srcdirs}'
             f' --index_tsx={self.index_tsx}'
-            f' --dep_ts={self.dep_ts}'
             + (f' --copy_globs={copy_globs}' if copy_globs else '')
         )
 
