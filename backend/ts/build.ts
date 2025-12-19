@@ -16,6 +16,10 @@ export type CompilationPaths = {
     /** Absolute path to main tsx file, must be in one of `srcdirs`. */
     index_tsx: string
 
+    /** Absolute paths to additional `.ts` files to be bundled individually
+     *  (e.g. workers). Must be in one of `srcdirs` */
+    extra_bundle?: string[]
+
     /** Absolute paths to modules that should be replaced with empty stubs.
      *  Must be in one of `srcdirs`. */
     stubs?: string[];
@@ -69,10 +73,15 @@ function resolve_paths(paths: CompilationPaths): CompilationPaths {
     for(const glob of paths.copy_globs ?? [])
         new_copy_globs.push( path.resolve(glob) )
 
+    const new_extra_bundles:string[] = []
+    for(const extrafile of paths.extra_bundle ?? [])
+        new_extra_bundles.push( path.resolve(extrafile) )
+
     return {
         static:    path.resolve(paths.static),
         srcdirs:   new_srcdirs,
         index_tsx: path.resolve(paths.index_tsx),
+        extra_bundle: new_extra_bundles,
         stubs:     new_stubs,
         copy_globs:new_copy_globs,
     }
@@ -109,6 +118,13 @@ export async function compile_everything(
             paths.stubs ?? [],
         )
     )
+    for(const extrafile of paths.extra_bundle ?? []){
+        const outputfile:string = 
+            path.join(paths.static, path.basename(extrafile))+'.js'
+        promises.push(
+            build.bundle(extrafile, outputfile, paths.stubs ?? [])
+        )
+    }
 
     //compile the main JSX <Index /> element into index.html
     promises.push(
@@ -176,6 +192,9 @@ class DenoBundle {
         outputfile: string, 
         stubs:      string[],
     ): Promise<boolean> {
+        if(!Deno.bundle)
+            return false;
+
         const srcdir_map:Record<string,string> = this.copy_and_stub(stubs)
         const index_root:string|Error = 
             find_file_in_folders(inputfile, this.srcdirs)
@@ -186,22 +205,23 @@ class DenoBundle {
             srcdir_map[index_root]!, 
             path.relative(index_root, inputfile)
         )
-
-        if(!Deno.bundle)
-            return false;
         
         const output:Deno.BundleResult = await Deno.bundle({
             entrypoints: [inputfile],
             output:      "dist",
             platform:    "browser",
-            minify:      true,
+            minify:      false,
             write:       false,
             sourcemap:   'inline'
         })
 
         if(!output.success) {
             //TODO: return new Error(`deno bundle failed with code ${output.code}`)
-            console.log('Bundling failed: ', output.errors.join('\n\n'))
+            const errormessages:string = output.errors.map(
+                (e:{text:string}) => e.text
+            ).join('\n\n')
+            const error = new Error(`Bundling failed: ${errormessages}`)
+            console.trace(error)
             return false;
         }
         //else
@@ -236,7 +256,7 @@ class DenoBundle {
             // TODO: technically not correct, should be not relative to cwd
             const basename:string = path.relative(Deno.cwd(), srcdir)
             const new_srcdir:string = path.join(this.bundleroot, basename)
-            fs.copySync(srcdir, new_srcdir)
+            fs.copySync(srcdir, new_srcdir, {overwrite:true})
             srcdir_map[srcdir] = new_srcdir
         }
         
@@ -280,7 +300,7 @@ class DenoBundle {
     }
 }
 
-// TODO: remove, only here for debugging
+// TODO: remove, only here for debugging 
 export function wait(ms: number): Promise<unknown> {
     return new Promise((resolve: (x:unknown) => void) => {
         setTimeout(() => resolve(0), ms)
@@ -415,10 +435,11 @@ function parse_args(): Record<string, string> & {copy_globs:string[]} {
             srcdirs:   BASE_PATHS.srcdirs.join(','),
         } }
     )
-    const copy_globs:string[] = args.copy_globs?.split(',') ?? [];
-    const srcdirs:string[] = args.srcdirs?.split(',') ?? []
+    const copy_globs:string[]   = args.copy_globs?.split(',') ?? [];
+    const srcdirs:string[]      = args.srcdirs?.split(',') ?? []
+    const extra_bundle:string[] = args.extra_bundle?.split(',') ??[]
     
-    return Object.assign(args, {srcdirs, copy_globs})
+    return Object.assign(args, {srcdirs, copy_globs, extra_bundle})
 }
 
 if(import.meta.main){

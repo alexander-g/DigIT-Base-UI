@@ -292,6 +292,7 @@ class DenoConfig:
         srcdirs :  tp.Optional[str] = None,
         index_tsx: tp.Optional[str] = None,
         copy_globs:tp.Optional[str] = None,
+        extra_bundle:tp.Optional[str] = None,
     ):
         #path to the root of the base project
         base_root = os.path.realpath(
@@ -312,6 +313,13 @@ class DenoConfig:
         self.static     = static    or os.path.join(self.root, 'static/')
         self.srcdirs    = srcdirs   or os.path.join(self.root, 'frontend/')
         self.index_tsx  = index_tsx or 'frontend/ts/index.tsx'
+        self.extra_bundle = extra_bundle or ''
+
+        importmap = (
+            f' --import-map={os.environ["IMPORTMAP"]} ' 
+            if 'IMPORTMAP' in os.environ 
+            else ''
+        )
 
         self.build_cmd = (
             f'{self.executable} run' 
@@ -321,10 +329,12 @@ class DenoConfig:
             f' --unstable-bundle'
             f' --no-prompt'
             f' --cached-only'
+            +importmap+
             f' {self.buildfile}'
             f' --static={self.static}'
             f' --srcdirs={self.srcdirs}'
             f' --index_tsx={self.index_tsx}'
+            f' --extra_bundle={self.extra_bundle}'
             + (f' --copy_globs={copy_globs}' if copy_globs else '')
         )
 

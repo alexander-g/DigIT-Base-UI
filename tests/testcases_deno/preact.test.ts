@@ -12,7 +12,15 @@ Deno.test(
     //const tempfile:string = Deno.makeTempFileSync({dir:tempdir})
     //fs.ensureFileSync(tempfile)
 
-    const maybe_error:boolean|Error = await preact.compile_default({static:tempdir})
+    // additional dummy bundle for testing
+    const extra:string = path.fromFileUrl(
+        import.meta.resolve('../../frontend/ts/util.ts')
+    )
+
+    const maybe_error:boolean|Error = await preact.compile_default({
+        static: tempdir,
+        extra_bundle: [extra]
+    })
     asserts.assertFalse(maybe_error instanceof Error, maybe_error.toString())
     //asserts.assertFalse( fs.existsSync(tempfile) )
     
@@ -23,6 +31,8 @@ Deno.test(
     const expected_index_path:string = path.join(tempdir, 'index.html')
     const content:string = Deno.readTextFileSync(expected_index_path)
     asserts.assertStringIncludes(content, '<html>')
+
+    asserts.assertArrayIncludes(files, ['util.ts.js'])
 
     Deno.removeSync(tempdir, {recursive:true})
 })
