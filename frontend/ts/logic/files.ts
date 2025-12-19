@@ -142,8 +142,8 @@ export class Result {
                 Object.assign(combined_results, exportfiles)
             } else {
                 //multiple files, create a subfolder
-                for (const exportfile of Object.values(exportfiles))
-                    combined_results[`${result.inputname}/${exportfile.name}`] = exportfile;
+                for (const [name, exportfile] of Object.entries(exportfiles))
+                    combined_results[`${result.inputname}/${name}`] = exportfile;
             }
         }
         if(Object.keys(combined_results).length > 0)
