@@ -45,6 +45,49 @@ export async function fetch_no_throw(...x: Parameters<typeof fetch>): Promise<Re
     return response;
 }
 
+
+export async function fetch_with_progress(
+    url: URL,
+    on_progess: (x:{total:number|null, received:number}) => void,
+): Promise<File|Error> {
+    const filename:string = 
+        url.pathname.substring(url.pathname.lastIndexOf('/') + 1);
+
+    const response:Response|Error = await fetch_no_throw(url);
+    if(response instanceof Error)
+        return response as Error;
+    
+    const total:number|null = 
+        Number(response.headers.get('content-length')) ?? null;
+    
+    const reader:ReadableStreamDefaultReader<Uint8Array>|undefined = 
+        response.body?.getReader()
+    if(reader == undefined)
+        return new Error('Internal Error')
+    
+    let received:number = 0
+    const chunks:Uint8Array<ArrayBuffer>[] = []
+    while(true) {
+        try {
+            const {done, value} = await reader.read();
+            if(value != undefined){
+                chunks.push(value as Uint8Array<ArrayBuffer>)
+                received += value.length
+                on_progess({total, received})
+            }
+            if(done)
+                return new File(chunks, filename)
+        } catch (error) {
+            return error as Error;
+        }
+    }
+}
+
+
+
+
+
+
 /** Construct the url to download an image from the backend, 
  *  optionally with a cachebuster to prevent caching */
 export function url_for_image(imagename:string, cachebuster = true): string {
