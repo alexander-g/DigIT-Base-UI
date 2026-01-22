@@ -6,7 +6,10 @@ import { AppState, InputResultPair }            from "./state.ts";
 import { preact, Signal, ReadonlySignal }       from "../dep.ts";
 
 
-export type DragCallback = (start:Point, end:Point) => void;
+type StopOrContinue = 'stop'|'continue';
+
+export type DragMoveCallback = (start:Point, end:Point) => void|StopOrContinue;
+export type DragEndCallback  = (start:Point, end:Point) => void;
 
 /**
  * Initiate dragging for an HTML element when the user clicks and drags the mouse.
@@ -18,13 +21,16 @@ export type DragCallback = (start:Point, end:Point) => void;
  *                          Receives the starting point and the current point of the drag.
  * @param on_end          - Callback that is called when the drag ends. 
  *                          Receives the starting point and the end point of the drag.
+ * @param mode            - Whether to automatically stop dragging on mouse up or
+ *                          to wait for the signal from the `on_move` return value
  */
 export function start_drag (
     mousedown_event: MouseEvent,
     targetelement:   Element,
     targetsize?:     Size,
-    on_move?:        DragCallback,
-    on_end?:         DragCallback,
+    on_move?:        DragMoveCallback,
+    on_end?:         DragEndCallback,
+    mode:            'mouseup'|'manual' = 'mouseup',
 ): void {
     const start_p: Point = page2element_coordinates(
         {x:mousedown_event.pageX, y:mousedown_event.pageY},
@@ -34,7 +40,16 @@ export function start_drag (
     let move_p: Point = start_p;
 
     function on_mousemove(mousemove_event: MouseEvent) {
-        if( (mousemove_event.buttons & 0x01) == 0 ){
+        move_p = page2element_coordinates(
+            {x:mousemove_event.pageX, y:mousemove_event.pageY},
+            targetelement,
+            targetsize
+        )
+        const returnvalue: void|StopOrContinue = on_move?.(start_p, move_p)
+
+        const mouse_up:boolean = 
+            ((mode == 'mouseup') && (mousemove_event.buttons & 0x01) == 0)
+        if( mouse_up || returnvalue == 'stop' ){
             //mouse button up
             document.removeEventListener('mousemove', on_mousemove);
             document.removeEventListener('mouseup',   on_mousemove);
@@ -42,13 +57,6 @@ export function start_drag (
             on_end?.(start_p, move_p)
             return;
         }
-
-        move_p = page2element_coordinates(
-            {x:mousemove_event.pageX, y:mousemove_event.pageY},
-            targetelement,
-            targetsize
-        )
-        on_move?.(start_p, move_p)
     }
     document.addEventListener('mousemove', on_mousemove)
     document.addEventListener('mouseup',   on_mousemove)
