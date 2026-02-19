@@ -195,7 +195,10 @@ class DenoBundle {
         if(!Deno.bundle)
             return false;
 
-        const srcdir_map:Record<string,string> = this.copy_and_stub(stubs)
+        const srcdir_map:Record<string,string>|Error = await this.copy_and_stub(stubs)
+        if(srcdir_map instanceof Error)
+            return false;
+
         const index_root:string|Error = 
             find_file_in_folders(inputfile, this.srcdirs)
         if(index_root instanceof Error)
@@ -249,7 +252,7 @@ class DenoBundle {
         this.bundleroot = path.join(this.outputdir, self.crypto.randomUUID())
     }
 
-    private copy_and_stub(stubs:string[]):Record<string,string> {
+    private async copy_and_stub(stubs:string[]):Promise<Record<string,string>|Error> {
         const srcdir_map:Record<string,string> = {}
         
         for(const srcdir of this.srcdirs){
@@ -260,11 +263,13 @@ class DenoBundle {
             srcdir_map[srcdir] = new_srcdir
         }
         
+        const promises:Promise<unknown>[] = []
         for(const stub of stubs){
             const stubroot:string|Error = 
                 find_file_in_folders(stub, this.srcdirs)
             if(stubroot instanceof Error)
-                throw stubroot as Error;
+                //throw stubroot as Error;
+                return stubroot as Error;
             
             const stubthis:string = 
                 path.join(
@@ -272,8 +277,12 @@ class DenoBundle {
                     path.relative(stubroot, stub)
                 )
             //fs.ensureFileSync(stubthis)
-            Deno.writeTextFileSync(stubthis, ``);
+            //Deno.writeTextFileSync(stubthis, ``);
+            promises.push(
+                Deno.writeTextFile(stubthis, ``)
+            )
         }
+        await Promise.race(promises)
         return srcdir_map;
     }
 
