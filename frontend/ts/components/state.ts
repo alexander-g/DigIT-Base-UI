@@ -11,6 +11,8 @@ import * as file_input from "./file_input.ts";
 //for convenience
 export { Result }
 export type {Input}
+type SimpleInputResultPair<I extends Input, R extends Result> = 
+    files.InputResultPair<I,R>;
 
 
 /** Helper class to prevent undefined initial values */
@@ -28,6 +30,10 @@ export type InputResultPair<I extends Input, R extends Result> = {
     $result: Signal<R>;
 }
 
+// convenience alias
+type SignalInputResultPair<I extends Input, R extends Result> = 
+    InputResultPair<I,R>;
+
 
 /** Convert {@link files.InputResultPair}[] to {@link InputResultPair}[]  */
 export function input_result_signal_pairs_from_simple<I extends Input, R extends Result>(
@@ -39,6 +45,48 @@ export function input_result_signal_pairs_from_simple<I extends Input, R extends
         )
     )
 }
+
+
+function same_input(a: Input|File, b:Input|File) {
+    const same_name:boolean = (a.name == b.name)
+    if('size' in a && 'size' in b) {
+        const same_size:boolean = a.size == b.size;
+        return same_name && same_size;
+    }
+    else return same_name;
+}
+
+/** Convert {@link SimpleInputResultPair}[] to {@link InputResultPair}[], 
+ *  taking into account previous pairs, updating the previous $result signal
+ *  only creating a new one if needed. */
+export function input_result_signal_pairs_updating_previous<
+I extends Input, 
+R extends Result
+> (
+    new_pairs: SimpleInputResultPair<I,R>[],
+    previous_pairs: InputResultPair<I,R>[],
+): InputResultPair<I,R>[] {
+    const output:InputResultPair<I,R>[] = [];
+
+    for(const new_pair of new_pairs) {
+        let pair_to_add:InputResultPair<I,R>|null = null;
+        for(const prev_pair of previous_pairs) {
+            if(same_input(new_pair.input, prev_pair.input)) {
+                prev_pair.$result.value = new_pair.result;
+                pair_to_add = prev_pair;
+                break;
+            }
+        }
+
+        if(pair_to_add == null)
+            pair_to_add = 
+                {input:new_pair.input, $result:new Signal<R>(new_pair.result)};
+        
+        output.push(pair_to_add);
+    }
+    return output;
+}
+
 
 /** Convert {@link InputResultPair}[] to {@link files.InputResultPair}[]  */
 export function input_result_simple_pairs_from_signals<I extends Input, R extends Result>(
@@ -124,20 +172,36 @@ SETTINGS extends Settings = Settings
             (pair:{input:Input}) => pair.input
         )
 
-        //reset state
         //TODO: send clear cache request to backend
-        this.$files.value = []
-        //refresh ui
-        await util.wait(1)
-        //load the new files
-        this.$files.value = input_result_signal_pairs_from_simple(
+
+        // NOTE: in the past this worked, but then it caused closing the 
+        // currently open file when a new result was dropped into the window
+        // REMOVED: // reset state
+        // REMOVED: this.$files.value = []
+        // REMOVED: // refresh ui
+        // REMOVED: await util.wait(1)
+        // REMOVED: // load the new files
+        // REMOVED: this.$files.value = input_result_signal_pairs_from_simple(
+        //     await file_input.load_list_of_files(
+        //         files_raw ?? [], 
+        //         this.InputClass,
+        //         this.ResultClass, 
+        //         previous_pairs
+        //     )
+        // )
+
+        const new_filepairs: SimpleInputResultPair<Input,Result>[] = 
             await file_input.load_list_of_files(
                 files_raw ?? [], 
                 this.InputClass,
                 this.ResultClass, 
                 previous_pairs
             )
+        this.$files.value = input_result_signal_pairs_updating_previous(
+            new_filepairs, 
+            this.$files.value
         )
+        
 
         const inputs_after:Input[] = this.$files.value.map(
             (pair:{input:Input}) => pair.input

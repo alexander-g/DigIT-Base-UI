@@ -48,18 +48,16 @@ export class DetectionTab<S extends AppState> extends TabContent<S> {
 
     render(): JSX.Element {
         const cls_active: 'active'|null = this.is_first ? 'active' : null;
-        const anything_loaded: boolean = (this.$files().value.length > 0);
         return (
         <div 
             class    = {"ui tab unselectable " +cls_active + " "+this.cssclass()} 
             data-tab = {this.props.name} 
             style    = "padding:0"
         >
-            {
-                anything_loaded
-                ?   this.file_table()
-                :   <NoFilesLoadedInfo />
-            }
+            <FileTableOrNoFilesLoaded 
+                filetable = {this.file_table()} 
+                $files    = {this.$files()} 
+            />
             
             {/* { this.file_table() } */}
         </div>
@@ -133,6 +131,16 @@ function NoFilesLoadedInfo(): JSX.Element {
             <p>Drag and drop images into this window to get started</p>
         </div>
     </div>
+}
+
+/** Simple component switch to avoid accessing $files.value in DetectionTab */
+function FileTableOrNoFilesLoaded(
+    props:{
+        filetable: preact.ComponentChildren, 
+        $files:    Readonly<Signal<unknown[]>>
+    }
+) {
+    return props.$files.value.length ? props.filetable : <NoFilesLoadedInfo />
 }
 
 

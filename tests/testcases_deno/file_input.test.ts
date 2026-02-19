@@ -1,6 +1,10 @@
 import * as file_input          from "../../frontend/ts/components/file_input.ts"
 import * as imagetools          from "../../frontend/ts/logic/imagetools.ts"
 import { Result, InputFile }    from "../../frontend/ts/logic/files.ts"
+import { 
+    input_result_signal_pairs_updating_previous, 
+    Signal,
+} from "../../frontend/ts/components/state.ts"
 import { asserts, path, mock }  from "./dep.ts"
 
 const IMAGE_ASSET1_PATH: string 
@@ -94,4 +98,23 @@ Deno.test('load_list_of_files', async () => {
     //should keep the previous inputs
     asserts.assertEquals(Object.keys(pairs3).length, pairs2.length)
     asserts.assertEquals(pairs3[0]?.input, pairs2[0]?.input)
+})
+
+
+Deno.test('input_result_signal_pairs_updating_previous', () => {
+    const new_pairs = [
+        {input: {name: 'a.jpg'}, result: new Result('processed', 65) },
+        {input: {name: 'b.jpg'}, result: new Result('processed', 77) },
+        {input: {name: 'c.jpg'}, result: new Result('processed', 101) },
+    ]
+    const prev_pairs = [
+        {input: {name:'c.jpg'}, $result: new Signal(new Result('processed', 0))}
+    ]
+
+    const output = input_result_signal_pairs_updating_previous(new_pairs, prev_pairs)
+
+    asserts.assertEquals( output.length, 3)
+    asserts.assertEquals( output[2]?.input.name, prev_pairs[0]?.input.name )
+    asserts.assert( output[2]?.$result === prev_pairs[0]?.$result )
+    asserts.assertEquals( prev_pairs[0]?.$result.value.raw, 101 )
 })
