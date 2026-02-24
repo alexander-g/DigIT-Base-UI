@@ -179,6 +179,15 @@ export function orthogonal_vector(v:Vector): Vector {
     return {x:v.y, y:-v.x}
 }
 
+export function scale_vector(v:Vector, scalar:number): Vector {
+    return {x:v.x * scalar, y: v.y * scalar}
+}
+
+export function add_vectors(a:Vector, b:Vector): Vector {
+    return {x:a.x+b.x, y:a.y+b.y};
+}
+
+
 export function arange(x0:number,x1?:number): number[] {
     const start:number = (x1==undefined)?  0 : x0;
     const stop:number  = (x1==undefined)? x0 : x1-start;
