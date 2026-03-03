@@ -1,5 +1,6 @@
 import { preact, JSX, Signal, signals }     from "../dep.ts";
 import { Result, Input, InputResultPair }   from "./state.ts";
+import { WaitForExportModal }               from "./FileTableMenu.tsx"
 import { process_inputs }           from "./ui_util.ts";
 import * as ui_util                 from "./ui_util.ts";
 import { zip_files }                from "../logic/zip.ts";
@@ -198,10 +199,12 @@ export function DownloadButton(props:DownloadButtonProps): JSX.Element {
 
 /** Format the results of a single file and download */
 export async function download_single_result(result:Result): Promise<void> {
+    WaitForExportModal.show_modal()
+
     const exportfiles:Record<string, File>|null = await result.export()
     if(!exportfiles){
         console.trace('result.export() failed')
-        //TODO error message to the user?
+        WaitForExportModal.show_error(`Unable to download files`)
         return;
     }
     
@@ -216,11 +219,12 @@ export async function download_single_result(result:Result): Promise<void> {
         const zipfile:File|Error  = await zip_files(exportfiles, archivename)
         if(zipfile instanceof Error){
             console.trace('Zipping results failed')
-            //TODO: error message to the user
+            WaitForExportModal.show_error(`Unable to download files`)
             return;
         }
         ui_util.download_file( zipfile )
     }
+    WaitForExportModal.hide_modal()
 }
 
 

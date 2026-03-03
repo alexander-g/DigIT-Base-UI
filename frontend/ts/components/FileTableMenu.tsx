@@ -1,6 +1,10 @@
 import { JSX, signals, preact }          from "../dep.ts";
 import {Input, Result, ProcessingModule, ExportType} from "../logic/files.ts"
-import { process_inputs, download_file } from "./ui_util.ts";
+import { 
+    process_inputs, 
+    download_file,
+    boolean_to_display_css,
+} from "./ui_util.ts";
 import * as state                        from "./state.ts";
 import { zip_files }                     from "../logic/zip.ts";
 
@@ -29,6 +33,8 @@ export class DownloadAllButton extends preact.Component<DownloadAllProps> {
         submenu_callbacks: undefined,
     }
 
+    waitmodal:preact.RefObject<WaitForExportModal> = preact.createRef()
+
     render(props: DownloadAllProps): JSX.Element {
         //TODO: disable button if props.$processing
         let submenu:JSX.Element|null = null
@@ -54,12 +60,17 @@ export class DownloadAllButton extends preact.Component<DownloadAllProps> {
                 Download All
                 { submenu }
             </div>
+
+            {/* NOTE: no ref because only one instance */}
+            <WaitForExportModal />
         </>
     }
 
     // static only to put it into defaultProps
     static async on_download_all(
-        this:DownloadAllButton, _event:MouseEvent, format:ExportType = 'annotations'
+        this:   DownloadAllButton, 
+        _event: MouseEvent, 
+        format: ExportType = 'annotations'
     ) {
         //TODO: this should be handled somewhere else
         if(this.props.$processing.value)
@@ -73,16 +84,22 @@ export class DownloadAllButton extends preact.Component<DownloadAllProps> {
             return;
     
         const ResultClass = (all_results[0]?.constructor as typeof Result|undefined)
+
+        // show modal with throbber until export is finished
+        WaitForExportModal.show_modal()
+
         //TODO: show error message if empty / or disable button
         const all_exports: Record<string, File> 
             = await ResultClass?.export_combined(all_results, format) ?? {}
         const zip_archive: File|Error = await zip_files(all_exports, 'results.zip')
         if(zip_archive instanceof Error) {
-           //TODO: show error message to user
            console.trace(zip_archive.message)
+           WaitForExportModal.show_error(`Unable to download files`)
            return;
         }
         download_file(zip_archive)
+
+        WaitForExportModal.hide_modal()
     }
 }
 
@@ -103,6 +120,75 @@ export class DownloadAllWithCSVAndAnnotations extends DownloadAllButton {
     }
 }
 
+
+export class WaitForExportModal extends preact.Component {
+    // NOTE: static because only one single modal
+    static ref: preact.RefObject<HTMLDivElement> = preact.createRef()
+
+    /** The message to display in the modal */
+    static $message: signals.Signal<string> = new signals.Signal('')
+    
+    /** Whether or not to show the cancel butten */
+    static $cancel: signals.Signal<boolean> = new signals.Signal(false)
+
+    /** Fomantic icon string to show next to the message */
+    static $iconclass: signals.Signal<string> = new signals.Signal("")
+
+    static timeout_handle:number = 0;
+
+    render(): JSX.Element {
+        const cancel_css:JSX.CSSProperties = {
+            display: boolean_to_display_css(WaitForExportModal.$cancel?.value ?? true)
+        }
+
+        return <div 
+                class = "ui tiny modal" 
+                id    = "wait-for-export-modal" 
+                ref   = {WaitForExportModal.ref}
+                >
+            <div class="ui divider"></div>
+            <div class="loading-message" style="display:flex;justify-content: center;">
+                <i class = {WaitForExportModal.$iconclass}></i>
+                { WaitForExportModal.$message }
+            </div>
+            <div class="ui divider"></div>
+            <div class="actions">
+                <div class="ui negative button" style={ cancel_css }>
+                    Cancel
+                </div>
+            </div>
+        </div>
+    }
+
+    static show_modal() {
+        WaitForExportModal.timeout_handle = setTimeout( () => {
+            WaitForExportModal.$message.value = 'Preparing results...';
+            WaitForExportModal.$cancel.value = false;
+            WaitForExportModal.$iconclass.value = "spinner loading icon"
+            
+            $(WaitForExportModal.ref.current).modal({
+                closable:  false,
+            }).modal('show');
+        }, 50 )
+    }
+
+    static hide_modal() {
+        clearTimeout(WaitForExportModal.timeout_handle)
+        $(WaitForExportModal.ref.current).modal('hide')
+    }
+
+    static show_error(message:string) {
+        clearTimeout(WaitForExportModal.timeout_handle)
+
+        WaitForExportModal.$message.value = message;
+        WaitForExportModal.$cancel.value = true;
+        WaitForExportModal.$iconclass.value = "yellow exclamation triangle status icon"
+        
+        $(WaitForExportModal.ref.current).modal({
+            closable:  true,
+        }).modal('show');
+    }
+}
 
 
 type FileTableMenuProps<I extends Input, R extends Result> = {
