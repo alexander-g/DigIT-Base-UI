@@ -1,5 +1,8 @@
-export * as asserts from "jsr:@std/assert@1.0.8";
-export * as mock    from "jsr:@std/testing@1.0.5/mock"
+// to hell with jsr
+//export * as asserts from "jsr:@std/assert@1.0.8";
+//export * as mock    from "jsr:@std/testing@1.0.5/mock"
+export * as asserts from "https://esm.sh/jsr/@std/assert@1.0.8"
+export * as mock    from "https://esm.sh/jsr/@std/testing@1.0.5/mock?deps=@jsr/std__assert@1.0.8"
 export * as fs      from "jsr:@std/fs@1.0.6";
 export * as path    from "jsr:@std/path@1.0.8";
 
