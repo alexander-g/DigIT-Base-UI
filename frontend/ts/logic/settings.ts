@@ -61,21 +61,27 @@ export abstract class SettingsHandler<S  extends Settings = Settings> {
 
 export abstract class RemoteSettingsHandler<S extends Settings> 
 extends SettingsHandler<S> {
+    url: string;
+
+    constructor(base_url?: string ){
+        super()
+        this.url = (base_url ? `${base_url}/` : '') + 'settings'
+    };
+
     async load(): Promise<SettingsResponse<S>|Error> {
-        const response: Response|Error = await util.fetch_no_throw('settings')
-        if(response instanceof Error){
+        const response: Response|Error = await util.fetch_no_throw(this.url)
+        if(response instanceof Error)
             return response as Error;
-        }
         else return this._validate_response(response);
     }
 
     async store(settings:S): Promise<true|Error> {
         const response:Response|Error = await util.fetch_no_throw(
-            'settings', {method:'post', body:JSON.stringify(settings)}
+            this.url, 
+            {method:'post', body:JSON.stringify(settings)}
         )
-        if(response instanceof Error){
+        if(response instanceof Error)
             return response as Error;
-        }
         else return true;
     }
     
