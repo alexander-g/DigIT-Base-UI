@@ -28,6 +28,9 @@ class FomanticSpy {
     popup       : mock.Spy      = mock.spy();
     checkbox    : mock.Spy      = mock.spy();
     dimmer      : mock.Spy      = mock.spy();
+    slider      : mock.Spy      = mock.spy();
+    modal       : mock.Spy      = mock.spy(() => ({modal: mock.spy()}) );
+    progress    : mock.Spy      = mock.spy();
 }
 
 /** Mock the most common Fomantic UI functions */
@@ -38,8 +41,8 @@ export function mock_fomantic(): FomanticSpy {
 }
 
 /** Replace the fetch function with a stub for tests */
-export function mock_fetch( fn?: () => Promise<Response> ): mock.Spy {
-    const spy: mock.Spy = mock.spy( fn ?? (() => {}) )
+export function mock_fetch( fn?: typeof fetch ): mock.Spy {
+    const spy: mock.Spy = mock.spy( fn ?? (async () => await new Response(null)) )
     globalThis.fetch = mock.stub(globalThis, 'fetch', spy)
     return spy;
 }
