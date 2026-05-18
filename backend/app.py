@@ -238,13 +238,22 @@ class App(flask.Flask):
         return 'OK'
     
     
-    ALLOWED_HOSTS = {"github.com", "dropbox.com", "www.dropbox.com"}
+    ALLOWED_HOSTS = {"github.com", "dropbox.com", "www.dropbox.com", "localhost"}
 
     def proxy(self):
-        '''GET /proxy?url=https://example.com/path/to/file'''
+        '''GET /proxy?url=https://example.com/path/to/file&savepath=path/to/model'''
         url = flask.request.args.get("url")
         if not url:
             return flask.Response("Missing 'url' parameter", status=400)
+
+        savepath: str|None = flask.request.args.get('savepath')
+        if savepath is not None:
+            if os.path.isabs(savepath):
+                flask.abort(403)
+            savepath = os.path.join(get_instance_path(), savepath)
+            savedir  = os.path.dirname(savepath)
+            if not os.path.exists(savedir):
+                os.makedirs(savedir, exist_ok=True)
         
         parsed = urllib.parse.urlparse(url)
         if parsed.scheme not in ("http", "https"):
@@ -254,10 +263,39 @@ class App(flask.Flask):
             return flask.Response("Host not allowed", status=403)
         
         request  = urllib.request.Request(url, method="GET")
-        response = urllib.request.urlopen(request)
+        upstream = urllib.request.urlopen(request)
 
-        headers = {name:response.headers[name] for name in response.headers}
-        return flask.Response(response, status=response.status, headers=headers)
+        def read_response_generator():
+            CHUNK_SIZE = 16 * 1024
+
+            try:
+                f: tp.IO|None = None
+                if savepath is not None:
+                    f = open(savepath, 'wb')
+                while True:
+                    chunk = upstream.read(CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    if f is not None:
+                        f.write(chunk)
+                        f.flush()
+                    yield chunk
+            except: 
+                # cleanup incomplete files
+                if savepath is not None and os.path.exists(savepath):
+                    os.remove(savepath)
+                raise
+            finally:
+                if f is not None:
+                    f.close()
+                upstream.close()
+
+        headers = {name:upstream.headers[name] for name in upstream.headers}
+        return flask.Response(
+            flask.stream_with_context(read_response_generator()), 
+            status  = upstream.status, 
+            headers = headers
+        )
 
     
     def recompile_static(self, force=False):
