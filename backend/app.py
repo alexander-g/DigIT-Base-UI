@@ -3,6 +3,7 @@ import atexit
 import glob
 import json
 import os
+import logging
 import shutil
 import subprocess
 import sys
@@ -14,12 +15,13 @@ import webbrowser
 import warnings
 warnings.simplefilter('ignore')
 
+import click
 import flask
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--host',    type=str, default='localhost')
 parser.add_argument('--port',    type=int, default=5000)
-parser.add_argument('--debug',   default=sys.argv[0].endswith('.py'))
+parser.add_argument('--debug',   type=bool, default=sys.argv[0].endswith('.py'))
 
 import backend
 
@@ -34,7 +36,10 @@ from .paths import (
 )
 
 def is_debug() -> bool:
-    return sys.argv[0].endswith('.py')
+    return sys.argv[0].endswith('.py') or os.environ.get('DEBUG') is not None
+
+
+NO_WEBBROWSER = (os.environ.get('NO_WEBBROWSER') is not None)
 
 
 class App(flask.Flask):
@@ -44,6 +49,10 @@ class App(flask.Flask):
         do_not_reload    = (os.environ.get('DO_NOT_RELOAD',None) is not None)
         is_reloader      = (self.is_debug and not is_second_start) and not do_not_reload
         self.is_reloader = is_reloader
+
+        logging.getLogger('werkzeug').addFilter(NoWarningLoggingFilter())
+        # monkey patching to remove unnecessary logging
+        click.echo = lambda *a, **k: None
 
         super().__init__(
             'reloader' if is_reloader else __name__,
@@ -194,7 +203,7 @@ class App(flask.Flask):
                 response.mimetype = 'application/javascript'
             return response
 
-        if not self.is_debug:
+        if not self.is_debug and not NO_WEBBROWSER:
             with self.app_context():
                 print('Flask started')
                 webbrowser.open('http://localhost:5000', new=2)
@@ -310,12 +319,26 @@ class App(flask.Flask):
         if parse_args:
             args = parser.parse_args()
             args = dict(host=args.host, port=args.port, debug=args.debug)
+        
+        print()
+        print()
+        print(f'In a browser, navigate to http://{args["host"]}:{args["port"]}/')
+        print()
+        print()
+
         super().run(**args)
+
+
+class NoWarningLoggingFilter(logging.Filter):
+    def filter(self, record:logging.LogRecord):
+        if 'WARNING: This is a development server.' in record.msg:
+            return False
+        return True
 
 
 def setup_cache(cache_path):
     shutil.rmtree(cache_path, ignore_errors=True)
-    os.makedirs(cache_path)
+    os.makedirs(cache_path, exist_ok=True)
     atexit.register(lambda: shutil.rmtree(cache_path, ignore_errors=True))
 
 
