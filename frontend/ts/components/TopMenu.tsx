@@ -1,12 +1,18 @@
 import { JSX, preact }      from "../dep.ts"
 import { SettingsButton }   from "./Settings.tsx"
 import { page_wide_css }    from "./styles.ts";
-import { Constructor }      from "../util.ts";
 import type { Settings } from "../logic/settings.ts";
 
 
-function Logo(): JSX.Element {
-    return <div class="header item" style="padding-top:0; padding-bottom:0">
+function Logo(props:{width?:number}): JSX.Element {
+    const css: JSX.CSSProperties = {
+        paddingTop:    0,
+        paddingBottom: 0,
+    }
+    if(props.width)
+        css.width = `${props.width}px`
+
+    return <div class="header item" style={css}>
         <img class="logo" src="logo.svg" style="width:100%; max-height:28px;" />
     </div>
 }
@@ -105,8 +111,9 @@ function FileMenu(props:FileMenuProps): JSX.Element {
 }
 
 
-type TopMenuProps<S extends Settings = Settings> = FileMenuProps & {
+export type TopMenuProps<S extends Settings = Settings> = FileMenuProps & {
     on_open_settings: () => void;
+    logo_width?: number;
 };
 
 
@@ -116,7 +123,7 @@ export class TopMenu extends preact.Component<TopMenuProps> {
     render(): JSX.Element {
         return <>
             <div class="ui container menu page-wide" style={page_wide_css}>
-                <Logo />
+                <Logo width={this.props.logo_width}/>
                 <FileMenu 
                     on_inputfiles      = {this.props.on_inputfiles}
                     on_inputfolder     = {this.props.on_inputfolder}

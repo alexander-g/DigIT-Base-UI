@@ -24,7 +24,7 @@ export {
     ModelSelection,
     type SettingsModalProps,
 } from "./ts/components/Settings.tsx";
-export { TopMenu }          from "./ts/components/TopMenu.tsx";
+export { TopMenu, type TopMenuProps } from "./ts/components/TopMenu.tsx";
 export { 
     FileTableContent, 
     SingleFileContent 
