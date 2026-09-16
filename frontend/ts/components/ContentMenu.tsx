@@ -215,7 +215,7 @@ export async function download_single_result(result:Result): Promise<void> {
         ui_util.download_file( exportfile )
     } else {
         //multiple files, zip into an archive first
-        const archivename         = `${result.inputname}.zip`
+        const archivename         = `${result.inputname}.results.zip`
         const zipfile:File|Error  = await zip_files(exportfiles, archivename)
         if(zipfile instanceof Error){
             console.trace('Zipping results failed')
