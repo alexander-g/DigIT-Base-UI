@@ -40,6 +40,9 @@ extends SingleFileContent<R> {
 export type ImageOverlayProps = ui_util.MaybeHiddenProps & {
     /** Image name/url to fetch or already loaded image file/blob that shall be overlayed */
     image: string|Blob|null;
+
+    /** Optional extra CSS properties */
+    $css?: Readonly<Signal<JSX.CSSProperties>>
 }
 
 /** A result overlay that displays an image (e.g. a segmentation result) */
@@ -48,7 +51,7 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
 
     ref: preact.RefObject<HTMLImageElement> = preact.createRef()
 
-    render(_props:P): JSX.Element {        
+    render(_props:P): JSX.Element {
         //img.src set manually
         return <img 
             class       =   "overlay unselectable pixelated" 
@@ -59,6 +62,7 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
                 ...styles.pixelated_css,
                 ...black_to_transparent_css,
                 ...super.get_display_css(),
+                ...this.props.$css?.value,
             }}
         />
     }
