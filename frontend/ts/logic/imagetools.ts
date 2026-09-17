@@ -10,6 +10,18 @@ import type {
 import * as util from "../util.ts"
 
 
+import {
+    wasm_big_image_initialize, 
+    type BigImage as BigImageWASM, 
+    type Image as WasmImage
+} from "../dep.ts";
+
+// re-export for convenience
+export { BigImageWASM, WasmImage };
+
+
+
+
 let _canvas:CanvasKit|undefined = undefined;
 async function _init_canvaslib() {
     if(_canvas == undefined)
@@ -686,3 +698,30 @@ export function get_display_size(size:util.ImageSize): util.ImageSize {
     }
     return display_size;
 }
+
+
+export type OGandDisplaySizes = {
+    display_size: util.ImageSize;
+    og_size:      util.ImageSize;
+}
+
+export 
+async function get_og_and_display_sizes(image:File): Promise<OGandDisplaySizes|Error> {
+    const og_size: util.ImageSize|Error = await read_image_size(image)
+    if(og_size instanceof Error)
+        return og_size as Error;
+    const display_size: util.ImageSize = get_display_size(og_size)
+    return {og_size, display_size}
+}
+
+
+
+
+let bigimage_wasm: BigImageWASM|null = null;
+
+export async function get_bigimage_wasm(): Promise<BigImageWASM> {
+    if(bigimage_wasm == null)
+        bigimage_wasm = await wasm_big_image_initialize()
+    return bigimage_wasm
+}
+

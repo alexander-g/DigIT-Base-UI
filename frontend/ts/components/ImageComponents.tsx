@@ -6,19 +6,13 @@ import { start_drag }                       from "./ui_util.ts";
 import { InputImageFile }                   from "./state.ts";
 import * as imagetools                      from "../logic/imagetools.ts"
 import { 
-    load_tiff_file, 
     is_tiff_file, 
-    is_bigtiff,
     read_image_size,
     get_display_size,
-    MAX_SIZE_HEIGHT_WIDTH,
+    get_bigimage_wasm,
+    type BigImageWASM,
 } from "../logic/imagetools.ts"
 
-
-import {wasm_big_image_initialize, BigImage} from "../dep.ts";
-
-// TODO: not sure where to put this
-const wasm:BigImage = await wasm_big_image_initialize()
 
 
 
@@ -405,6 +399,7 @@ export async function set_image_src(
 
         const t0 = performance.now();
 
+        const wasm: BigImageWASM = await get_bigimage_wasm()
         // tiff images and images larger than display size are handled by the wasm module
         if(await is_tiff_file(input)
         || size.height > display_size.height
