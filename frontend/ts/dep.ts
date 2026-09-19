@@ -14,12 +14,12 @@ export { signals, Signal, type ReadonlySignal }
 
 
 
-// @deno-types="https://raw.githubusercontent.com/alexander-g/wasm-big-image/refs/tags/v2025-12-07/wasm-big-image.d.ts"
+// @deno-types="https://raw.githubusercontent.com/alexander-g/wasm-big-image/refs/tags/v2026-09-19/wasm-big-image.d.ts"
 export { 
     initialize as wasm_big_image_initialize,
     type BigImage,
     type Image,
-} from "https://raw.githubusercontent.com/alexander-g/wasm-big-image/refs/tags/v2025-12-07/wasm-big-image.js"
+} from "https://raw.githubusercontent.com/alexander-g/wasm-big-image/refs/tags/v2026-09-19/wasm-big-image.js"
 
 
 
