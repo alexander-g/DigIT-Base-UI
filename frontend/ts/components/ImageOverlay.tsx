@@ -1,4 +1,4 @@
-import { JSX, Signal, preact }                  from "../dep.ts";
+import { JSX, Signal, signals, preact }         from "../dep.ts";
 import * as util                                from "../util.ts";
 import * as ui_util                             from "./ui_util.ts";
 import * as styles                              from "./styles.ts"
@@ -57,15 +57,25 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
             class       =   "overlay unselectable pixelated" 
             ref         =   {this.ref}
             draggable   =   {false}
-            style       =   {{
-                ...styles.overlay_css, 
-                ...styles.pixelated_css,
-                ...black_to_transparent_css,
-                ...super.get_display_css(),
-                ...this.props.$css?.value,
-            }}
+            // NOTE: passing style = { $css } doesnt seem to work, 
+            // therefore applying it in #css_effect and componentdidupdate
+            // style = { this.$css }
         />
     }
+
+    $css: Readonly<Signal<JSX.CSSProperties>> = signals.computed( () =>{
+        return {
+            ...styles.overlay_css, 
+            ...styles.pixelated_css,
+            ...black_to_transparent_css,
+            ...super.get_display_css(),
+            ...this.props.$css?.value,
+        }
+    } )
+
+    #css_effect = signals.effect(() => {
+        this.apply_css_to_image(this.$css.value)
+    })
 
     override shouldComponentUpdate(nextProps: Readonly<P>): boolean {
         const image:string|Blob|null = nextProps.image;
@@ -76,8 +86,19 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
     }
 
     override componentDidMount(): void {
-        if(this.props.image != null)
+        if(this.props.image != null) {
             this.set_img_src(this.props.image)
+        }
+        this.apply_css_to_image(this.$css.value)
+    }
+
+    override componentDidUpdate(): void {
+        this.apply_css_to_image(this.$css.value)
+    }
+
+    override componentWillUnmount(): void {
+        //cleanup
+        this.#css_effect()
     }
 
     async set_img_src(image:string|Blob): Promise<void> {
@@ -90,6 +111,14 @@ export class ImageOverlay<P extends ImageOverlayProps> extends ui_util.MaybeHidd
                 image = blob;
         }
         set_image_src(this.ref.current, image, /*lossless=*/true)
+    }
+
+    apply_css_to_image(css: JSX.CSSProperties): void {
+        const image: HTMLImageElement|null = this.ref.current
+        if(image == null)
+            return
+
+        Object.assign(image.style, css)
     }
 }
 

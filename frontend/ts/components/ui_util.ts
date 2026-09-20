@@ -154,8 +154,8 @@ export function download_file(file:File): void {
  * <Element style={style} />
  * ```
  */
-export function boolean_to_display_css(x: boolean): 'none' | undefined {
-    return x ? undefined : 'none';
+export function boolean_to_display_css(x: boolean): 'none' | '' {
+    return x ? '' : 'none';
 }
 
 
