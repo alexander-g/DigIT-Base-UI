@@ -18,13 +18,13 @@ import {
 const ORT_VERSION:string = ort.env.versions.common
 
 
-const WASM_PATH_DENO = new URL(
+export const WASM_PATH_DENO = new URL(
     `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/ort-wasm-simd-threaded.wasm`
 )
 const WASM_PATH_BROWSER = new URL(
     `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/ort-wasm-simd-threaded.jsep.wasm`
 )
-const ASSET_DIR = './assets'
+const DEFAULT_ASSET_DIR = './assets'
 
 
 
@@ -32,18 +32,18 @@ const ASSET_DIR = './assets'
 
 let _cached_wasm: Uint8Array|undefined;
 
-async function get_ort_wasm_binary(): Promise<Uint8Array|Error> {
+async function get_ort_wasm_binary(deno_wasmdir?:string): Promise<Uint8Array|Error> {
     if(_cached_wasm != undefined)
         return _cached_wasm;
 
     if(util.is_deno()){
         // check if wasm file is present in assets
-        let maybe_wasm:Uint8Array|Error = try_load_cached_wasm()
+        let maybe_wasm:Uint8Array|Error = try_load_cached_wasm(deno_wasmdir)
         if(maybe_wasm instanceof Uint8Array)
             return maybe_wasm;
         
         // try to fetch otherwise
-        maybe_wasm = await try_fetch_wasm_deno()
+        maybe_wasm = await try_fetch_wasm_deno(deno_wasmdir)
         if(maybe_wasm instanceof Error)
             return maybe_wasm as Error;
         
@@ -57,14 +57,14 @@ async function get_ort_wasm_binary(): Promise<Uint8Array|Error> {
 }
 
 /** Try to read onnxruntime wasm file from file system (Deno only) */
-function try_load_cached_wasm(): Uint8Array|Error {
+function try_load_cached_wasm(wasmdir:string = DEFAULT_ASSET_DIR): Uint8Array|Error {
     const permission:Deno.PermissionState = 
-        Deno.permissions.querySync({name:'read', path:ASSET_DIR}).state;
+        Deno.permissions.querySync({name:'read', path:wasmdir}).state;
     if(permission != 'granted') {
-        return new Error(`No permission to read ${ASSET_DIR}`)
+        return new Error(`No permission to read ${wasmdir}`)
     }
     const basename:string = denolibs.path.basename(WASM_PATH_DENO.pathname);
-    const path:string = denolibs.path.join(ASSET_DIR, basename);
+    const path:string = denolibs.path.join(wasmdir, basename);
     
     try {
         const wasmbytes:Uint8Array = Deno.readFileSync(path)
@@ -75,7 +75,9 @@ function try_load_cached_wasm(): Uint8Array|Error {
     }
 }
 
-async function try_fetch_wasm_deno(): Promise<Uint8Array|Error> {
+async function try_fetch_wasm_deno(
+    wasmdir:string = DEFAULT_ASSET_DIR
+): Promise<Uint8Array|Error> {
     const permission0:Deno.PermissionState = 
         Deno.permissions.querySync({name:'net', host:WASM_PATH_DENO.host}).state;
     if(permission0 != 'granted')
@@ -89,10 +91,10 @@ async function try_fetch_wasm_deno(): Promise<Uint8Array|Error> {
     _cached_wasm = wasmbytes;
 
     const permission1:Deno.PermissionState = 
-        Deno.permissions.querySync({name:'write', path:ASSET_DIR}).state;
+        Deno.permissions.querySync({name:'write', path:wasmdir}).state;
     if(permission1 == 'granted'){
         const basename:string = denolibs.path.basename(WASM_PATH_DENO.pathname);
-        const path:string = denolibs.path.join(ASSET_DIR, basename);
+        const path:string = denolibs.path.join(wasmdir, basename);
         Deno.writeFileSync(path, wasmbytes);
     }
     return wasmbytes;
@@ -128,8 +130,8 @@ async function cached_fetch(
     return response
 }
 
-async function set_ort_env(): Promise<true|Error> {
-    const wasmbytes:Uint8Array|Error = await get_ort_wasm_binary()
+async function set_ort_env(deno_wasmdir?:string): Promise<true|Error> {
+    const wasmbytes:Uint8Array|Error = await get_ort_wasm_binary(deno_wasmdir)
     if(wasmbytes instanceof Error)
         return wasmbytes as Error;
     
@@ -315,9 +317,10 @@ export class Session {
     /** Factory function returning a new {@link Session} instance or `Error`.*/
     static async initialize<T extends typeof Session>(
         this: T,
-        modelpath:string
+        modelpath:string,
+        deno_wasmdir?:string,
     ): Promise<InstanceType<T>|Error> {
-        const status: true|Error = await set_ort_env()
+        const status: true|Error = await set_ort_env(deno_wasmdir)
         if(status instanceof Error)
             return status as Error;
         
