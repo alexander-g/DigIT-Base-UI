@@ -20,12 +20,35 @@ function show_results_side_by_side(filename){
 }
 
 
+
+// tracking the CTRL key manually because fomantic doesnt provide this in the callbacks
+let ctrl_pressed = false;
+
+function update_ctrl_key(event) {
+    ctrl_pressed = event.ctrlKey
+}
+document.addEventListener("keydown",   update_ctrl_key);
+document.addEventListener("keyup",     update_ctrl_key);
+document.addEventListener("mousemove", update_ctrl_key);
+
+
 function on_brightness_slider(){
     const $root      = $(this).closest('[filename]')
     const brightness = $root.find('.brightness-slider').slider('get value')/10
-    $root.find('.input-image').css('filter', `brightness(${brightness})`)
-    //var contrast   = $root.find('.contrast-slider').slider('get value')  /10
-    //$root.find('.input-image').css('filter', `brightness(${brightness}) contrast(${contrast})`)
+
+    // if CTRL is pressed, apply to all images
+    const $input_images_to_adjust = 
+        ctrl_pressed
+        ? $('.input-image')
+        : $root.find('.input-image')
+    $input_images_to_adjust.css('filter', `brightness(${brightness})`)
+
+    const filename = $root.attr('filename')
+
+    // if CTRL is pressed, update all the other brightness sliders
+    if(ctrl_pressed)
+        $(`[filename]:not([filename="${filename}"]) .brightness-slider`)
+            .slider('set value', brightness*10, /*fire_change=*/false)
 }
 
 function set_brightness(filename, brightness){
