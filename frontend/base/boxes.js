@@ -80,7 +80,7 @@ BaseBoxes = class {
 
         //update results
         const oldresults = GLOBAL.files[filename].results;
-        let   newresults = Object.assign(deepcopy(oldresults), {
+        let   newresults = Object.assign(deepcopy(oldresults ?? {}), {
             'labels': oldresults?.['predictions']  ?? [],
             'boxes':  oldresults?.['boxes']        ?? [],
         })
