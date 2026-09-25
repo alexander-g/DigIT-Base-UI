@@ -69,3 +69,11 @@ export function is_hidden(element: HTMLElement): boolean {
 export function simulate_browser() {
     globalThis.document = {} as Document;
 }
+
+
+export function assert_not_error<T>(x:T|Error): asserts x is T {
+    if(x instanceof Error)
+        throw x as Error
+    
+    return
+}
