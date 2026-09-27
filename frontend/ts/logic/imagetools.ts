@@ -192,7 +192,7 @@ export async function image_to_blob(
 
 
 /** Remove the alpha channel from an array of RGBA values (HWC ordering) */
-function rgba_to_rgb(data:Uint8ClampedArray): Uint8ClampedArray {
+export function rgba_to_rgb(data:Uint8ClampedArray): Uint8ClampedArray {
     const new_length:number = Math.floor(data.buffer.byteLength/4*3);
     const new_array  = new Uint8ClampedArray(new_length)
     
