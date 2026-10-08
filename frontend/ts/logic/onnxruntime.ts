@@ -272,7 +272,7 @@ export async function load_model(path:string): Promise<ModelDescriptor|Error> {
     else if(path.endsWith('.zip'))
         return load_pt_zip(path)
     else
-        return new Error('Unknown model type')
+        return new Error(`Unknown model type: ${path}`)
 }
 
 
@@ -297,8 +297,8 @@ export type SingleImageSessionOutput = SessionOutput & {
 }
 
 export class Session {
-    #ortsession:  ort.InferenceSession;
-    #onnx_bytes:  Uint8Array;
+    #ortsession:            ort.InferenceSession;
+    readonly onnx_bytes:    Uint8Array;
 
     protected _state_dict:  TensorDict;
     protected _inputschema: InputSchema;
@@ -310,7 +310,7 @@ export class Session {
     ) {
         this.#ortsession  = ortsession;
         this._state_dict  = model_dsc.state_dict
-        this.#onnx_bytes  = model_dsc.onnx_bytes
+        this.onnx_bytes   = model_dsc.onnx_bytes
         this._inputschema = inputschema
     }
 
@@ -367,7 +367,7 @@ export class Session {
             if(util.is_deno() || force_mainthread){
                 output = await this.#ortsession.run(inputfeed)
             } else {
-                output = await run_in_worker(this.#onnx_bytes, inputfeed)
+                output = await run_in_worker(this.onnx_bytes, inputfeed)
             }
             const t1:number = performance.now()
             return {
