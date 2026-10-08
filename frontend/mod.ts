@@ -35,7 +35,7 @@ export * as ui_util         from "./ts/components/ui_util.ts"
 export * as errors          from "./ts/components/errors.ts"
 
 
-export { preact, signals, Signal, type JSX } from "./ts/dep.ts"
+export { preact, signals, Signal, type JSX, denolibs } from "./ts/dep.ts"
 export { ort } from "./ts/dep.ts"
 
 
