@@ -14,17 +14,17 @@ export { signals, Signal, type ReadonlySignal }
 
 
 
-// @deno-types="https://raw.githubusercontent.com/alexander-g/wasm-big-image/refs/tags/v2026-09-19/wasm-big-image.d.ts"
+// @deno-types="https://raw.githubusercontent.com/alexander-g/wasm-big-image/refs/tags/v2026-10-07/wasm-big-image.d.ts"
 export { 
     initialize as wasm_big_image_initialize,
     type BigImage,
     type Image,
-} from "https://raw.githubusercontent.com/alexander-g/wasm-big-image/refs/tags/v2026-09-19/wasm-big-image.js"
+} from "https://raw.githubusercontent.com/alexander-g/wasm-big-image/refs/tags/v2026-10-07/wasm-big-image.js"
 
 
 
 
-
+// TODO: remove
 //export { default as UTIF } from 'https://cdn.skypack.dev/utif@3.1.0?dts'
 
 //NOTE: utif2 better at jpeg decompression
@@ -37,12 +37,6 @@ export * as fflate from "https://esm.sh/fflate@0.7.4"
 import "./jquery_mock.ts";
 
 
-////@deno-types="https://esm.sh/v135/onnxruntime-common@1.16.3/dist/esm/index.d.ts"
-//export {default as ort} from "https://esm.sh/onnxruntime-web@1.16.3?no-dts"
-//export {default as ort} from "https://esm.run/onnxruntime-web@1.16.3"
-
-///// //@deno-types="https://esm.sh/v135/onnxruntime-common@1.20.0/dist/esm/index.d.ts"
-// export {default as ort} from "https://esm.sh/onnxruntime-web@1.20.0?target=es2022&no-dts"
 
 export * as ort from "npm:onnxruntime-web@1.22.0";
 
