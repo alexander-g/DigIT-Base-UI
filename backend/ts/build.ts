@@ -89,8 +89,9 @@ function resolve_paths(paths: CompilationPaths): CompilationPaths {
 
 /** Compile/render all frontend files into the `static` folder for serving. */
 export async function compile_everything(
-    paths: CompilationPaths, 
-    clear: boolean
+    paths:        CompilationPaths, 
+    clear:        boolean,
+    index_props?: Record<string, unknown>
 ): Promise<true|Error> {
     paths = resolve_paths(paths);
 
@@ -128,7 +129,7 @@ export async function compile_everything(
 
     //compile the main JSX <Index /> element into index.html
     promises.push(
-        compile_index(paths)
+        compile_index(paths, index_props)
     );
     
     //copy css, assets and thirdparty JS into the static folder
@@ -421,6 +422,7 @@ export function clear_folder(path:string): void {
 
 export async function compile_and_copy(
     paths: CompilationPaths,
+    args?: Record<string, unknown>,
 ): Promise<true|Error> {
     clear_folder(paths.static);
     //copy assets/thirdparty files even from downstream //TODO: need some kind of flag
@@ -430,7 +432,7 @@ export async function compile_and_copy(
         static:     paths.static,
     })
 
-    const status:true|Error = await compile_everything(paths, false)
+    const status:true|Error = await compile_everything(paths, false, args)
     return status;
 }
 
@@ -455,7 +457,7 @@ if(import.meta.main){
     const args: Record<string,string> = parse_args()
 
     const paths:CompilationPaths = resolve_paths({...BASE_PATHS, ...args})
-    const status: true|Error = await compile_and_copy(paths)
+    const status: true|Error = await compile_and_copy(paths, args)
     if(status instanceof Error){
         console.log(status.message+'\n')
         Deno.exit(1)
