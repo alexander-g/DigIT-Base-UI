@@ -338,7 +338,7 @@ export class Session {
                     model_dsc.onnx_bytes, 
                     options
                 )
-            console.log('onnx initialized')
+            // console.log('onnx initialized')
 
             const inputschema: InputSchema|Error = 
                 this.validate_inputs(ortsession.inputMetadata)

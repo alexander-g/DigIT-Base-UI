@@ -4,6 +4,7 @@ import * as util       from "../../util.ts"
 export const DataTypeMap  = {
     bool:    Uint8Array,
     uint8:   Uint8Array,
+    int32:   Int32Array,
     int64:   BigInt64Array,
     float32: Float32Array,
 }
@@ -159,6 +160,7 @@ export function validate_dtype(x:unknown): DType|null {
     && (   (x == 'bool') 
         || (x == 'uint8') 
         || (x == 'float32') 
+        || (x == 'int32')
         || (x == 'int64')) 
     ) {
         return x;
@@ -218,6 +220,7 @@ function to_dtype_array(x:ArrayBufferLike|number, dtype:DType): DTypeArray {
 export function validate_typed_array(x:unknown): DTypeArray|null {
     if(x instanceof Uint8Array      //for uint8 and bool
     || x instanceof Float32Array
+    || x instanceof Int32Array
     || x instanceof BigInt64Array){
         return x as unknown as DTypeArray;
     }
